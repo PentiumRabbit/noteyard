@@ -1,1 +1,1 @@
-See PROJECT.md
+See STARTUP.md
