@@ -274,7 +274,7 @@ func (r *DatabaseRepo) checkFormulaLoop(ctx context.Context, dbID, colID, colNam
 	return nil
 }
 
-var refRe = regexp.MustCompile(`\{([^}]+)\}`)
+var refRe = regexp.MustCompile(`prop\(["']([^"']+)["']\)`)
 
 func extractRefs(formula string) []string {
 	matches := refRe.FindAllStringSubmatch(formula, -1)
@@ -285,10 +285,15 @@ func extractRefs(formula string) []string {
 	return refs
 }
 
-// evalFormula 计算公式值，{列名} 替换为同行对应列的值，支持基础四则运算
+// evalFormula 计算公式值，prop("列名") 替换为同行对应列的值，支持基础四则运算
 func evalFormula(formula string, cells map[string]string, colByName map[string]*model.DBColumn) string {
 	expr := refRe.ReplaceAllStringFunc(formula, func(m string) string {
-		name := m[1 : len(m)-1]
+		// 提取 prop("列名") 或 prop('列名') 中的列名
+		sub := refRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return "0"
+		}
+		name := sub[1]
 		col, ok := colByName[name]
 		if !ok {
 			return "0"
