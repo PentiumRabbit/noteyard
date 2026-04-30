@@ -2,10 +2,14 @@ import "@blocknote/mantine/style.css";
 import "@blocknote/react/style.css";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
 import type { Block } from "../../types";
 import "./Editor.css";
+
+export interface EditorHandle {
+  flush: () => void;
+}
 
 interface Props {
   pageId: string;
@@ -20,23 +24,38 @@ function toBlockNote(blocks: Block[]): any[] {
   });
 }
 
-export function Editor({ pageId }: Props) {
+export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }, ref) {
   const editor = useCreateBlockNote();
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const readyRef = useRef(false);
   const pageIdRef = useRef(pageId);
   pageIdRef.current = pageId;
 
-  const save = (pid: string) => {
-    const dtos: Partial<Block>[] = editor.document.map((b, i) => ({
+  const buildDtos = (pid: string): Partial<Block>[] =>
+    editor.document.map((b, i) => ({
       id: b.id,
       page_id: pid,
       type: b.type,
       content: JSON.stringify(b.content ?? []),
       order_index: i,
     }));
-    void api.blocks.batchUpdate(dtos);
+
+  const save = (pid: string) => {
+    if (!readyRef.current) return;
+    void api.blocks.batchUpdate(buildDtos(pid));
   };
+
+  // 暴露给父组件：切换页面前同步 flush
+  useImperativeHandle(ref, () => ({
+    flush: () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      save(pageIdRef.current);
+    },
+  }));
 
   useEffect(() => {
     readyRef.current = false;
@@ -60,27 +79,27 @@ export function Editor({ pageId }: Props) {
       readyRef.current = true;
     })();
 
+    // 30s 定时兜底保存
+    heartbeatTimer.current = setInterval(() => save(currentPageId), 30_000);
+
     return () => {
       cancelled = true;
-      // flush pending save on unmount / page switch
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
-      if (readyRef.current) {
-        save(currentPageId);
-      }
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
+      // unmount 时同步 flush（页面切换/关闭）
+      if (readyRef.current) save(currentPageId);
     };
   }, [pageId, editor]);
 
   const handleChange = () => {
     if (!readyRef.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => save(pageIdRef.current), 800);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => save(pageIdRef.current), 1000);
   };
 
+  // beforeunload 用 sendBeacon，不会被浏览器截断
   useEffect(() => {
-    const flush = () => save(pageIdRef.current);
+    const flush = () => api.blocks.batchUpdateBeacon(buildDtos(pageIdRef.current));
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);
   }, []);
@@ -90,4 +109,4 @@ export function Editor({ pageId }: Props) {
       <BlockNoteView editor={editor} onChange={handleChange} />
     </div>
   );
-}
+});
