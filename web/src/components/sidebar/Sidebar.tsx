@@ -175,6 +175,29 @@ export function Sidebar({ selectedId, onSelect }: Props) {
     }
   };
 
+  const handleCtxCopy = async () => {
+    if (!ctxMenu) return;
+    const src = findPage(tree, ctxMenu.pageId);
+    closeCtxMenu();
+    if (!src) return;
+    const [srcPage, srcBlocks] = await Promise.all([
+      api.pages.get(src.id),
+      api.blocks.listByPage(src.id),
+    ]);
+    const newPage = await api.pages.create({
+      parent_id: srcPage.parent_id ?? undefined,
+      title: `${srcPage.title || "Untitled"} 副本`,
+      icon: srcPage.icon ?? undefined,
+      cover: srcPage.cover ?? undefined,
+      order_index: srcPage.order_index + 0.5,
+    });
+    if (srcBlocks.length > 0) {
+      await api.blocks.batchUpdate(srcBlocks.map(b => ({ ...b, id: crypto.randomUUID(), page_id: newPage.id })));
+    }
+    void refresh();
+    onSelect(newPage.id);
+  };
+
   const handleCtxDelete = async () => {
     if (!ctxMenu) return;
     const page = findPage(tree, ctxMenu.pageId);
@@ -338,6 +361,7 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           <div className="ctx-overlay" onClick={closeCtxMenu} />
           <div className="ctx-menu" style={{ top: ctxMenu.y, left: ctxMenu.x }}>
             <button className="ctx-item" onClick={handleCtxRename}>重命名</button>
+            <button className="ctx-item" onClick={() => void handleCtxCopy()}>复制页面</button>
             <div className="ctx-divider" />
             <button className="ctx-item ctx-item-danger" onClick={() => void handleCtxDelete()}>删除</button>
           </div>
