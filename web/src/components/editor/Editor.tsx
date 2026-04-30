@@ -1,10 +1,22 @@
 import "@blocknote/mantine/style.css";
 import "@blocknote/react/style.css";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  SuggestionMenuController,
+  createReactBlockSpec,
+  getDefaultReactSlashMenuItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
+import {
+  BlockNoteSchema,
+  defaultBlockSpecs,
+  insertOrUpdateBlock,
+} from "@blocknote/core";
+import type { BlockNoteEditor } from "@blocknote/core";
 import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
 import type { Block } from "../../types";
+import { DatabaseView } from "../database/DatabaseView";
 import "./Editor.css";
 
 export interface EditorHandle {
@@ -15,9 +27,39 @@ interface Props {
   pageId: string;
 }
 
+// Database 自定义块：props 存 databaseId，渲染时调用后端
+const DatabaseBlock = createReactBlockSpec(
+  {
+    type: "database" as const,
+    propSchema: {
+      databaseId: { default: "" },
+    },
+    content: "none",
+  },
+  {
+    render: ({ block }) => {
+      const dbId = block.props.databaseId;
+      if (!dbId) return <div style={{ color: "#aaa", padding: 8 }}>Database 初始化中…</div>;
+      return <DatabaseView databaseId={dbId} />;
+    },
+  },
+);
+
+const schema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    database: DatabaseBlock,
+  },
+});
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toBlockNote(blocks: Block[]): any[] {
   return blocks.map((b) => {
+    if (b.type === "database") {
+      let props: Record<string, string> = {};
+      try { props = JSON.parse(b.content) as Record<string, string>; } catch { /* empty */ }
+      return { id: b.id, type: "database", props, content: undefined, children: [] };
+    }
     let content: unknown[] = [];
     try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
     return { id: b.id, type: b.type, props: {}, content, children: [] };
@@ -25,7 +67,7 @@ function toBlockNote(blocks: Block[]): any[] {
 }
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }, ref) {
-  const editor = useCreateBlockNote();
+  const editor = useCreateBlockNote({ schema });
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const readyRef = useRef(false);
@@ -37,7 +79,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
       id: b.id,
       page_id: pid,
       type: b.type,
-      content: JSON.stringify(b.content ?? []),
+      content: b.type === "database"
+        ? JSON.stringify(b.props)
+        : JSON.stringify((b as { content?: unknown }).content ?? []),
       order_index: i,
     }));
 
@@ -46,7 +90,6 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
     void api.blocks.batchUpdate(buildDtos(pid));
   };
 
-  // 暴露给父组件：切换页面前同步 flush
   useImperativeHandle(ref, () => ({
     flush: () => {
       if (debounceTimer.current) {
@@ -67,7 +110,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
       if (cancelled) return;
       if (blocks && blocks.length > 0) {
         try {
-          editor.replaceBlocks(editor.document, toBlockNote(blocks));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          editor.replaceBlocks(editor.document, toBlockNote(blocks) as any);
         } catch {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
@@ -79,17 +123,16 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
       readyRef.current = true;
     })();
 
-    // 30s 定时兜底保存
     heartbeatTimer.current = setInterval(() => save(currentPageId), 30_000);
 
     return () => {
       cancelled = true;
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
-      // unmount 时同步 flush（页面切换/关闭）
       if (readyRef.current) save(currentPageId);
     };
-  }, [pageId, editor]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageId]);
 
   const handleChange = () => {
     if (!readyRef.current) return;
@@ -97,16 +140,59 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
     debounceTimer.current = setTimeout(() => save(pageIdRef.current), 1000);
   };
 
-  // beforeunload 用 sendBeacon，不会被浏览器截断
   useEffect(() => {
     const flush = () => api.blocks.batchUpdateBeacon(buildDtos(pageIdRef.current));
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="editor-wrap">
-      <BlockNoteView editor={editor} onChange={handleChange} />
+      <BlockNoteView editor={editor} onChange={handleChange} slashMenu={false}>
+        <DatabaseSlashItem editor={editor} pageId={pageId} />
+      </BlockNoteView>
     </div>
   );
 });
+
+// 斜杠菜单：默认项 + database 项
+function DatabaseSlashItem({
+  editor,
+  pageId,
+}: {
+  editor: BlockNoteEditor<typeof schema.blockSchema>;
+  pageId: string;
+}) {
+  return (
+    <SuggestionMenuController
+      triggerCharacter="/"
+      getItems={async (query) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const defaults = getDefaultReactSlashMenuItems(editor as any);
+        const dbItem = {
+          title: "Database",
+          onItemClick: async () => {
+            const db = await api.databases.create({ page_id: pageId, title: "新建数据库" });
+            insertOrUpdateBlock(editor, {
+              type: "database",
+              props: { databaseId: db.id },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
+          },
+          aliases: ["database", "table", "db", "数据库"],
+          group: "其他",
+          icon: <span>🗄</span>,
+          hint: "插入数据库表格块",
+        };
+        const all = [...defaults, dbItem];
+        const q = query.toLowerCase();
+        return all.filter(
+          (item) =>
+            item.title.toLowerCase().includes(q) ||
+            (item.aliases ?? []).some((a: string) => a.toLowerCase().includes(q)),
+        );
+      }}
+    />
+  );
+}
