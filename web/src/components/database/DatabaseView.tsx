@@ -8,7 +8,7 @@ import "./DatabaseView.css";
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula"];
+const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time"];
 
 const COL_ICONS: Record<DBColumn["type"], string> = {
   text: "Aa",
@@ -18,7 +18,20 @@ const COL_ICONS: Record<DBColumn["type"], string> = {
   "multi-select": "≡≡",
   date: "📅",
   formula: "ƒ",
+  url: "🔗",
+  email: "✉",
+  created_time: "🕐",
+  last_edited_time: "🕑",
 };
+
+const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time"]);
+
+function fmtTimestamp(ts: number | undefined): string {
+  if (!ts) return "—";
+  const d = new Date(ts * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 const TAG_COLORS = [
   { bg: "#f3f0ff", color: "#6e5fd6" },
@@ -168,7 +181,7 @@ export function DatabaseView({ databaseId }: Props) {
   // ── keyboard navigation ──
   const handleCellKeyDown = (e: React.KeyboardEvent, rowId: string, colId: string) => {
     if (!db) return;
-    const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index).filter(c => c.type !== "formula" && c.type !== "checkbox");
+    const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index).filter(c => !READONLY_COL_TYPES.has(c.type) && c.type !== "checkbox");
     const colIdx = cols.findIndex(c => c.id === colId);
     const rowIdx = rows.findIndex(r => r.id === rowId);
 
@@ -656,6 +669,10 @@ export function DatabaseView({ databaseId }: Props) {
                         <span className="cell-formula-inner">
                           {(() => { const r = evalFormula(col.formula, row, cols); return r || <span className="cell-empty">—</span>; })()}
                         </span>
+                      ) : col.type === "created_time" ? (
+                        <span className="cell-time-readonly">{fmtTimestamp(row.created_at)}</span>
+                      ) : col.type === "last_edited_time" ? (
+                        <span className="cell-time-readonly">{fmtTimestamp(row.updated_at)}</span>
                       ) : col.type === "checkbox" ? (
                         <div className="cell-checkbox">
                           <input type="checkbox" checked={val === "true"} onChange={() => void toggleCheckbox(row.id, col.id, val)} />
@@ -674,6 +691,28 @@ export function DatabaseView({ databaseId }: Props) {
                             <span key={i} className="cell-tag" style={{ background: tagColor(v).bg, color: tagColor(v).color }}>{v}</span>
                           )) : <span className="cell-empty">　</span>}
                         </div>
+                      ) : col.type === "url" ? (
+                        isEditing ? (
+                          <input ref={cellInputRef} className="cell-input" type="url" value={cellDraft}
+                            onChange={e => setCellDraft(e.target.value)}
+                            onBlur={() => void commitEdit(row.id, col.id)}
+                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
+                        ) : (
+                          <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
+                            {val ? <a href={val} target="_blank" rel="noopener noreferrer" className="cell-url-link" onClick={e => e.stopPropagation()}>🔗 {val}</a> : <span className="cell-empty">　</span>}
+                          </span>
+                        )
+                      ) : col.type === "email" ? (
+                        isEditing ? (
+                          <input ref={cellInputRef} className="cell-input" type="email" value={cellDraft}
+                            onChange={e => setCellDraft(e.target.value)}
+                            onBlur={() => void commitEdit(row.id, col.id)}
+                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
+                        ) : (
+                          <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
+                            {val ? <a href={`mailto:${val}`} className="cell-url-link" onClick={e => e.stopPropagation()}>✉ {val}</a> : <span className="cell-empty">　</span>}
+                          </span>
+                        )
                       ) : isEditing ? (
                         <input
                           ref={cellInputRef}
@@ -968,6 +1007,26 @@ export function DatabaseView({ databaseId }: Props) {
                   <div className="row-modal-value">
                     {col.type === "formula" ? (
                       <span className="cell-formula-inner">{evalFormula(col.formula, rowModal.row, cols) || "—"}</span>
+                    ) : col.type === "created_time" ? (
+                      <span className="cell-time-readonly">{fmtTimestamp(rowModal.row.created_at)}</span>
+                    ) : col.type === "last_edited_time" ? (
+                      <span className="cell-time-readonly">{fmtTimestamp(rowModal.row.updated_at)}</span>
+                    ) : col.type === "url" ? (
+                      <div className="row-modal-url-wrap">
+                        <input className="row-modal-input" type="url" value={rowModalDraft[col.id] ?? ""}
+                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="https://" />
+                        {rowModalDraft[col.id] && (
+                          <a href={rowModalDraft[col.id]} target="_blank" rel="noopener noreferrer" className="cell-url-link row-modal-url-open">↗</a>
+                        )}
+                      </div>
+                    ) : col.type === "email" ? (
+                      <div className="row-modal-url-wrap">
+                        <input className="row-modal-input" type="email" value={rowModalDraft[col.id] ?? ""}
+                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="name@example.com" />
+                        {rowModalDraft[col.id] && (
+                          <a href={`mailto:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open">✉</a>
+                        )}
+                      </div>
                     ) : col.type === "checkbox" ? (
                       <input
                         type="checkbox"

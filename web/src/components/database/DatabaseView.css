@@ -965,3 +965,29 @@ tr:hover .row-del-btn { visibility: visible; }
 }
 
 .select-dd-item.selected .cell-tag { font-weight: 500; }
+
+/* ── url / email cells ── */
+.cell-url-wrap { display: flex; align-items: center; width: 100%; overflow: hidden; }
+.cell-url-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cell-url-link:hover { opacity: 0.8; }
+
+/* ── created_time / last_edited_time ── */
+.cell-time-readonly {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+/* ── row modal url/email ── */
+.row-modal-url-wrap { display: flex; align-items: center; gap: 6px; width: 100%; }
+.row-modal-url-open { flex-shrink: 0; font-size: 14px; }
