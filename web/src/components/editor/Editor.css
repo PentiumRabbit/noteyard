@@ -294,6 +294,25 @@
 .callout-emoji-opt:hover { background: var(--color-hover-bg-medium); }
 .callout-content { flex: 1; min-width: 0; }
 
+/* ── columns block ── */
+.columns-block {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  align-items: start;
+}
+.column-cell {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  min-height: 60px;
+  background: var(--color-bg-primary);
+}
+.column-cell .bn-editor {
+  padding-inline: 0 !important;
+}
+.column-cell .bn-block-outer { margin-block: 0; }
+
 /* ── toggle block ── */
 .toggle-block { width: 100%; }
 .toggle-header {

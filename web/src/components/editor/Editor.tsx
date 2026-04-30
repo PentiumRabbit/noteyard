@@ -178,6 +178,86 @@ const ToggleBlock = createReactBlockSpec(
   },
 );
 
+// T07 — Columns 分栏块（每列一个 mini BlockNote 实例）
+const ColumnsBlock = createReactBlockSpec(
+  {
+    type: "columns" as const,
+    propSchema: {
+      cols: { default: "2" },
+      // 每列内容序列化为 JSON，最多 4 列，columnsData = JSON.stringify(string[][])
+      columnsData: { default: "" },
+    },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      const numCols = Math.max(2, Math.min(4, parseInt(block.props.cols || "2", 10)));
+      let initialData: string[][] = [];
+      try { initialData = JSON.parse(block.props.columnsData) as string[][]; } catch { /* empty */ }
+      while (initialData.length < numCols) initialData.push([]);
+
+      const saveColData = (colIdx: number, content: string) => {
+        const next = [...initialData];
+        next[colIdx] = JSON.parse(content) as string[];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
+      };
+
+      return (
+        <div className="columns-block" style={{ gridTemplateColumns: `repeat(${numCols}, 1fr)` }}>
+          {Array.from({ length: numCols }).map((_, i) => (
+            <ColumnCell
+              key={i}
+              colIndex={i}
+              initialContent={JSON.stringify(initialData[i] ?? [])}
+              onSave={saveColData}
+            />
+          ))}
+        </div>
+      );
+    },
+  },
+);
+
+function ColumnCell({ colIndex, initialContent, onSave }: {
+  colIndex: number;
+  initialContent: string;
+  onSave: (idx: number, content: string) => void;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const miniEditor = useCreateBlockNote({ schema: BlockNoteSchema.create({ blockSpecs: defaultBlockSpecs }) as any });
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    setTimeout(() => {
+      try {
+        let blocks: unknown[] = [];
+        try { blocks = JSON.parse(initialContent) as unknown[]; } catch { /* empty */ }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        miniEditor.replaceBlocks(miniEditor.document, (blocks.length > 0 ? blocks : [{ type: "paragraph" }]) as any);
+      } catch { /* empty */ }
+      requestAnimationFrame(() => { readyRef.current = true; });
+    }, 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChange = () => {
+    if (!readyRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      onSave(colIndex, JSON.stringify(miniEditor.document));
+    }, 800);
+  };
+
+  return (
+    <div className="column-cell">
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <BlockNoteView editor={miniEditor as any} onChange={handleChange} slashMenu={true} formattingToolbar={true} />
+    </div>
+  );
+}
+
 // T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -187,6 +267,7 @@ const schema = BlockNoteSchema.create({
     database: DatabaseBlock,
     callout: CalloutBlock,
     toggle: ToggleBlock,
+    columns: ColumnsBlock,
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
@@ -197,10 +278,10 @@ const schema = BlockNoteSchema.create({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toBlockNote(blocks: Block[]): any[] {
   return blocks.map((b) => {
-    if (b.type === "database") {
+    if (b.type === "database" || b.type === "columns") {
       let props: Record<string, unknown> = {};
       try { props = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
-      return { id: b.id, type: "database", props, content: undefined, children: [] };
+      return { id: b.id, type: b.type, props, content: undefined, children: [] };
     }
     let content: unknown[] = [];
     try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
@@ -236,9 +317,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor.document as any[]).flatMap((b: any, i: number): Partial<Block>[] => {
       if (b.type === "database") {
-        // database 块 content 由插入时写入后端，编辑器不覆盖（防止 flush 写入空 databaseId）
         const dbId = (b.props as { databaseId?: string }).databaseId;
         if (!dbId) return [];
+        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
+      }
+      if (b.type === "columns") {
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
       return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
@@ -416,7 +499,16 @@ function DatabaseSlashItem({
           icon: <span>▶</span>,
           hint: "插入折叠块",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem];
+        const columnsItem = {
+          title: "Columns",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "columns", props: { cols: "2", columnsData: "[[],[]]" } } as any),
+          aliases: ["columns", "分栏", "column", "col", "并排"],
+          group: "高级块",
+          icon: <span>⫼</span>,
+          hint: "插入两栏分栏块",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||
