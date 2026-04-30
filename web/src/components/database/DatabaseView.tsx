@@ -197,11 +197,12 @@ export function DatabaseView({ databaseId }: Props) {
 
   // ── formula popover ──
   const openFormulaPopover = (e: React.MouseEvent, col: DBColumn) => {
-    closeColMenu();
-    const rect = (e.currentTarget as HTMLElement).closest(".col-menu")?.getBoundingClientRect()
+    const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
+    const rect = menuEl?.getBoundingClientRect()
       ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
     const firstRow = rows[0];
     const preview = firstRow ? evalFormula(col.formula, firstRow, db?.columns ?? []) : "";
+    setColMenu(null);
     setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview });
   };
   const updateFormulaPreview = (draft: string) => {
