@@ -76,14 +76,21 @@ func (r *BlockRepo) BatchUpdate(ctx context.Context, blocks []*model.Block) erro
 	}
 	defer tx.Rollback()
 	now := time.Now().Unix()
-	stmt, err := tx.PrepareContext(ctx,
-		`UPDATE blocks SET type=?,content=?,order_index=?,parent_block_id=?,updated_at=? WHERE id=?`)
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO blocks(id, page_id, parent_block_id, type, content, order_index, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			type=excluded.type,
+			content=excluded.content,
+			order_index=excluded.order_index,
+			parent_block_id=excluded.parent_block_id,
+			updated_at=excluded.updated_at`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for _, b := range blocks {
-		if _, err := stmt.ExecContext(ctx, b.Type, b.Content, b.OrderIndex, b.ParentBlockID, now, b.ID); err != nil {
+		if _, err := stmt.ExecContext(ctx, b.ID, b.PageID, b.ParentBlockID, b.Type, b.Content, b.OrderIndex, now, now); err != nil {
 			return err
 		}
 	}

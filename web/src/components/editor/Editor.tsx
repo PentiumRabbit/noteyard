@@ -24,13 +24,27 @@ export function Editor({ pageId }: Props) {
   const editor = useCreateBlockNote();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readyRef = useRef(false);
+  const pageIdRef = useRef(pageId);
+  pageIdRef.current = pageId;
+
+  const save = (pid: string) => {
+    const dtos: Partial<Block>[] = editor.document.map((b, i) => ({
+      id: b.id,
+      page_id: pid,
+      type: b.type,
+      content: JSON.stringify(b.content ?? []),
+      order_index: i,
+    }));
+    void api.blocks.batchUpdate(dtos);
+  };
 
   useEffect(() => {
     readyRef.current = false;
+    const currentPageId = pageId;
     let cancelled = false;
 
     void (async () => {
-      const blocks = await api.blocks.listByPage(pageId);
+      const blocks = await api.blocks.listByPage(currentPageId);
       if (cancelled) return;
       if (blocks && blocks.length > 0) {
         try {
@@ -46,31 +60,30 @@ export function Editor({ pageId }: Props) {
       readyRef.current = true;
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // flush pending save on unmount / page switch
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      if (readyRef.current) {
+        save(currentPageId);
+      }
+    };
   }, [pageId, editor]);
-
-  const save = () => {
-    const dtos: Partial<Block>[] = editor.document.map((b, i) => ({
-      id: b.id,
-      page_id: pageId,
-      type: b.type,
-      content: JSON.stringify(b.content ?? []),
-      order_index: i,
-    }));
-    void api.blocks.batchUpdate(dtos);
-  };
 
   const handleChange = () => {
     if (!readyRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(save, 800);
+    saveTimer.current = setTimeout(() => save(pageIdRef.current), 800);
   };
 
   useEffect(() => {
-    const flush = () => save();
+    const flush = () => save(pageIdRef.current);
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);
-  });
+  }, []);
 
   return (
     <div className="editor-wrap">
