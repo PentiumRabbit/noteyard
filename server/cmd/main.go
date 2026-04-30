@@ -50,6 +50,7 @@ func main() {
 			r.Delete("/{id}", ph.Delete)
 			r.Get("/{id}/blocks", bh.ListByPage)
 			r.Post("/{id}/blocks", bh.Create)
+			r.Get("/{id}/ancestors", ph.GetAncestors)
 		})
 		r.Route("/blocks", func(r chi.Router) {
 			r.Put("/{id}", bh.Update)

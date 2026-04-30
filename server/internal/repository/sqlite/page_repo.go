@@ -72,6 +72,32 @@ func (r *PageRepo) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+func (r *PageRepo) GetAncestors(ctx context.Context, id string) ([]*model.Page, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		WITH RECURSIVE ancestors(id, parent_id, title, icon, cover, order_index, created_at, updated_at) AS (
+			SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at
+			FROM pages WHERE id = (SELECT parent_id FROM pages WHERE id = ?)
+			UNION ALL
+			SELECT p.id, p.parent_id, p.title, p.icon, p.cover, p.order_index, p.created_at, p.updated_at
+			FROM pages p JOIN ancestors a ON p.id = a.parent_id
+		)
+		SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at FROM ancestors
+	`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	pages, err := scanPages(rows)
+	if err != nil {
+		return nil, err
+	}
+	// reverse so root is first
+	for i, j := 0, len(pages)-1; i < j; i, j = i+1, j-1 {
+		pages[i], pages[j] = pages[j], pages[i]
+	}
+	return pages, nil
+}
+
 func (r *PageRepo) Move(ctx context.Context, id, newParentID string, newOrder float64) error {
 	var parentID interface{}
 	if newParentID != "" {

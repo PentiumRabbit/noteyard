@@ -78,3 +78,16 @@ func (h *PageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *PageHandler) GetAncestors(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	ancestors, err := h.pages.GetAncestors(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if ancestors == nil {
+		ancestors = []*model.Page{}
+	}
+	writeJSON(w, http.StatusOK, ancestors)
+}

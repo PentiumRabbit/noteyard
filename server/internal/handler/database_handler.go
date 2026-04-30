@@ -139,6 +139,21 @@ func (h *DatabaseHandler) ListRows(w http.ResponseWriter, r *http.Request) {
 	if rows == nil {
 		rows = []*model.DBRow{}
 	}
+
+	q := r.URL.Query()
+	sortCol := q.Get("sort_col")
+	sortOrder := q.Get("sort_order") // "asc" | "desc"
+	filterCol := q.Get("filter_col")
+	filterOp := q.Get("filter_op")   // "contains" | "equals" | "not_equals" | "is_empty" | "is_not_empty" | "gt" | "lt"
+	filterVal := q.Get("filter_val")
+
+	if filterCol != "" {
+		rows = applyFilter(rows, filterCol, filterOp, filterVal)
+	}
+	if sortCol != "" {
+		applySort(rows, sortCol, sortOrder)
+	}
+
 	writeJSON(w, http.StatusOK, rows)
 }
 
