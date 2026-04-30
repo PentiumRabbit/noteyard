@@ -1,27 +1,19 @@
+/* ── wrapper ── */
 .db-wrap {
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 12px;
-  margin: 8px 0;
-  background: #fff;
+  margin: 4px 0 16px;
   font-size: 14px;
-}
-
-.db-title {
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 10px;
-  color: #1a1a1a;
+  font-family: inherit;
+  color: #37352f;
 }
 
 .db-loading {
-  color: #888;
-  padding: 8px;
+  color: #9b9a97;
+  padding: 8px 2px;
   font-size: 13px;
 }
 
 .db-error {
-  color: #c0392b;
+  color: #eb5757;
   background: #fdf0ed;
   border-radius: 4px;
   padding: 6px 10px;
@@ -29,156 +21,365 @@
   font-size: 13px;
 }
 
-.db-scroll {
-  overflow-x: auto;
+/* ── title ── */
+.db-title-wrap {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
 }
 
+.db-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #37352f;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: text;
+  min-width: 60px;
+}
+.db-title:hover { background: rgba(55,53,47,.06); }
+
+.db-title-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: #37352f;
+  border: none;
+  outline: 1px solid #2383e2;
+  border-radius: 3px;
+  padding: 2px 4px;
+  background: #fff;
+  min-width: 60px;
+}
+
+/* ── scroll container ── */
+.db-scroll { overflow-x: auto; }
+
+/* ── table ── */
 .db-table {
   border-collapse: collapse;
   width: 100%;
   min-width: 400px;
 }
 
+/* ── header ── */
+.db-table thead tr {
+  border-bottom: 1px solid rgba(55,53,47,.09);
+}
+
 .db-table th {
-  background: #f7f7f7;
-  border: 1px solid #e0e0e0;
-  padding: 6px 10px;
+  padding: 0;
   text-align: left;
   font-weight: 500;
+  position: relative;
+  height: 34px;
+}
+
+.col-header-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9b9a97;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 3px;
   white-space: nowrap;
+  text-align: left;
+}
+.col-header-btn:hover { background: rgba(55,53,47,.06); color: #37352f; }
+
+.col-icon { font-size: 12px; flex-shrink: 0; }
+.col-name-text { color: #37352f; font-size: 13px; }
+
+.col-add-th {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+.col-add-th-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9b9a97;
+  font-size: 18px;
+  border-radius: 3px;
+}
+.col-add-th-btn:hover { background: rgba(55,53,47,.06); color: #37352f; }
+
+/* ── rows ── */
+.db-table tbody tr {
+  border-bottom: 1px solid rgba(55,53,47,.09);
   position: relative;
 }
+.db-table tbody tr:hover { background: rgba(55,53,47,.03); }
 
 .db-table td {
-  border: 1px solid #e0e0e0;
-  padding: 4px 8px;
-  min-width: 100px;
+  padding: 0 8px;
+  height: 34px;
   vertical-align: middle;
+  min-width: 120px;
+  max-width: 240px;
 }
 
-.col-name {
-  margin-right: 4px;
+/* row delete — hidden until hover */
+.row-del-td {
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
 }
-
-.col-type {
-  font-size: 11px;
-  color: #999;
-  background: #efefef;
-  border-radius: 3px;
-  padding: 1px 4px;
-  margin-right: 4px;
-}
-
-.col-del {
+.row-del-btn {
+  visibility: hidden;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  color: #bbb;
   cursor: pointer;
+  color: #9b9a97;
+  border-radius: 3px;
   font-size: 14px;
-  padding: 0 2px;
-  line-height: 1;
-  float: right;
 }
-.col-del:hover { color: #c0392b; }
+tr:hover .row-del-btn { visibility: visible; }
+.row-del-btn:hover { background: rgba(55,53,47,.08); color: #eb5757; }
 
-.col-add-header {
-  width: 120px;
-}
-
-.col-add-btn {
-  background: none;
-  border: 1px dashed #ccc;
-  border-radius: 4px;
-  color: #666;
-  cursor: pointer;
-  padding: 2px 8px;
-  font-size: 13px;
+/* ── cells ── */
+.cell-text-inner,
+.cell-number-inner,
+.cell-date-inner,
+.cell-formula-inner {
+  display: block;
   width: 100%;
+  min-height: 20px;
+  cursor: text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 13px;
+  color: #37352f;
 }
-.col-add-btn:hover { border-color: #888; color: #333; }
+.cell-text-inner:hover,
+.cell-number-inner:hover,
+.cell-date-inner:hover { background: rgba(55,53,47,.06); }
 
-.col-add-form {
+.cell-formula-inner { color: #6b7280; cursor: default; }
+.cell-formula-inner:hover { background: none; }
+
+.cell-empty { color: #c7c6c3; }
+
+.cell-input {
+  width: 100%;
+  border: none;
+  outline: 1px solid #2383e2;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #37352f;
+  background: #fff;
+}
+
+/* checkbox */
+.cell-checkbox {
+  display: flex;
+  align-items: center;
+}
+.cell-checkbox input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #2383e2;
+}
+
+/* select tag */
+.cell-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── add row ── */
+.db-add-row-tr td {
+  padding: 0;
+  height: 34px;
+  border-bottom: none;
+}
+.db-add-row-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9b9a97;
+  font-size: 13px;
+  border-radius: 3px;
+  text-align: left;
+}
+.db-add-row-btn:hover { background: rgba(55,53,47,.04); color: #37352f; }
+
+/* ── empty state ── */
+.db-empty-td {
+  color: #9b9a97;
+  font-size: 13px;
+  padding: 12px 8px !important;
+  height: auto !important;
+}
+
+/* ── column header menu ── */
+.col-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.col-menu {
+  position: fixed;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid rgba(55,53,47,.16);
+  border-radius: 6px;
+  box-shadow: rgba(15,15,15,.1) 0 0 0 1px, rgba(15,15,15,.2) 0 3px 6px, rgba(15,15,15,.4) 0 9px 24px;
+  padding: 6px 4px;
+  min-width: 200px;
+}
+
+.col-menu-rename {
+  padding: 4px 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 140px;
+  gap: 6px;
 }
-.col-add-form input,
-.col-add-form select {
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  padding: 3px 6px;
+.col-menu-rename input {
+  border: 1px solid #e3e2e0;
+  border-radius: 4px;
+  padding: 5px 8px;
   font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: #37352f;
 }
-.col-add-form button {
+.col-menu-rename input:focus { border-color: #2383e2; }
+
+.col-menu-type-label {
+  font-size: 11px;
+  color: #9b9a97;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 4px 8px 2px;
+}
+
+.col-menu-type-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  background: none;
   border: none;
-  border-radius: 3px;
-  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #37352f;
+  border-radius: 4px;
+  text-align: left;
+}
+.col-menu-type-item:hover { background: rgba(55,53,47,.06); }
+.col-menu-type-item.active { background: rgba(35,131,226,.12); color: #2383e2; }
+
+.col-menu-divider {
+  height: 1px;
+  background: rgba(55,53,47,.09);
+  margin: 4px 0;
+}
+
+.col-menu-del-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #eb5757;
+  border-radius: 4px;
+  text-align: left;
+}
+.col-menu-del-btn:hover { background: rgba(235,87,87,.08); }
+
+/* ── add column popover ── */
+.add-col-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.add-col-popover {
+  position: fixed;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid rgba(55,53,47,.16);
+  border-radius: 6px;
+  box-shadow: rgba(15,15,15,.1) 0 0 0 1px, rgba(15,15,15,.2) 0 3px 6px;
+  padding: 10px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.add-col-popover input {
+  border: 1px solid #e3e2e0;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: #37352f;
+}
+.add-col-popover input:focus { border-color: #2383e2; }
+.add-col-popover select {
+  border: 1px solid #e3e2e0;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #37352f;
+  background: #fff;
+}
+.add-col-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.add-col-actions button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
   cursor: pointer;
   font-size: 12px;
 }
-.col-add-form button:first-of-type { background: #4a90e2; color: #fff; }
-.col-add-form button:last-of-type { background: #eee; color: #555; }
-
-.cell-value {
-  display: block;
-  cursor: pointer;
-  min-height: 20px;
-}
-.cell-value:hover { background: #f0f4ff; border-radius: 3px; }
-
-.cell-placeholder { color: #ccc; }
-
-.cell-formula { color: #555; font-style: italic; }
-
-.cell-checkbox input[type="checkbox"] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-
-td input[type="text"],
-td input[type="number"],
-td input[type="date"] {
-  width: 100%;
-  border: 1px solid #4a90e2;
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 13px;
-  outline: none;
-}
-
-.row-actions {
-  width: 32px;
-  min-width: 32px;
-  text-align: center;
-  border-left: none;
-}
-.row-actions button {
-  background: none;
-  border: none;
-  color: #bbb;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-}
-.row-actions button:hover { color: #c0392b; }
-
-.db-empty {
-  text-align: center;
-  color: #aaa;
-  padding: 16px;
-  font-size: 13px;
-}
-
-.db-add-row {
-  margin-top: 8px;
-  background: none;
-  border: 1px dashed #ccc;
-  border-radius: 4px;
-  color: #666;
-  cursor: pointer;
-  padding: 4px 14px;
-  font-size: 13px;
-}
-.db-add-row:hover { border-color: #888; color: #333; }
+.add-col-actions button:first-child { background: #2383e2; color: #fff; }
+.add-col-actions button:last-child { background: rgba(55,53,47,.06); color: #37352f; }
