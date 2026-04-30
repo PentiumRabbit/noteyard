@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
 import { Breadcrumb } from "./components/breadcrumb/Breadcrumb";
+import { SearchModal } from "./components/search/SearchModal";
 import { api } from "./api/client";
 import { SettingsContext, loadSavedSettings, saveFont, saveTheme } from "./settings/settingsStore";
 import { loadResource } from "./settings/resourceLoader";
@@ -49,6 +50,7 @@ export default function App() {
   const [titleDraft, setTitleDraft] = useState("");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
   const editorRef = useRef<EditorHandle>(null);
   const titleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
@@ -140,6 +142,20 @@ export default function App() {
     await api.pages.update(selectedPageId, { cover: "" });
   };
 
+  // Cmd+K 全文搜索
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(v => !v); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleSearchSelect = (pageId: string) => {
+    setSearchOpen(false);
+    handleSelect(pageId);
+  };
+
   // auto-resize textarea
   useEffect(() => {
     const el = titleInputRef.current;
@@ -152,6 +168,7 @@ export default function App() {
     <SettingsContext.Provider value={{ fontId, themeId, setFont, setTheme }}>
     <div className="app">
       <Sidebar key={sidebarKey} selectedId={selectedPageId} onSelect={handleSelect} />
+      {searchOpen && <SearchModal onSelect={handleSearchSelect} onClose={() => setSearchOpen(false)} />}
       <main className="main">
         {selectedPageId && pageMeta !== null ? (
           <>

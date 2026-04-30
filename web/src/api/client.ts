@@ -51,6 +51,10 @@ export const api = {
     create: (data: Partial<Page>) => req<Page>("POST", "/pages", data),
     update: (id: string, data: Partial<Page>) => req<Page>("PUT", `/pages/${id}`, data),
     delete: (id: string) => req<void>("DELETE", `/pages/${id}`),
+    listTrashed: () => req<Page[]>("GET", "/pages/trash"),
+    restore: (id: string) => req<void>("POST", `/pages/${id}/restore`),
+    permanentDelete: (id: string) => req<void>("DELETE", `/pages/${id}/permanent`),
+    search: (q: string) => req<Page[]>("GET", `/pages/search?q=${encodeURIComponent(q)}`),
   },
   blocks: {
     listByPage: (pageId: string) => req<Block[]>("GET", `/pages/${pageId}/blocks`),
