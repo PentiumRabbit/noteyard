@@ -59,6 +59,7 @@ func main() {
 		r.Route("/databases", func(r chi.Router) {
 			r.Post("/", dh.Create)
 			r.Get("/{id}", dh.Get)
+			r.Patch("/{id}", dh.UpdateTitle)
 			r.Delete("/{id}", dh.Delete)
 			r.Post("/{id}/columns", dh.AddColumn)
 			r.Put("/{id}/columns/{col_id}", dh.UpdateColumn)

@@ -27,6 +27,7 @@ type BlockRepository interface {
 type DatabaseRepository interface {
 	Create(ctx context.Context, db *model.Database) error
 	GetByID(ctx context.Context, id string) (*model.Database, error)
+	UpdateTitle(ctx context.Context, id, title string) error
 	Delete(ctx context.Context, id string) error
 
 	AddColumn(ctx context.Context, col *model.DBColumn) error

@@ -44,6 +44,13 @@ func (r *DatabaseRepo) GetByID(ctx context.Context, id string) (*model.Database,
 	return db, nil
 }
 
+func (r *DatabaseRepo) UpdateTitle(ctx context.Context, id, title string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE databases SET title=?,updated_at=? WHERE id=?`,
+		title, time.Now().Unix(), id)
+	return err
+}
+
 func (r *DatabaseRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM databases WHERE id=?`, id)
 	return err

@@ -20,6 +20,7 @@ export const api = {
   databases: {
     create: (data: { id: string; page_id: string; title: string }) => req<Database>("POST", "/databases", data),
     get: (id: string) => req<Database>("GET", `/databases/${id}`),
+    updateTitle: (id: string, title: string) => req<void>("PATCH", `/databases/${id}`, { title }),
     delete: (id: string) => req<void>("DELETE", `/databases/${id}`),
     addColumn: (dbId: string, col: Partial<DBColumn>) =>
       req<DBColumn>("POST", `/databases/${dbId}/columns`, col),
