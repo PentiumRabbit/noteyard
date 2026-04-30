@@ -75,15 +75,15 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
   pageIdRef.current = pageId;
 
   const buildDtos = (pid: string): Partial<Block>[] =>
-    editor.document.map((b, i) => ({
-      id: b.id,
-      page_id: pid,
-      type: b.type,
-      content: b.type === "database"
-        ? JSON.stringify(b.props)
-        : JSON.stringify((b as { content?: unknown }).content ?? []),
-      order_index: i,
-    }));
+    editor.document.flatMap((b, i) => {
+      if (b.type === "database") {
+        // database 块 content 由插入时写入后端，编辑器不覆盖（防止 flush 写入空 databaseId）
+        const dbId = (b.props as { databaseId?: string }).databaseId;
+        if (!dbId) return [];
+        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), order_index: i }];
+      }
+      return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), order_index: i }];
+    });
 
   const save = (pid: string) => {
     if (!readyRef.current) return;
