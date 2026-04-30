@@ -1,3 +1,47 @@
+/* ── view switcher ── */
+.db-view-switcher {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.db-view-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+}
+.db-view-btn:hover { background: var(--color-hover-bg); color: var(--color-text-primary); }
+.db-view-btn.active { background: var(--color-selected-bg); color: var(--color-text-primary); font-weight: 500; }
+
+.kanban-no-select {
+  padding: 16px 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.kanban-group-select {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kanban-group-select select {
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
 /* ── wrapper ── */
 .db-wrap {
   margin: 4px 0 16px;

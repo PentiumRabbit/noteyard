@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database } from "../../types";
 import { evalFormula } from "./formulaEngine";
+import { KanbanView } from "./KanbanView";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -102,6 +103,8 @@ export function DatabaseView({ databaseId }: Props) {
   const [sortState, setSortState] = useState<SortState | null>(null);
   const [filterState, setFilterState] = useState<FilterState | null>(null);
   const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>(null);
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [kanbanGroupColId, setKanbanGroupColId] = useState<string>("");
   const [multiSelectDropdown, setMultiSelectDropdown] = useState<{ rowId: string; colId: string; x: number; y: number; options: SelectOption[] } | null>(null);
 
   const cellInputRef = useRef<HTMLInputElement>(null);
@@ -458,6 +461,8 @@ export function DatabaseView({ databaseId }: Props) {
   const cols = allCols.filter(c => !c.is_hidden);
   const menuCol = colMenu ? db.columns.find(c => c.id === colMenu.colId) : null;
   const hiddenCount = allCols.filter(c => c.is_hidden).length;
+  const selectCols = allCols.filter(c => c.type === "select");
+  const activeGroupColId = kanbanGroupColId || selectCols[0]?.id || "";
 
   return (
     <div className="db-wrap" contentEditable={false}>
@@ -478,6 +483,12 @@ export function DatabaseView({ databaseId }: Props) {
       </div>
 
       {error && <div className="db-error">{error}</div>}
+
+      {/* view switcher */}
+      <div className="db-view-switcher">
+        <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}>表格</button>
+        <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}>看板</button>
+      </div>
 
       {/* toolbar */}
       <div className="db-toolbar">
@@ -569,7 +580,32 @@ export function DatabaseView({ databaseId }: Props) {
         </div>
       )}
 
-      <div className="db-scroll">
+      {viewMode === "kanban" && (
+        selectCols.length === 0 ? (
+          <div className="kanban-no-select">请先添加单选列以启用看板视图</div>
+        ) : (
+          <>
+            <div className="kanban-group-select">
+              分组列：
+              <select value={activeGroupColId} onChange={e => setKanbanGroupColId(e.target.value)}>
+                {selectCols.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <KanbanView
+              columns={allCols}
+              rows={rows}
+              groupColId={activeGroupColId}
+              onMoveRow={async (rowId, newGroupVal) => {
+                const cell: DBCell = { row_id: rowId, column_id: activeGroupColId, value: newGroupVal };
+                await api.databases.updateCells(databaseId, rowId, [cell]);
+                void reload(sortState, filterState);
+              }}
+            />
+          </>
+        )
+      )}
+
+      <div className="db-scroll" style={{ display: viewMode === "kanban" ? "none" : undefined }}>
         <table className="db-table">
           <thead>
             <tr>
