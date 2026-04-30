@@ -1,0 +1,184 @@
+.db-wrap {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  background: #fff;
+  font-size: 14px;
+}
+
+.db-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #1a1a1a;
+}
+
+.db-loading {
+  color: #888;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.db-error {
+  color: #c0392b;
+  background: #fdf0ed;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.db-scroll {
+  overflow-x: auto;
+}
+
+.db-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 400px;
+}
+
+.db-table th {
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+  position: relative;
+}
+
+.db-table td {
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+  min-width: 100px;
+  vertical-align: middle;
+}
+
+.col-name {
+  margin-right: 4px;
+}
+
+.col-type {
+  font-size: 11px;
+  color: #999;
+  background: #efefef;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-right: 4px;
+}
+
+.col-del {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  float: right;
+}
+.col-del:hover { color: #c0392b; }
+
+.col-add-header {
+  width: 120px;
+}
+
+.col-add-btn {
+  background: none;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 13px;
+  width: 100%;
+}
+.col-add-btn:hover { border-color: #888; color: #333; }
+
+.col-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.col-add-form input,
+.col-add-form select {
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
+.col-add-form button {
+  border: none;
+  border-radius: 3px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.col-add-form button:first-of-type { background: #4a90e2; color: #fff; }
+.col-add-form button:last-of-type { background: #eee; color: #555; }
+
+.cell-value {
+  display: block;
+  cursor: pointer;
+  min-height: 20px;
+}
+.cell-value:hover { background: #f0f4ff; border-radius: 3px; }
+
+.cell-placeholder { color: #ccc; }
+
+.cell-formula { color: #555; font-style: italic; }
+
+.cell-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+td input[type="text"],
+td input[type="number"],
+td input[type="date"] {
+  width: 100%;
+  border: 1px solid #4a90e2;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.row-actions {
+  width: 32px;
+  min-width: 32px;
+  text-align: center;
+  border-left: none;
+}
+.row-actions button {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.row-actions button:hover { color: #c0392b; }
+
+.db-empty {
+  text-align: center;
+  color: #aaa;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.db-add-row {
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 14px;
+  font-size: 13px;
+}
+.db-add-row:hover { border-color: #888; color: #333; }
