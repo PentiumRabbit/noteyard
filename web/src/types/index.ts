@@ -16,6 +16,7 @@ export interface Block {
   parent_block_id: string | null;
   type: string;
   content: string;
+  props: string;
   order_index: number;
   created_at: number;
   updated_at: number;

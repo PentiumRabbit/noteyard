@@ -11,6 +11,7 @@ import {
   BlockNoteSchema,
   defaultBlockSpecs,
   insertOrUpdateBlock,
+  locales,
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
@@ -26,6 +27,43 @@ export interface EditorHandle {
 interface Props {
   pageId: string;
 }
+
+// T01 — HorizontalRule 自定义块
+const HorizontalRuleBlock = createReactBlockSpec(
+  {
+    type: "horizontalRule" as const,
+    propSchema: {},
+    content: "none",
+  },
+  {
+    render: () => (
+      <hr style={{ border: "none", borderTop: "1px solid #e9e9e7", margin: "4px 0" }} />
+    ),
+  },
+);
+
+// T02 — Quote 自定义块
+const QuoteBlock = createReactBlockSpec(
+  {
+    type: "quote" as const,
+    propSchema: {},
+    content: "inline",
+  },
+  {
+    render: ({ contentRef }) => (
+      <div
+        style={{
+          borderLeft: "3px solid #d3d3d3",
+          paddingLeft: "12px",
+          paddingTop: "2px",
+          paddingBottom: "2px",
+          color: "inherit",
+        }}
+        ref={contentRef}
+      />
+    ),
+  },
+);
 
 // Database 自定义块：props 存 databaseId，渲染时调用后端
 const DatabaseBlock = createReactBlockSpec(
@@ -45,9 +83,12 @@ const DatabaseBlock = createReactBlockSpec(
   },
 );
 
+// T03 — schema 注册 horizontalRule、quote
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
+    horizontalRule: HorizontalRuleBlock,
+    quote: QuoteBlock,
     database: DatabaseBlock,
   },
 });
@@ -56,18 +97,20 @@ const schema = BlockNoteSchema.create({
 function toBlockNote(blocks: Block[]): any[] {
   return blocks.map((b) => {
     if (b.type === "database") {
-      let props: Record<string, string> = {};
-      try { props = JSON.parse(b.content) as Record<string, string>; } catch { /* empty */ }
+      let props: Record<string, unknown> = {};
+      try { props = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
       return { id: b.id, type: "database", props, content: undefined, children: [] };
     }
     let content: unknown[] = [];
     try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
-    return { id: b.id, type: b.type, props: {}, content, children: [] };
+    let props: Record<string, unknown> = {};
+    try { if (b.props) props = JSON.parse(b.props) as Record<string, unknown>; } catch { /* empty */ }
+    return { id: b.id, type: b.type, props, content, children: [] };
   });
 }
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }, ref) {
-  const editor = useCreateBlockNote({ schema });
+  const editor = useCreateBlockNote({ schema, dictionary: locales.zh });
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const readyRef = useRef(false);
@@ -81,9 +124,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
         // database 块 content 由插入时写入后端，编辑器不覆盖（防止 flush 写入空 databaseId）
         const dbId = (b.props as { databaseId?: string }).databaseId;
         if (!dbId) return [];
-        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), order_index: i }];
+        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), order_index: i }];
+      return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
     });
 
   const save = (pid: string) => {
@@ -113,15 +156,16 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           editor.replaceBlocks(editor.document, toBlockNote(blocks) as any);
-        } catch {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
+        } catch (err) {
+          // T04 — 遇到异常只记录日志，不清空编辑器现有内容
+          console.error("[Editor] replaceBlocks failed, keeping current content", err);
         }
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
       }
-      readyRef.current = true;
+      // replaceBlocks 触发的 onChange 是异步的，需等下一帧消化完再开启保存
+      requestAnimationFrame(() => { readyRef.current = true; });
     })();
 
     heartbeatTimer.current = setInterval(() => save(currentPageId), 30_000);
