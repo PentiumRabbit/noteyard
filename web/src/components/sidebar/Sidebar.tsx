@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
-import { Page } from "../../types";
+import type { Page } from "../../types";
 import "./Sidebar.css";
 
 interface Props {

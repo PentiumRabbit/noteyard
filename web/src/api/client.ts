@@ -1,4 +1,4 @@
-import { Block, Page } from "../types";
+import type { Block, Page } from "../types";
 
 const BASE = "http://localhost:8080/api";
 

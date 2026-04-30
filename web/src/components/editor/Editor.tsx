@@ -4,7 +4,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import { useEffect, useRef } from "react";
 import { api } from "../../api/client";
-import { Block } from "../../types";
+import type { Block } from "../../types";
 import "./Editor.css";
 
 interface Props {
