@@ -337,6 +337,40 @@
 .trash-action-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
 .trash-action-danger:hover { background: rgba(235, 87, 87, 0.08); color: var(--color-danger); }
 
+/* ── favorites ── */
+.sidebar-favorites {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  border-radius: 4px;
+}
+.sidebar-section-header:hover { background: var(--color-hover-bg); color: var(--color-text-secondary); }
+.sidebar-section-arrow { font-size: 9px; }
+.fav-row { font-size: 13px; }
+
+/* ── recent item time ── */
+.recent-item-time {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
 /* ── context menu ── */
 .ctx-overlay {
   position: fixed;

@@ -14,6 +14,31 @@ import type { Page } from "../../types";
 import { SettingsPanel } from "../settings/SettingsPanel";
 import "./Sidebar.css";
 
+interface RecentItem { id: string; title: string; icon: string | null; visitedAt: number }
+
+const RECENT_KEY = "noteyard:recent";
+const FAVORITES_KEY = "noteyard:favorites";
+const RECENT_MAX = 10;
+
+function loadRecent(): RecentItem[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as RecentItem[]; } catch { return []; }
+}
+function saveRecent(items: RecentItem[]) {
+  localStorage.setItem(RECENT_KEY, JSON.stringify(items));
+}
+function recordVisit(id: string, title: string, icon: string | null) {
+  const items = loadRecent().filter(r => r.id !== id);
+  items.unshift({ id, title, icon, visitedAt: Date.now() });
+  saveRecent(items.slice(0, RECENT_MAX));
+}
+
+function loadFavorites(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]") as string[]); } catch { return new Set(); }
+}
+function saveFavorites(set: Set<string>) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...set]));
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -138,6 +163,10 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashedPages, setTrashedPages] = useState<Page[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
+  const [favoritesOpen, setFavoritesOpen] = useState(true);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const renamingPageIdRef = useRef<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -148,6 +177,22 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  const handleSelect = (id: string) => {
+    const page = findPageFlat(id, tree);
+    if (page) recordVisit(id, page.title || "Untitled", page.icon ?? null);
+    setRecentItems(loadRecent());
+    onSelect(id);
+  };
+
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      saveFavorites(next);
+      return next;
+    });
+  };
 
   const handleAddRoot = async () => {
     const maxOrder = Math.max(0, ...tree.map((p) => p.order_index));
@@ -271,6 +316,30 @@ export function Sidebar({ selectedId, onSelect }: Props) {
         </div>
       </div>
 
+      {favorites.size > 0 && (
+        <div className="sidebar-favorites">
+          <button className="sidebar-section-header" onClick={() => setFavoritesOpen(v => !v)}>
+            <span className="sidebar-section-arrow">{favoritesOpen ? "▾" : "▸"}</span>
+            收藏
+          </button>
+          {favoritesOpen && (() => {
+            const favPages = [...favorites].map(id => findPage(tree, id)).filter(Boolean) as Page[];
+            return favPages.map(p => (
+              <div key={p.id}
+                className={`page-row fav-row${selectedId === p.id ? " selected" : ""}`}
+                style={{ paddingLeft: 20 }}
+                onClick={() => handleSelect(p.id)}>
+                <span className="page-icon">{p.icon || "📄"}</span>
+                <span className="page-title">{p.title || "Untitled"}</span>
+                <span className="page-actions" onClick={e => e.stopPropagation()}>
+                  <button className="page-action-btn" title="取消收藏" onClick={() => toggleFavorite(p.id)}>★</button>
+                </span>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
+
       <div className="sidebar-pages">
         {tree.length === 0 && (
           <div className="sidebar-empty">暂无页面</div>
@@ -282,7 +351,7 @@ export function Sidebar({ selectedId, onSelect }: Props) {
                 key={p.id}
                 page={p}
                 selectedId={selectedId}
-                onSelect={onSelect}
+                onSelect={handleSelect}
                 onRefresh={refresh}
                 onContextMenu={openCtxMenu}
               />
@@ -306,6 +375,13 @@ export function Sidebar({ selectedId, onSelect }: Props) {
         <button className="sidebar-new-page-btn" onClick={() => void handleAddRoot()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           新建页面
+        </button>
+        <button className="sidebar-new-page-btn" onClick={() => { setRecentItems(loadRecent()); setRecentOpen(true); }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M7 4v3.2l2 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          最近访问
         </button>
         <button className="sidebar-new-page-btn" onClick={() => void openTrash()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -356,12 +432,36 @@ export function Sidebar({ selectedId, onSelect }: Props) {
         </div>
       )}
 
+      {recentOpen && (
+        <div className="trash-overlay" onClick={() => setRecentOpen(false)}>
+          <div className="trash-panel" onClick={e => e.stopPropagation()}>
+            <div className="trash-header">
+              <span className="trash-title">最近访问</span>
+              <button className="trash-close-btn" onClick={() => setRecentOpen(false)}>✕</button>
+            </div>
+            <div className="trash-list">
+              {recentItems.length === 0 && <div className="trash-empty">暂无记录</div>}
+              {recentItems.map(r => (
+                <div key={r.id} className="trash-item" style={{ cursor: "pointer" }} onClick={() => { setRecentOpen(false); handleSelect(r.id); }}>
+                  <span className="trash-item-icon">{r.icon ?? "📄"}</span>
+                  <span className="trash-item-title">{r.title}</span>
+                  <span className="recent-item-time">{new Date(r.visitedAt).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {ctxMenu && (
         <>
           <div className="ctx-overlay" onClick={closeCtxMenu} />
           <div className="ctx-menu" style={{ top: ctxMenu.y, left: ctxMenu.x }}>
             <button className="ctx-item" onClick={handleCtxRename}>重命名</button>
             <button className="ctx-item" onClick={() => void handleCtxCopy()}>复制页面</button>
+            <button className="ctx-item" onClick={() => { toggleFavorite(ctxMenu.pageId); closeCtxMenu(); }}>
+              {favorites.has(ctxMenu.pageId) ? "★ 取消收藏" : "☆ 收藏"}
+            </button>
             <div className="ctx-divider" />
             <button className="ctx-item ctx-item-danger" onClick={() => void handleCtxDelete()}>删除</button>
           </div>
@@ -380,6 +480,10 @@ function findPage(tree: Page[], id: string): Page | null {
     }
   }
   return null;
+}
+
+function findPageFlat(id: string, tree: Page[]): Page | null {
+  return findPage(tree, id);
 }
 
 // Wrapper that listens for global rename events

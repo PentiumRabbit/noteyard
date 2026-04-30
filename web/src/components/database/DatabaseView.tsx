@@ -95,6 +95,42 @@ function serializeOptions(opts: SelectOption[]): string {
   return JSON.stringify(opts);
 }
 
+function ListGroup({ label, col, rows, primaryCol, onOpen, onAdd }: {
+  label: string;
+  col: DBColumn;
+  rows: DBRow[];
+  primaryCol: DBColumn | null;
+  onOpen: (row: DBRow) => void;
+  onAdd: () => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const tc = col.type === "select" ? tagColor(label) : null;
+  return (
+    <div className="db-list-group">
+      <button className="db-list-group-header" onClick={() => setCollapsed(v => !v)}>
+        <span className="db-list-group-arrow">{collapsed ? "▸" : "▾"}</span>
+        {tc ? (
+          <span className="cell-tag" style={{ background: tc.bg, color: tc.color }}>{label}</span>
+        ) : (
+          <span className="db-list-group-label">{label}</span>
+        )}
+        <span className="db-list-group-count">{rows.length}</span>
+      </button>
+      {!collapsed && (
+        <>
+          {rows.map(row => (
+            <div key={row.id} className="db-list-row db-list-row-grouped" onClick={() => onOpen(row)}>
+              <span className="db-list-icon">📄</span>
+              <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
+            </div>
+          ))}
+          <button className="db-list-add-inline" onClick={onAdd}>+ 新建</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function DatabaseView({ databaseId }: Props) {
   const [db, setDb] = useState<Database | null>(null);
   const [rows, setRows] = useState<DBRow[]>([]);
@@ -117,8 +153,9 @@ export function DatabaseView({ databaseId }: Props) {
   const [sortState, setSortState] = useState<SortState | null>(null);
   const [filterState, setFilterState] = useState<FilterState | null>(null);
   const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>(null);
-  const [viewMode, setViewMode] = useState<"table" | "kanban" | "gallery">("table");
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "gallery" | "list">("table");
   const [kanbanGroupColId, setKanbanGroupColId] = useState<string>("");
+  const [groupByColId, setGroupByColId] = useState<string>("");
   const [multiSelectDropdown, setMultiSelectDropdown] = useState<{ rowId: string; colId: string; x: number; y: number; options: SelectOption[] } | null>(null);
 
   const cellInputRef = useRef<HTMLInputElement>(null);
@@ -503,6 +540,7 @@ export function DatabaseView({ databaseId }: Props) {
         <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}>表格</button>
         <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}>看板</button>
         <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}>库</button>
+        <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}>列表</button>
       </div>
 
       {/* toolbar */}
@@ -519,6 +557,12 @@ export function DatabaseView({ databaseId }: Props) {
           onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
           隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
         </button>
+        {(viewMode === "table" || viewMode === "list") && (
+          <button className={`db-toolbar-btn${toolbarPanel === "group" ? " active" : ""}${groupByColId ? " has-value" : ""}`}
+            onClick={() => setToolbarPanel(p => p === "group" ? null : "group")}>
+            分组{groupByColId ? " ●" : ""}
+          </button>
+        )}
       </div>
 
       {toolbarPanel && (
@@ -592,6 +636,19 @@ export function DatabaseView({ databaseId }: Props) {
               ))}
             </div>
           )}
+          {toolbarPanel === "group" && (
+            <div className="db-panel-content">
+              <div className="db-panel-title">分组</div>
+              <select value={groupByColId}
+                onChange={e => setGroupByColId(e.target.value)}>
+                <option value="">无分组</option>
+                {allCols.filter(c => c.type === "select" || c.type === "checkbox").map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {groupByColId && <button className="db-panel-clear" onClick={() => setGroupByColId("")}>清除</button>}
+            </div>
+          )}
         </div>
       )}
 
@@ -628,6 +685,41 @@ export function DatabaseView({ databaseId }: Props) {
         />
       )}
 
+      {viewMode === "list" && (() => {
+        const primaryCol = allCols[0];
+        const groupCol = groupByColId ? allCols.find(c => c.id === groupByColId) : null;
+        if (!groupCol) {
+          return (
+            <div className="db-list-view">
+              {rows.map(row => (
+                <div key={row.id} className="db-list-row" onClick={() => openRowModal(row)}>
+                  <span className="db-list-icon">📄</span>
+                  <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
+                </div>
+              ))}
+              <button className="db-add-row-btn db-list-add" onClick={() => void addRow()}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> 新建
+              </button>
+            </div>
+          );
+        }
+        const groups = new Map<string, DBRow[]>();
+        for (const row of rows) {
+          const val = row.cells[groupCol.id] || "";
+          if (!groups.has(val)) groups.set(val, []);
+          groups.get(val)!.push(row);
+        }
+        const entries = [...groups.entries()].sort(([a], [b]) => (a || "￿").localeCompare(b || "￿"));
+        return (
+          <div className="db-list-view">
+            {entries.map(([groupVal, groupRows]) => (
+              <ListGroup key={groupVal || "__empty__"} label={groupVal || "无"} col={groupCol} rows={groupRows}
+                primaryCol={primaryCol ?? null} onOpen={openRowModal} onAdd={() => void addRow()} />
+            ))}
+          </div>
+        );
+      })()}
+
       <div className="db-scroll" style={{ display: viewMode !== "table" ? "none" : undefined }}>
         <table className="db-table">
           <thead>
@@ -651,7 +743,39 @@ export function DatabaseView({ databaseId }: Props) {
             {rows.length === 0 && cols.length === 0 && (
               <tr><td colSpan={3} className="db-empty-td">点击右上角 + 添加第一列</td></tr>
             )}
-            {rows.map(row => (
+            {(() => {
+              const groupCol = groupByColId ? allCols.find(c => c.id === groupByColId) : null;
+              if (!groupCol) return rows.map(row => ({ row, groupLabel: null as string | null }));
+              const groups = new Map<string, DBRow[]>();
+              for (const row of rows) {
+                const val = row.cells[groupCol.id] || "";
+                if (!groups.has(val)) groups.set(val, []);
+                groups.get(val)!.push(row);
+              }
+              const result: { row: DBRow | null; groupLabel: string | null }[] = [];
+              const entries = [...groups.entries()].sort(([a], [b]) => (a || "￿").localeCompare(b || "￿"));
+              for (const [val, groupRows] of entries) {
+                result.push({ row: null, groupLabel: val || "无" });
+                for (const row of groupRows) result.push({ row, groupLabel: null });
+              }
+              return result;
+            })().map((item, idx) => {
+              if (item.row === null) {
+                const tc = (() => { const gc = groupByColId ? allCols.find(c => c.id === groupByColId) : null; return gc?.type === "select" && item.groupLabel !== "无" ? tagColor(item.groupLabel!) : null; })();
+                return (
+                  <tr key={`group-${idx}`} className="db-group-header-row">
+                    <td colSpan={cols.length + 2} className="db-group-header-td">
+                      {tc ? (
+                        <span className="cell-tag" style={{ background: tc.bg, color: tc.color }}>{item.groupLabel}</span>
+                      ) : (
+                        <span className="db-group-label">{item.groupLabel}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
+              const row = item.row;
+              return (
               <tr key={row.id}>
                 <td className="td-row-actions">
                   <div className="row-actions-wrap">
@@ -733,7 +857,8 @@ export function DatabaseView({ databaseId }: Props) {
                 })}
                 <td />
               </tr>
-            ))}
+              );
+            })}
             <tr className="db-add-row-tr">
               <td colSpan={cols.length + 2}>
                 <button className="db-add-row-btn" onClick={() => void addRow()}>
