@@ -23,3 +23,18 @@ type BlockRepository interface {
 	Delete(ctx context.Context, id string) error
 	BatchUpdate(ctx context.Context, blocks []*model.Block) error
 }
+
+type DatabaseRepository interface {
+	Create(ctx context.Context, db *model.Database) error
+	GetByID(ctx context.Context, id string) (*model.Database, error)
+	Delete(ctx context.Context, id string) error
+
+	AddColumn(ctx context.Context, col *model.DBColumn) error
+	UpdateColumn(ctx context.Context, col *model.DBColumn) error
+	DeleteColumn(ctx context.Context, colID string) error
+
+	AddRow(ctx context.Context, row *model.DBRow) error
+	DeleteRow(ctx context.Context, rowID string) error
+	ListRows(ctx context.Context, dbID string) ([]*model.DBRow, error)
+	BatchUpdateCells(ctx context.Context, rowID string, cells []*model.DBCell) error
+}

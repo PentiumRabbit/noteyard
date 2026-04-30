@@ -21,3 +21,40 @@ type Block struct {
 	CreatedAt     int64   `json:"created_at"`
 	UpdatedAt     int64   `json:"updated_at"`
 }
+
+type Database struct {
+	ID        string          `json:"id"`
+	PageID    string          `json:"page_id"`
+	Title     string          `json:"title"`
+	Columns   []*DBColumn     `json:"columns,omitempty"`
+	CreatedAt int64           `json:"created_at"`
+	UpdatedAt int64           `json:"updated_at"`
+}
+
+type DBColumn struct {
+	ID         string  `json:"id"`
+	DatabaseID string  `json:"database_id"`
+	Name       string  `json:"name"`
+	Type       string  `json:"type"`
+	Options    string  `json:"options"`
+	Formula    string  `json:"formula"`
+	OrderIndex float64 `json:"order_index"`
+	CreatedAt  int64   `json:"created_at"`
+	UpdatedAt  int64   `json:"updated_at"`
+}
+
+type DBRow struct {
+	ID         string            `json:"id"`
+	DatabaseID string            `json:"database_id"`
+	OrderIndex float64           `json:"order_index"`
+	Cells      map[string]string `json:"cells,omitempty"`
+	CreatedAt  int64             `json:"created_at"`
+	UpdatedAt  int64             `json:"updated_at"`
+}
+
+type DBCell struct {
+	RowID     string `json:"row_id"`
+	ColumnID  string `json:"column_id"`
+	Value     string `json:"value"`
+	UpdatedAt int64  `json:"updated_at"`
+}
