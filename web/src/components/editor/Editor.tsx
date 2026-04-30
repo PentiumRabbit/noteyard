@@ -178,7 +178,8 @@ function toBlockNote(blocks: Block[]): any[] {
     let content: unknown[] = [];
     try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
     let props: Record<string, unknown> = {};
-    try { if (b.props) props = JSON.parse(b.props) as Record<string, unknown>; } catch { /* empty */ }
+    try { if (b.props && b.props !== "null") props = JSON.parse(b.props) as Record<string, unknown>; } catch { /* empty */ }
+    if (props === null || typeof props !== "object") props = {};
     return { id: b.id, type: b.type, props, content, children: [] };
   });
 }
@@ -239,20 +240,21 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
     void (async () => {
       const blocks = await api.blocks.listByPage(currentPageId);
       if (cancelled) return;
-      if (blocks && blocks.length > 0) {
+      // 方案A：延迟到下一个宏任务，确保 BlockNote 编辑器实例完成内部初始化
+      setTimeout(() => {
+        if (cancelled) return;
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          editor.replaceBlocks(editor.document, toBlockNote(blocks) as any);
+          const bn = blocks && blocks.length > 0
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? toBlockNote(blocks) as any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            : [{ type: "paragraph" }] as any;
+          editor.replaceBlocks(editor.document, bn);
         } catch (err) {
-          // T04 — 遇到异常只记录日志，不清空编辑器现有内容
-          console.error("[Editor] replaceBlocks failed, keeping current content", err);
+          console.error("[Editor] replaceBlocks failed", err);
         }
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
-      }
-      // replaceBlocks 触发的 onChange 是异步的，需等下一帧消化完再开启保存
-      requestAnimationFrame(() => { readyRef.current = true; });
+        requestAnimationFrame(() => { readyRef.current = true; });
+      }, 0);
     })();
 
     heartbeatTimer.current = setInterval(() => save(currentPageId), 30_000);
