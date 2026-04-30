@@ -204,6 +204,13 @@ export function DatabaseView({ databaseId }: Props) {
   // ── rows ──
   const addRow = async () => { await api.databases.addRow(databaseId); void reload(); };
   const deleteRow = async (rowId: string) => { await api.databases.deleteRow(databaseId, rowId); void reload(); };
+  const duplicateRow = async (row: DBRow) => {
+    const newRow = await api.databases.addRow(databaseId);
+    if (!newRow) return;
+    const cells = Object.entries(row.cells ?? {}).map(([colId, value]) => ({ column_id: colId, value }));
+    if (cells.length > 0) await api.databases.updateCells(databaseId, newRow.id, cells);
+    void reload();
+  };
 
   // ── column menu ──
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
@@ -590,6 +597,7 @@ export function DatabaseView({ databaseId }: Props) {
                 <td className="td-row-actions">
                   <div className="row-actions-wrap">
                     <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行">↗</button>
+                    <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行">⊕</button>
                     <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>
                   </div>
                 </td>

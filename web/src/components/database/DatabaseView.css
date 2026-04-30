@@ -169,6 +169,7 @@
 }
 
 .row-open-btn,
+.row-dup-btn,
 .row-del-btn {
   visibility: hidden;
   width: 26px;
@@ -184,8 +185,10 @@
   font-size: 13px;
 }
 tr:hover .row-open-btn,
+tr:hover .row-dup-btn,
 tr:hover .row-del-btn { visibility: visible; }
 .row-del-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-danger); }
+.row-dup-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-accent); }
 .row-open-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
 
 /* ── cells ── */
