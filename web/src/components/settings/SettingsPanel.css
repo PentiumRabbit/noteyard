@@ -1,0 +1,90 @@
+.settings-panel {
+  position: fixed;
+  z-index: 300;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: 8px;
+  box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 4px 8px, rgba(15, 15, 15, 0.3) 0 12px 32px;
+  padding: 8px;
+  width: 220px;
+}
+
+.settings-section {
+  padding: 4px 0;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px 6px;
+}
+
+.settings-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.settings-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  transition: background 0.1s;
+}
+.settings-option:hover { background: var(--color-hover-bg-medium); }
+.settings-option.active {
+  background: var(--color-hover-bg-medium);
+  outline: 1.5px solid var(--color-border-medium);
+  outline-offset: -1.5px;
+  font-weight: 500;
+}
+.settings-option:disabled { cursor: default; }
+
+.settings-option-name {
+  flex: 1;
+}
+
+.settings-option-badge {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.settings-option-loading {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--color-border-medium);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.settings-status {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  padding: 4px 8px 2px;
+  line-height: 1.4;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}

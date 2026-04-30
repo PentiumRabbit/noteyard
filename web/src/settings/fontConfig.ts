@@ -1,0 +1,91 @@
+import type { ResourceEntry } from "./resourceTypes";
+
+export const FONTS: ResourceEntry[] = [
+  {
+    id: "default-sans",
+    name: "Default Sans",
+    type: "local",
+    applyMethod: "css-var",
+    fontStack: `ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", Helvetica, Arial, sans-serif`,
+  },
+  {
+    id: "serif",
+    name: "Serif",
+    type: "local",
+    applyMethod: "css-var",
+    fontStack: `ui-serif, Georgia, "Times New Roman", Times, serif`,
+  },
+  {
+    id: "mono",
+    name: "Mono",
+    type: "local",
+    applyMethod: "css-var",
+    fontStack: `ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`,
+  },
+  {
+    id: "noto-sans-sc",
+    name: "思源黑体",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap",
+    fontStack: `"Noto Sans SC", sans-serif`,
+  },
+  {
+    id: "noto-serif-sc",
+    name: "思源宋体",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap",
+    fontStack: `"Noto Serif SC", serif`,
+  },
+  {
+    id: "lxgw-wenkai",
+    name: "霞鹜文楷",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css",
+    fontStack: `"LXGW WenKai", cursive`,
+  },
+  {
+    id: "alibaba-puhuiti",
+    name: "阿里普惠体",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://puhuiti.oss-cn-hangzhou.aliyuncs.com/AlibabaPuHuiTi-3/AlibabaPuHuiTi-3-55-Regular/AlibabaPuHuiTi-3-55-Regular.css",
+    fontStack: `"Alibaba PuHuiTi 3", "Alibaba PuHuiTi", sans-serif`,
+  },
+  {
+    id: "zcool-qingke",
+    name: "站酷高端黑",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&display=swap",
+    fontStack: `"ZCOOL QingKe HuangYou", sans-serif`,
+  },
+  {
+    id: "zcool-kuaile",
+    name: "站酷快乐体",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap",
+    fontStack: `"ZCOOL KuaiLe", sans-serif`,
+  },
+  {
+    id: "smiley-sans",
+    name: "得意黑",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://cdn.jsdelivr.net/npm/smiley-sans@2.1.0/fonts/smiley-sans.css",
+    fontStack: `"Smiley Sans", sans-serif`,
+  },
+  {
+    id: "zcool-xiaowei",
+    name: "字体传奇特战体",
+    type: "remote",
+    applyMethod: "css-var",
+    url: "https://fonts.googleapis.com/css2?family=ZCOOLXiaoWei&display=swap",
+    fontStack: `"ZCOOLXiaoWei", serif`,
+  },
+];
+
+export const DEFAULT_FONT_ID = "default-sans";

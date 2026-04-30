@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { Page } from "../../types";
+import { SettingsPanel } from "../settings/SettingsPanel";
 import "./Sidebar.css";
 
 interface Props {
@@ -72,7 +73,11 @@ function PageItem({
           className={`expand-btn${hasChildren ? " has-children" : ""}`}
           onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(v => !v); }}
         >
-          {hasChildren ? (expanded ? "▾" : "▸") : ""}
+          {hasChildren ? (
+            expanded
+              ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              : <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : null}
         </span>
 
         <span className="page-icon">{icon}</span>
@@ -119,6 +124,8 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [tree, setTree] = useState<Page[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const renamingPageIdRef = useRef<string | null>(null);
 
   const refresh = async () => {
@@ -166,7 +173,9 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   if (collapsed) {
     return (
       <div className="sidebar sidebar-collapsed">
-        <button className="sidebar-expand-btn" onClick={() => setCollapsed(false)} title="展开侧边栏">›</button>
+        <button className="sidebar-expand-btn" onClick={() => setCollapsed(false)} title="展开侧边栏">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
       </div>
     );
   }
@@ -207,7 +216,22 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           新建页面
         </button>
+        <button
+          ref={settingsBtnRef}
+          className="sidebar-new-page-btn"
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.4"/>
+            <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          设置
+        </button>
       </div>
+
+      {settingsOpen && (
+        <SettingsPanel anchorRef={settingsBtnRef} onClose={() => setSettingsOpen(false)} />
+      )}
 
       {ctxMenu && (
         <>
@@ -306,7 +330,11 @@ function PageItemWithRename({
           className={`expand-btn${hasChildren ? " has-children" : ""}`}
           onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(v => !v); }}
         >
-          {hasChildren ? (expanded ? "▾" : "▸") : ""}
+          {hasChildren ? (
+            expanded
+              ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              : <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : null}
         </span>
 
         <span className="page-icon">{icon}</span>

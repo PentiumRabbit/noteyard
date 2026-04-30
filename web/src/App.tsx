@@ -3,6 +3,10 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
 import { Breadcrumb } from "./components/breadcrumb/Breadcrumb";
 import { api } from "./api/client";
+import { SettingsContext, loadSavedSettings, saveFont, saveTheme } from "./settings/settingsStore";
+import { loadResource } from "./settings/resourceLoader";
+import { FONTS, DEFAULT_FONT_ID } from "./settings/fontConfig";
+import { THEMES, DEFAULT_THEME_ID } from "./settings/themeConfig";
 import "./App.css";
 
 const EMOJI_COMMON = ["📄","📝","📌","📎","🗒","🗃","📂","📁","⭐","🔖","💡","🔍","🎯","🚀","✅","❌","⚠️","🔧","🔑","📊","📈","📉","🗓","💬","📧","🏠","🌟","💎","🎨","🎵"];
@@ -10,6 +14,36 @@ const EMOJI_COMMON = ["📄","📝","📌","📎","🗒","🗃","📂","📁","�
 interface PageMeta { title: string; icon: string | null; cover: string | null }
 
 export default function App() {
+  const saved = loadSavedSettings();
+  const [fontId, setFontId] = useState(saved.fontId);
+  const [themeId, setThemeId] = useState(saved.themeId);
+
+  const setFont = async (id: string) => {
+    const entry = FONTS.find((f) => f.id === id) ?? FONTS.find((f) => f.id === DEFAULT_FONT_ID)!;
+    const result = await loadResource(entry);
+    if (!result.fallbackUsed) {
+      setFontId(id);
+      saveFont(id);
+    } else {
+      setFontId(DEFAULT_FONT_ID);
+      saveFont(DEFAULT_FONT_ID);
+    }
+    return result;
+  };
+
+  const setTheme = async (id: string) => {
+    const entry = THEMES.find((t) => t.id === id) ?? THEMES.find((t) => t.id === DEFAULT_THEME_ID)!;
+    const result = await loadResource(entry);
+    if (!result.fallbackUsed) {
+      setThemeId(id);
+      saveTheme(id);
+    } else {
+      setThemeId(DEFAULT_THEME_ID);
+      saveTheme(DEFAULT_THEME_ID);
+    }
+    return result;
+  };
+
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
@@ -115,6 +149,7 @@ export default function App() {
   }, [titleDraft]);
 
   return (
+    <SettingsContext.Provider value={{ fontId, themeId, setFont, setTheme }}>
     <div className="app">
       <Sidebar key={sidebarKey} selectedId={selectedPageId} onSelect={handleSelect} />
       <main className="main">
@@ -190,5 +225,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </SettingsContext.Provider>
   );
 }

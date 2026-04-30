@@ -3,6 +3,15 @@ import "@blocknote/react/style.css";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
   SuggestionMenuController,
+  FormattingToolbar,
+  FormattingToolbarController,
+  BasicTextStyleButton,
+  TextAlignButton,
+  ColorStyleButton,
+  NestBlockButton,
+  UnnestBlockButton,
+  BlockTypeSelect,
+  CreateLinkButton,
   createReactBlockSpec,
   getDefaultReactSlashMenuItems,
   useCreateBlockNote,
@@ -16,8 +25,10 @@ import {
 import type { BlockNoteEditor } from "@blocknote/core";
 import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
+import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
 import { DatabaseView } from "../database/DatabaseView";
+import { useSettings } from "../../settings/settingsStore";
 import "./Editor.css";
 
 export interface EditorHandle {
@@ -110,7 +121,20 @@ function toBlockNote(blocks: Block[]): any[] {
 }
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }, ref) {
-  const editor = useCreateBlockNote({ schema, dictionary: locales.zh });
+  const { themeId } = useSettings();
+  const bnTheme = themeId === "dark" ? "dark" : "light";
+  const editor = useCreateBlockNote({
+    schema,
+    dictionary: locales.zh,
+    uploadFile: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+      if (!res.ok) throw new Error("图片上传失败");
+      const data = await res.json() as { url: string };
+      return data.url;
+    },
+  });
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const readyRef = useRef(false);
@@ -194,7 +218,26 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
 
   return (
     <div className="editor-wrap">
-      <BlockNoteView editor={editor} onChange={handleChange} slashMenu={false}>
+      <BlockNoteView editor={editor} onChange={handleChange} slashMenu={false} formattingToolbar={false} theme={bnTheme}>
+        <FormattingToolbarController
+          formattingToolbar={() => (
+            <FormattingToolbar>
+              <BlockTypeSelect key="blockTypeSelect" />
+              <BasicTextStyleButton basicTextStyle="bold" key="bold" />
+              <BasicTextStyleButton basicTextStyle="italic" key="italic" />
+              <BasicTextStyleButton basicTextStyle="underline" key="underline" />
+              <BasicTextStyleButton basicTextStyle="strike" key="strike" />
+              <BasicTextStyleButton basicTextStyle="code" key="code" />
+              <TextAlignButton textAlignment="left" key="left" />
+              <TextAlignButton textAlignment="center" key="center" />
+              <TextAlignButton textAlignment="right" key="right" />
+              <ColorStyleButton key="color" />
+              <NestBlockButton key="nest" />
+              <UnnestBlockButton key="unnest" />
+              <CreateLinkButton key="link" />
+            </FormattingToolbar>
+          )}
+        />
         <DatabaseSlashItem editor={editor} pageId={pageId} />
       </BlockNoteView>
     </div>
@@ -251,11 +294,10 @@ function DatabaseSlashItem({
           hint: "插入引用块",
         };
         const all = [...defaults, dbItem, dividerItem, quoteItem];
-        const q = query.toLowerCase();
         return all.filter(
           (item) =>
-            item.title.toLowerCase().includes(q) ||
-            (item.aliases ?? []).some((a: string) => a.toLowerCase().includes(q)),
+            pinyinMatch(item.title, query) ||
+            (item.aliases ?? []).some((a: string) => pinyinMatch(a, query)),
         );
       }}
     />

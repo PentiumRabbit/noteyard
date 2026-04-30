@@ -1,0 +1,20 @@
+[data-theme="forest"] {
+  /* Everforest Dark — https://github.com/sainnhe/everforest */
+  --color-bg-primary: #272e33;
+  --color-bg-secondary: #2e383c;
+  --color-bg-surface: #374145;
+  --color-text-primary: #d3c6aa;
+  --color-text-secondary: #5c6a72;
+  --color-text-placeholder: #3d484d;
+  --color-accent: #a7c080;
+  --color-danger: #e67e80;
+  --color-border: rgba(167, 192, 128, 0.10);
+  --color-border-medium: rgba(167, 192, 128, 0.20);
+  --color-hover-bg: rgba(167, 192, 128, 0.06);
+  --color-hover-bg-medium: rgba(167, 192, 128, 0.10);
+  --color-selected-bg: rgba(167, 192, 128, 0.14);
+
+  /* 文字选中 */
+  --color-selection-bg: rgba(167, 192, 128, 0.28);
+  --color-selection-text: #d3c6aa;
+}

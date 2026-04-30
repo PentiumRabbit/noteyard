@@ -4,10 +4,94 @@
   padding: 0;
 }
 
+:root {
+  /* 字体 */
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code",
+    "Consolas", "Courier New", monospace;
+
+  /* 背景 */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f7f7f5;
+  --color-bg-surface: #f7f6f3;
+
+  /* 文字 */
+  --color-text-primary: #37352f;
+  --color-text-secondary: #9b9a97;
+  --color-text-placeholder: #c7c6c3;
+
+  /* 强调 */
+  --color-accent: #2383e2;
+  --color-danger: #eb5757;
+
+  /* 边框 */
+  --color-border: rgba(55, 53, 47, 0.09);
+  --color-border-medium: rgba(55, 53, 47, 0.16);
+
+  /* 交互层 */
+  --color-hover-bg: rgba(55, 53, 47, 0.04);
+  --color-hover-bg-medium: rgba(55, 53, 47, 0.06);
+  --color-selected-bg: rgba(55, 53, 47, 0.08);
+
+  /* 文字选中 */
+  --color-selection-bg: rgba(35, 131, 226, 0.22);
+  --color-selection-text: inherit;
+}
+
+[data-theme="dark"] {
+  --color-bg-primary: #191919;
+  --color-bg-secondary: #212121;
+  --color-bg-surface: #2d2d2d;
+  --color-text-primary: #e6e3dd;
+  --color-text-secondary: #706f6c;
+  --color-text-placeholder: #4a4845;
+  --color-accent: #529cca;
+  --color-danger: #eb5757;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-medium: rgba(255, 255, 255, 0.13);
+  --color-hover-bg: rgba(255, 255, 255, 0.03);
+  --color-hover-bg-medium: rgba(255, 255, 255, 0.055);
+  --color-selected-bg: rgba(255, 255, 255, 0.07);
+
+  /* 文字选中 */
+  --color-selection-bg: rgba(82, 156, 202, 0.30);
+  --color-selection-text: #e6e3dd;
+}
+
+[data-theme="warm"] {
+  --color-bg-primary: #faf8f5;
+  --color-bg-secondary: #f4f1eb;
+  --color-bg-surface: #ede8df;
+  --color-text-primary: #3d3529;
+  --color-text-secondary: #9a8f82;
+  --color-text-placeholder: #c5b9a9;
+  --color-accent: #c97a3a;
+  --color-danger: #c0392b;
+  --color-border: rgba(80, 60, 40, 0.09);
+  --color-border-medium: rgba(80, 60, 40, 0.15);
+  --color-hover-bg: rgba(80, 60, 40, 0.04);
+  --color-hover-bg-medium: rgba(80, 60, 40, 0.06);
+  --color-selected-bg: rgba(80, 60, 40, 0.08);
+
+  /* 文字选中 */
+  --color-selection-bg: rgba(201, 122, 58, 0.25);
+  --color-selection-text: #3d3529;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
-  background: #fff;
-  color: #37352f;
+  font-family: var(--font-body);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s, color 0.2s;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-selection-bg);
+  color: var(--color-selection-text);
 }
 
 #root {

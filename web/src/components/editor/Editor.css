@@ -8,19 +8,31 @@
   padding-inline: 0;
 }
 
+/* Override BlockNote's hardcoded background colors */
+.editor-wrap .bn-container,
+.editor-wrap .bn-editor {
+  background: var(--color-bg-primary) !important;
+}
+
+.editor-wrap [class*="mantine"] {
+  --mantine-color-body: var(--color-bg-primary);
+}
+
 /* ── base typography ── */
 .editor-wrap .bn-default-styles {
   font-size: 16px;
   line-height: 1.5;
-  color: #37352f;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── headings ── */
 .editor-wrap .bn-block-content[data-content-type="heading"][data-level="1"] {
   font-size: 1.875em;
   font-weight: 700;
-  color: #37352f;
+  color: var(--color-text-primary);
   margin-top: 16px;
   line-height: 1.3;
 }
@@ -28,7 +40,7 @@
 .editor-wrap .bn-block-content[data-content-type="heading"][data-level="2"] {
   font-size: 1.5em;
   font-weight: 600;
-  color: #37352f;
+  color: var(--color-text-primary);
   margin-top: 12px;
   line-height: 1.3;
 }
@@ -36,7 +48,7 @@
 .editor-wrap .bn-block-content[data-content-type="heading"][data-level="3"] {
   font-size: 1.25em;
   font-weight: 600;
-  color: #37352f;
+  color: var(--color-text-primary);
   margin-top: 8px;
   line-height: 1.3;
 }
@@ -72,6 +84,7 @@
 .editor-wrap .bn-block-content[data-content-type="paragraph"] {
   font-size: 16px;
   line-height: 1.5;
+  font-weight: 450;
 }
 
 /* ── bullet list ── */
@@ -80,7 +93,7 @@
 }
 
 .editor-wrap .bn-block-content[data-content-type="bulletListItem"]:before {
-  color: #9b9a97;
+  color: var(--color-text-secondary);
 }
 
 /* ── numbered list ── */
@@ -89,41 +102,41 @@
 }
 
 .editor-wrap .bn-block-content[data-content-type="numberedListItem"]:before {
-  color: #9b9a97;
+  color: var(--color-text-secondary);
 }
 
 /* ── checkbox / to-do ── */
 .editor-wrap .bn-block-content[data-content-type="checkListItem"] > div > div > input {
-  accent-color: #2383e2;
+  accent-color: var(--color-accent);
   width: 15px;
   height: 15px;
 }
 
 .editor-wrap .bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content {
   text-decoration: line-through;
-  color: #9b9a97;
+  color: var(--color-text-secondary);
 }
 
-/* ── code block ── */
+/* ── code block — intentionally NOT using --font-body (isolation) ── */
 .editor-wrap .bn-block-content[data-content-type="codeBlock"] {
-  background-color: #f7f6f3 !important;
+  background-color: var(--color-bg-surface) !important;
   border-radius: 6px !important;
-  color: #37352f !important;
+  color: var(--color-text-primary) !important;
 }
 
 .editor-wrap .bn-block-content[data-content-type="codeBlock"] > pre {
   padding: 16px !important;
   font-size: 0.875em;
   line-height: 1.6;
-  color: #37352f;
+  color: var(--color-text-primary);
   font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .editor-wrap .bn-block-content[data-content-type="codeBlock"] > div > select {
-  color: #9b9a97 !important;
+  color: var(--color-text-secondary) !important;
 }
 
-/* ── inline code ── */
+/* ── inline code — intentionally NOT using --font-body (isolation) ── */
 .editor-wrap .bn-inline-content code {
   background: rgba(135, 131, 120, 0.15);
   border-radius: 3px;
@@ -135,11 +148,11 @@
 
 /* ── drag handle (side menu) ── */
 .editor-wrap .bn-side-menu {
-  color: #9b9a97;
+  color: var(--color-text-secondary);
 }
 
 .editor-wrap .bn-side-menu:hover {
-  color: #37352f;
+  color: var(--color-text-primary);
 }
 
 /* ── block spacing ── */
@@ -149,43 +162,53 @@
 
 /* ── formatting toolbar ── */
 .editor-wrap .bn-toolbar {
-  background: #fff;
-  border: 1px solid rgba(55, 53, 47, 0.16);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 3px 6px;
+  box-shadow: rgba(15, 15, 15, 0.08) 0 2px 8px;
   padding: 4px;
 }
 
-.editor-wrap .bn-toolbar button {
+.editor-wrap .bn-toolbar button,
+.editor-wrap .bn-toolbar select,
+.editor-wrap .bn-toolbar [role="button"] {
   border-radius: 4px;
-  color: #37352f;
+  color: var(--color-text-primary);
+  background: transparent !important;
 }
 
 .editor-wrap .bn-toolbar button:hover {
-  background: rgba(55, 53, 47, 0.06);
+  background: var(--color-hover-bg-medium) !important;
+}
+
+.editor-wrap .bn-toolbar button:disabled,
+.editor-wrap .bn-toolbar button[disabled] {
+  color: var(--color-text-placeholder) !important;
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ── slash menu ── */
 .editor-wrap .bn-suggestion-menu {
-  background: #fff;
-  border: 1px solid rgba(55, 53, 47, 0.16);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
   border-radius: 6px;
   box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 3px 6px, rgba(15, 15, 15, 0.4) 0 9px 24px;
 }
 
 .editor-wrap .bn-suggestion-menu-item {
   border-radius: 4px;
-  color: #37352f;
+  color: var(--color-text-primary);
   font-size: 14px;
 }
 
 .editor-wrap .bn-suggestion-menu-item:hover,
 .editor-wrap .bn-suggestion-menu-item[data-selected="true"] {
-  background: rgba(55, 53, 47, 0.06);
+  background: var(--color-hover-bg-medium);
 }
 
 /* ── placeholder ── */
 .editor-wrap .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child):before {
-  color: #c7c6c3;
+  color: var(--color-text-placeholder);
   font-style: normal;
 }

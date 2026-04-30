@@ -1,0 +1,20 @@
+[data-theme="aurora"] {
+  /* Tokyo Night */
+  --color-bg-primary: #1a1b2e;
+  --color-bg-secondary: #1e2030;
+  --color-bg-surface: #2a2d3e;
+  --color-text-primary: #c0caf5;
+  --color-text-secondary: #565f89;
+  --color-text-placeholder: #3b4261;
+  --color-accent: #7aa2f7;
+  --color-danger: #f7768e;
+  --color-border: rgba(122, 162, 247, 0.10);
+  --color-border-medium: rgba(122, 162, 247, 0.20);
+  --color-hover-bg: rgba(122, 162, 247, 0.06);
+  --color-hover-bg-medium: rgba(122, 162, 247, 0.10);
+  --color-selected-bg: rgba(122, 162, 247, 0.14);
+
+  /* 文字选中 */
+  --color-selection-bg: rgba(122, 162, 247, 0.32);
+  --color-selection-text: #c0caf5;
+}

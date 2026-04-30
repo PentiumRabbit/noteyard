@@ -9,6 +9,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  background: var(--color-bg-primary);
 }
 
 .empty-state {
@@ -16,7 +17,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b9a97;
+  color: var(--color-text-secondary);
   font-size: 14px;
 }
 
@@ -65,14 +66,14 @@
   border: none;
   cursor: pointer;
   font-size: 13px;
-  color: #9b9a97;
+  color: var(--color-text-secondary);
   padding: 4px 6px;
   border-radius: 4px;
   opacity: 0;
   transition: opacity 0.1s;
 }
 .page-header:hover .page-icon-add-btn { opacity: 1; }
-.page-icon-add-btn:hover { background: rgba(55,53,47,.06); color: #37352f; }
+.page-icon-add-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
 
 /* icon picker */
 .icon-picker-overlay {
@@ -85,8 +86,8 @@
   top: 72px;
   left: 0;
   z-index: 200;
-  background: #fff;
-  border: 1px solid rgba(55,53,47,.16);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
   border-radius: 8px;
   box-shadow: rgba(15,15,15,.1) 0 0 0 1px, rgba(15,15,15,.2) 0 3px 6px, rgba(15,15,15,.4) 0 9px 24px;
   padding: 12px;
@@ -106,20 +107,20 @@
   border-radius: 4px;
   line-height: 1;
 }
-.icon-picker-emoji:hover { background: rgba(55,53,47,.06); }
+.icon-picker-emoji:hover { background: var(--color-hover-bg-medium); }
 .icon-picker-remove {
   display: block;
   width: 100%;
   margin-top: 10px;
   padding: 5px 0;
   font-size: 12px;
-  color: #9b9a97;
+  color: var(--color-text-secondary);
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
 }
-.icon-picker-remove:hover { color: #37352f; }
+.icon-picker-remove:hover { color: var(--color-text-primary); }
 
 /* ── page cover ── */
 .page-cover {
@@ -156,7 +157,7 @@
   border: none;
   cursor: pointer;
   font-size: 12px;
-  color: #9b9a97;
+  color: var(--color-text-secondary);
   padding: 2px 4px;
   border-radius: 4px;
   opacity: 0;
@@ -166,7 +167,7 @@
   margin-bottom: 8px;
 }
 .page-header:hover .page-cover-add-btn { opacity: 1; }
-.page-cover-add-btn:hover { background: rgba(55,53,47,.06); color: #37352f; }
+.page-cover-add-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
 
 /* ── page title input ── */
 .page-title-input {
@@ -174,7 +175,7 @@
   width: 100%;
   font-size: 40px;
   font-weight: 700;
-  color: #37352f;
+  color: var(--color-text-primary);
   background: transparent;
   border: none;
   outline: none;
@@ -185,4 +186,4 @@
   font-family: inherit;
   overflow: hidden;
 }
-.page-title-input::placeholder { color: #c7c6c3; }
+.page-title-input::placeholder { color: var(--color-text-placeholder); }
