@@ -1,6 +1,8 @@
 # Go
 server/bin/
 *.exe
+/cmd
+/main
 
 # Node
 web/node_modules/
