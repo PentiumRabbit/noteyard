@@ -27,8 +27,10 @@ func main() {
 
 	pages := sqlite.NewPageRepo(db)
 	blocks := sqlite.NewBlockRepo(db)
+	databases := sqlite.NewDatabaseRepo(db)
 	ph := handler.NewPageHandler(pages)
 	bh := handler.NewBlockHandler(blocks)
+	dh := handler.NewDatabaseHandler(databases)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -53,6 +55,18 @@ func main() {
 			r.Put("/{id}", bh.Update)
 			r.Delete("/{id}", bh.Delete)
 			r.Patch("/batch", bh.BatchUpdate)
+		})
+		r.Route("/databases", func(r chi.Router) {
+			r.Post("/", dh.Create)
+			r.Get("/{id}", dh.Get)
+			r.Delete("/{id}", dh.Delete)
+			r.Post("/{id}/columns", dh.AddColumn)
+			r.Put("/{id}/columns/{col_id}", dh.UpdateColumn)
+			r.Delete("/{id}/columns/{col_id}", dh.DeleteColumn)
+			r.Post("/{id}/rows", dh.AddRow)
+			r.Delete("/{id}/rows/{row_id}", dh.DeleteRow)
+			r.Get("/{id}/rows", dh.ListRows)
+			r.Patch("/{id}/rows/{row_id}/cells", dh.BatchUpdateCells)
 		})
 	})
 
