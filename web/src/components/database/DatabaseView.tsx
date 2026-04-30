@@ -48,7 +48,9 @@ interface ColMenu {
 }
 
 interface AddColPopover { x: number; y: number }
-interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string }
+const FORMULA_FUNCTIONS = ["IF", "CONCAT", "ROUND", "ABS", "NOT"];
+
+interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string; acItems: string[]; acIndex: number }
 interface SelectOptionsPopover { colId: string; x: number; y: number; options: SelectOption[] }
 interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
 interface RowModal { row: DBRow }
@@ -261,6 +263,33 @@ export function DatabaseView({ databaseId }: Props) {
     } catch (e) { setError((e as Error).message); }
   };
 
+  // ── formula autocomplete helpers ──
+  const getAcItems = (draft: string, cursorPos: number): string[] => {
+    const before = draft.slice(0, cursorPos);
+    const match = before.match(/([A-Za-z_][A-Za-z0-9_]*)$/);
+    if (!match) return [];
+    const prefix = match[1].toUpperCase();
+    if (!prefix) return [];
+    return FORMULA_FUNCTIONS.filter(f => f.startsWith(prefix) && f !== prefix);
+  };
+
+  const applyAcItem = (item: string) => {
+    if (!formulaPopover) return;
+    const ta = formulaInputRef.current;
+    const cursorPos = ta?.selectionStart ?? formulaPopover.draft.length;
+    const before = formulaPopover.draft.slice(0, cursorPos);
+    const after = formulaPopover.draft.slice(cursorPos);
+    const match = before.match(/([A-Za-z_][A-Za-z0-9_]*)$/);
+    const prefixLen = match ? match[1].length : 0;
+    const newDraft = before.slice(0, before.length - prefixLen) + item + "(" + after;
+    const newCursor = cursorPos - prefixLen + item.length + 1;
+    updateFormulaPreview(newDraft, []);
+    requestAnimationFrame(() => {
+      ta?.setSelectionRange(newCursor, newCursor);
+      ta?.focus();
+    });
+  };
+
   // ── formula popover ──
   const openFormulaPopover = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
@@ -268,16 +297,17 @@ export function DatabaseView({ databaseId }: Props) {
     const firstRow = rows[0];
     const preview = firstRow ? evalFormula(col.formula, firstRow, db?.columns ?? []) : "";
     setColMenu(null);
-    setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview });
+    setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview, acItems: [], acIndex: 0 });
   };
 
-  const updateFormulaPreview = (draft: string) => {
+  const updateFormulaPreview = (draft: string, acItems?: string[]) => {
     if (!formulaPopover || !db) return;
     const col = db.columns.find(c => c.id === formulaPopover.colId);
     if (!col) return;
     const firstRow = rows[0];
     const preview = firstRow ? evalFormula(draft, firstRow, db.columns) : "";
-    setFormulaPopover(p => p ? { ...p, draft, preview } : p);
+    const items = acItems ?? getAcItems(draft, formulaInputRef.current?.selectionStart ?? draft.length);
+    setFormulaPopover(p => p ? { ...p, draft, preview, acItems: items, acIndex: 0 } : p);
   };
 
   const saveFormula = async () => {
@@ -669,16 +699,50 @@ export function DatabaseView({ databaseId }: Props) {
           <div className="formula-overlay" onClick={() => setFormulaPopover(null)} />
           <div className="formula-popover" style={{ top: formulaPopover.y, left: formulaPopover.x }}>
             <div className="formula-popover-title">编辑公式</div>
-            <textarea
-              ref={formulaInputRef}
-              className="formula-input"
-              value={formulaPopover.draft}
-              onChange={e => updateFormulaPreview(e.target.value)}
-              onKeyDown={e => { if (e.key === "Escape") setFormulaPopover(null); }}
-              placeholder={`prop("列名") + prop("列名")`}
-              rows={3}
-              spellCheck={false}
-            />
+            <div className="formula-input-wrap">
+              <textarea
+                ref={formulaInputRef}
+                className="formula-input"
+                value={formulaPopover.draft}
+                onChange={e => updateFormulaPreview(e.target.value)}
+                onKeyDown={e => {
+                  if (formulaPopover.acItems.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setFormulaPopover(p => p ? { ...p, acIndex: (p.acIndex + 1) % p.acItems.length } : p);
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setFormulaPopover(p => p ? { ...p, acIndex: (p.acIndex - 1 + p.acItems.length) % p.acItems.length } : p);
+                      return;
+                    }
+                    if (e.key === "Enter" || e.key === "Tab") {
+                      e.preventDefault();
+                      applyAcItem(formulaPopover.acItems[formulaPopover.acIndex]);
+                      return;
+                    }
+                  }
+                  if (e.key === "Escape") setFormulaPopover(null);
+                }}
+                placeholder={`prop("列名") + prop("列名")`}
+                rows={3}
+                spellCheck={false}
+              />
+              {formulaPopover.acItems.length > 0 && (
+                <div className="formula-ac-list">
+                  {formulaPopover.acItems.map((item, i) => (
+                    <button
+                      key={item}
+                      className={`formula-ac-item${i === formulaPopover.acIndex ? " active" : ""}`}
+                      onMouseDown={e => { e.preventDefault(); applyAcItem(item); }}
+                    >
+                      <span className="formula-ac-fn">ƒ</span> {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="formula-props-label">可引用属性</div>
             <div className="formula-props">
               {db.columns.filter(c => c.type !== "formula").map(c => (
@@ -686,7 +750,7 @@ export function DatabaseView({ databaseId }: Props) {
                   onClick={() => {
                     const ins = `prop("${c.name}")`;
                     const next = formulaPopover.draft + ins;
-                    updateFormulaPreview(next);
+                    updateFormulaPreview(next, []);
                   }}>
                   {COL_ICONS[c.type]} {c.name}
                 </button>

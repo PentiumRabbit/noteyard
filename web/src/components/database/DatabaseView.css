@@ -456,6 +456,37 @@ tr:hover .row-del-btn { visibility: visible; }
 .formula-preview-label { color: var(--color-text-secondary); }
 .formula-preview-val { color: var(--color-text-primary); font-weight: 500; }
 .formula-preview-err { color: var(--color-danger); }
+.formula-input-wrap { position: relative; }
+.formula-ac-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: rgba(0,0,0,.1) 0 4px 8px;
+  overflow: hidden;
+}
+.formula-ac-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.formula-ac-item:hover,
+.formula-ac-item.active { background: var(--color-hover-bg-medium); }
+.formula-ac-fn { color: var(--color-accent); font-size: 11px; }
 .formula-actions {
   display: flex;
   gap: 6px;
