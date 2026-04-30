@@ -91,7 +91,11 @@ func (r *BlockRepo) BatchUpdate(ctx context.Context, blocks []*model.Block) erro
 	}
 	defer stmt.Close()
 	for _, b := range blocks {
-		if _, err := stmt.ExecContext(ctx, b.ID, b.PageID, b.ParentBlockID, b.Type, b.Content, b.Props, b.OrderIndex, now, now); err != nil {
+		props := b.Props
+		if props == "" {
+			props = "{}"
+		}
+		if _, err := stmt.ExecContext(ctx, b.ID, b.PageID, b.ParentBlockID, b.Type, b.Content, props, b.OrderIndex, now, now); err != nil {
 			return err
 		}
 	}
