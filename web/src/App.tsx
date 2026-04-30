@@ -227,13 +227,13 @@ export default function App() {
                 rows={1}
               />
             </div>
-            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} />
+            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
           </div>
           </>
         ) : selectedPageId ? (
           <div className="page-wrap">
             <div className="page-header-loading" />
-            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} />
+            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
           </div>
         ) : (
           <div className="empty-state">

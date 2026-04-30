@@ -1,3 +1,20 @@
+/* ── mention inline ── */
+.mention-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--color-hover-bg-medium);
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 0.95em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.mention-inline:hover { background: var(--color-selected-bg); }
+
 /* ── editor wrap ── */
 .editor-wrap {
   flex: 1;

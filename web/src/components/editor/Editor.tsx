@@ -13,12 +13,14 @@ import {
   BlockTypeSelect,
   CreateLinkButton,
   createReactBlockSpec,
+  createReactInlineContentSpec,
   getDefaultReactSlashMenuItems,
   useCreateBlockNote,
 } from "@blocknote/react";
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
+  defaultInlineContentSpecs,
   insertOrUpdateBlock,
   locales,
 } from "@blocknote/core";
@@ -37,7 +39,28 @@ export interface EditorHandle {
 
 interface Props {
   pageId: string;
+  onSelectPage?: (id: string) => void;
 }
+
+// T05 — Mention 内联块（@页面链接）
+const MentionInlineContent = createReactInlineContentSpec(
+  {
+    type: "mention" as const,
+    propSchema: { pageId: { default: "" }, title: { default: "" }, icon: { default: "📄" } },
+    content: "none",
+  },
+  {
+    render: ({ inlineContent }) => (
+      <span
+        className="mention-inline"
+        data-page-id={inlineContent.props.pageId}
+        title={inlineContent.props.title}
+      >
+        {inlineContent.props.icon} {inlineContent.props.title || "Untitled"}
+      </span>
+    ),
+  },
+);
 
 // T01 — HorizontalRule 自定义块
 const HorizontalRuleBlock = createReactBlockSpec(
@@ -155,7 +178,7 @@ const ToggleBlock = createReactBlockSpec(
   },
 );
 
-// T05 — schema 注册
+// T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
@@ -164,6 +187,10 @@ const schema = BlockNoteSchema.create({
     database: DatabaseBlock,
     callout: CalloutBlock,
     toggle: ToggleBlock,
+  },
+  inlineContentSpecs: {
+    ...defaultInlineContentSpecs,
+    mention: MentionInlineContent,
   },
 });
 
@@ -184,7 +211,7 @@ function toBlockNote(blocks: Block[]): any[] {
   });
 }
 
-export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }, ref) {
+export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, onSelectPage }, ref) {
   const { themeId } = useSettings();
   const bnTheme = themeId === "dark" ? "dark" : "light";
   const editor = useCreateBlockNote({
@@ -281,6 +308,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!onSelectPage) return;
+    const handler = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>(".mention-inline");
+      if (!el) return;
+      const pid = el.dataset.pageId;
+      if (pid) { e.preventDefault(); onSelectPage(pid); }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [onSelectPage]);
+
   return (
     <div className="editor-wrap">
       <BlockNoteView editor={editor} onChange={handleChange} slashMenu={false} formattingToolbar={false} theme={bnTheme}>
@@ -304,6 +343,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
           )}
         />
         <DatabaseSlashItem editor={editor} pageId={pageId} />
+        <MentionMenu editor={editor} onSelectPage={onSelectPage} />
       </BlockNoteView>
     </div>
   );
@@ -382,6 +422,41 @@ function DatabaseSlashItem({
             pinyinMatch(item.title, query) ||
             (item.aliases ?? []).some((a: string) => pinyinMatch(a, query)),
         );
+      }}
+    />
+  );
+}
+
+// @mention 菜单
+function MentionMenu({
+  editor,
+  onSelectPage,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: BlockNoteEditor<any>;
+  onSelectPage?: (id: string) => void;
+}) {
+  return (
+    <SuggestionMenuController
+      triggerCharacter="@"
+      getItems={async (query) => {
+        const pages = await api.pages.search(query || " ");
+        return (pages ?? []).map(page => ({
+          title: page.title || "Untitled",
+          onItemClick: () => {
+            editor.insertInlineContent([
+              {
+                type: "mention",
+                props: { pageId: page.id, title: page.title || "Untitled", icon: page.icon ?? "📄" },
+              },
+              " ",
+            ]);
+          },
+          aliases: [],
+          group: "页面",
+          icon: <span style={{ fontSize: 14 }}>{page.icon ?? "📄"}</span>,
+          hint: page.title || "Untitled",
+        }));
       }}
     />
   );
