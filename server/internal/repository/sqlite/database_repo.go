@@ -74,7 +74,7 @@ func (r *DatabaseRepo) AddColumn(ctx context.Context, col *model.DBColumn) error
 		col.ID = uuid.NewString()
 	}
 	if col.Type == "formula" {
-		if err := r.checkFormulaLoop(ctx, col.DatabaseID, col.ID, col.Formula); err != nil {
+		if err := r.checkFormulaLoop(ctx, col.DatabaseID, col.ID, col.Name, col.Formula); err != nil {
 			return err
 		}
 	}
@@ -91,7 +91,7 @@ func (r *DatabaseRepo) AddColumn(ctx context.Context, col *model.DBColumn) error
 
 func (r *DatabaseRepo) UpdateColumn(ctx context.Context, col *model.DBColumn) error {
 	if col.Type == "formula" {
-		if err := r.checkFormulaLoop(ctx, col.DatabaseID, col.ID, col.Formula); err != nil {
+		if err := r.checkFormulaLoop(ctx, col.DatabaseID, col.ID, col.Name, col.Formula); err != nil {
 			return err
 		}
 	}
@@ -209,7 +209,8 @@ func (r *DatabaseRepo) BatchUpdateCells(ctx context.Context, rowID string, cells
 }
 
 // checkFormulaLoop 检测公式列是否形成循环引用（有向图 DFS）
-func (r *DatabaseRepo) checkFormulaLoop(ctx context.Context, dbID, colID, formula string) error {
+// colName 是当前列的名字，新建时尚未入库，需手动注入以检测自引用
+func (r *DatabaseRepo) checkFormulaLoop(ctx context.Context, dbID, colID, colName, formula string) error {
 	cols, err := r.listColumns(ctx, dbID)
 	if err != nil {
 		return err
@@ -220,7 +221,9 @@ func (r *DatabaseRepo) checkFormulaLoop(ctx context.Context, dbID, colID, formul
 		colByName[c.Name] = c.ID
 		formulaOf[c.ID] = c.Formula
 	}
-	formulaOf[colID] = formula // 用新公式覆盖（尚未写库）
+	// 注入当前列自身（新建时尚未入库）
+	colByName[colName] = colID
+	formulaOf[colID] = formula
 
 	refs := extractRefs(formula)
 	var dfs func(id string, visited map[string]bool) bool
