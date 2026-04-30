@@ -64,7 +64,7 @@ func (r *DatabaseRepo) listColumns(ctx context.Context, dbID string) ([]*model.D
 		return nil, err
 	}
 	defer rows.Close()
-	var cols []*model.DBColumn
+	cols := make([]*model.DBColumn, 0)
 	for rows.Next() {
 		c := &model.DBColumn{}
 		if err := rows.Scan(&c.ID, &c.DatabaseID, &c.Name, &c.Type, &c.Options, &c.Formula,

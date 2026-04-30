@@ -16,7 +16,6 @@ const COL_ICONS: Record<DBColumn["type"], string> = {
   formula: "ƒ",
 };
 
-// select tag 颜色池，按 value hash 取色
 const TAG_COLORS = [
   { bg: "#f3f0ff", color: "#6e5fd6" },
   { bg: "#e8f4fd", color: "#2383e2" },
@@ -24,7 +23,12 @@ const TAG_COLORS = [
   { bg: "#fff3e0", color: "#d9730d" },
   { bg: "#fce8e8", color: "#eb5757" },
   { bg: "#f0f0f0", color: "#6b7280" },
+  { bg: "#fdf4e3", color: "#b07d28" },
+  { bg: "#eef0ff", color: "#4361c2" },
 ];
+
+const SELECT_COLOR_NAMES = ["紫", "蓝", "绿", "橙", "红", "灰", "黄", "靛"];
+
 function tagColor(val: string) {
   let h = 0;
   for (let i = 0; i < val.length; i++) h = (h * 31 + val.charCodeAt(i)) & 0xffff;
@@ -60,8 +64,32 @@ interface ColMenu {
 }
 
 interface AddColPopover { x: number; y: number }
-
 interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string }
+interface SelectOptionsPopover { colId: string; x: number; y: number; options: SelectOption[] }
+interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
+interface RowModal { row: DBRow }
+interface SelectOption { value: string; colorIdx: number }
+
+function parseOptions(raw: string): SelectOption[] {
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map((item: unknown) => {
+      if (typeof item === "string") return { value: item, colorIdx: 0 };
+      if (typeof item === "object" && item !== null && "value" in item) {
+        const o = item as { value: string; colorIdx?: number };
+        return { value: o.value, colorIdx: o.colorIdx ?? 0 };
+      }
+      return { value: String(item), colorIdx: 0 };
+    });
+  } catch {
+    return [];
+  }
+}
+
+function serializeOptions(opts: SelectOption[]): string {
+  return JSON.stringify(opts);
+}
 
 export function DatabaseView({ databaseId }: Props) {
   const [db, setDb] = useState<Database | null>(null);
@@ -71,16 +99,24 @@ export function DatabaseView({ databaseId }: Props) {
   const [colMenu, setColMenu] = useState<ColMenu | null>(null);
   const [addColPopover, setAddColPopover] = useState<AddColPopover | null>(null);
   const [formulaPopover, setFormulaPopover] = useState<FormulaPopover | null>(null);
+  const [selectOptionsPopover, setSelectOptionsPopover] = useState<SelectOptionsPopover | null>(null);
+  const [selectDropdown, setSelectDropdown] = useState<SelectDropdown | null>(null);
+  const [rowModal, setRowModal] = useState<RowModal | null>(null);
+  const [rowModalDraft, setRowModalDraft] = useState<Record<string, string>>({});
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState<DBColumn["type"]>("text");
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [newOptionName, setNewOptionName] = useState("");
+
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const newColInputRef = useRef<HTMLInputElement>(null);
   const formulaInputRef = useRef<HTMLTextAreaElement>(null);
+  const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
 
   const reload = useCallback(async () => {
     const [dbData, rowData] = await Promise.all([
@@ -100,10 +136,7 @@ export function DatabaseView({ databaseId }: Props) {
   useEffect(() => { if (formulaPopover) formulaInputRef.current?.focus(); }, [formulaPopover]);
 
   // ── title ──
-  const startTitleEdit = () => {
-    setTitleDraft(db?.title ?? "");
-    setTitleEditing(true);
-  };
+  const startTitleEdit = () => { setTitleDraft(db?.title ?? ""); setTitleEditing(true); };
   const commitTitle = async () => {
     setTitleEditing(false);
     if (!titleDraft.trim() || titleDraft === db?.title) return;
@@ -116,26 +149,62 @@ export function DatabaseView({ databaseId }: Props) {
     setEditingCell({ rowId, colId });
     setCellDraft(val);
   };
+
   const commitEdit = async (rowId: string, colId: string) => {
     setEditingCell(null);
     const cells: DBCell[] = [{ column_id: colId, value: cellDraft }];
     await api.databases.updateCells(databaseId, rowId, cells);
     void reload();
   };
+
   const toggleCheckbox = async (rowId: string, colId: string, val: string) => {
     await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: val === "true" ? "false" : "true" }]);
     void reload();
   };
 
+  // ── keyboard navigation ──
+  const handleCellKeyDown = (e: React.KeyboardEvent, rowId: string, colId: string) => {
+    if (!db) return;
+    const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index).filter(c => c.type !== "formula" && c.type !== "checkbox");
+    const colIdx = cols.findIndex(c => c.id === colId);
+    const rowIdx = rows.findIndex(r => r.id === rowId);
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      void commitEdit(rowId, colId).then(() => {
+        const nextColIdx = e.shiftKey ? colIdx - 1 : colIdx + 1;
+        if (nextColIdx >= 0 && nextColIdx < cols.length) {
+          const nextCol = cols[nextColIdx];
+          const val = rows[rowIdx]?.cells[nextCol.id] ?? "";
+          startEdit(rowId, nextCol.id, val);
+        } else if (!e.shiftKey && rowIdx + 1 < rows.length) {
+          const nextRow = rows[rowIdx + 1];
+          const val = nextRow.cells[cols[0]?.id ?? ""] ?? "";
+          startEdit(nextRow.id, cols[0]?.id ?? "", val);
+        } else if (e.shiftKey && rowIdx > 0) {
+          const prevRow = rows[rowIdx - 1];
+          const lastCol = cols[cols.length - 1];
+          const val = prevRow.cells[lastCol?.id ?? ""] ?? "";
+          startEdit(prevRow.id, lastCol?.id ?? "", val);
+        }
+      });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      void commitEdit(rowId, colId).then(() => {
+        if (rowIdx + 1 < rows.length) {
+          const nextRow = rows[rowIdx + 1];
+          const val = nextRow.cells[colId] ?? "";
+          startEdit(nextRow.id, colId, val);
+        }
+      });
+    } else if (e.key === "Escape") {
+      setEditingCell(null);
+    }
+  };
+
   // ── rows ──
-  const addRow = async () => {
-    await api.databases.addRow(databaseId);
-    void reload();
-  };
-  const deleteRow = async (rowId: string) => {
-    await api.databases.deleteRow(databaseId, rowId);
-    void reload();
-  };
+  const addRow = async () => { await api.databases.addRow(databaseId); void reload(); };
+  const deleteRow = async (rowId: string) => { await api.databases.deleteRow(databaseId, rowId); void reload(); };
 
   // ── column menu ──
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
@@ -159,9 +228,8 @@ export function DatabaseView({ databaseId }: Props) {
     const col = db?.columns.find(c => c.id === colMenu.colId);
     if (!col) return;
     setError(null);
-    try {
-      await api.databases.updateColumn(databaseId, col.id, { ...col, type });
-    } catch (e) { setError((e as Error).message); }
+    try { await api.databases.updateColumn(databaseId, col.id, { ...col, type }); }
+    catch (e) { setError((e as Error).message); }
     closeColMenu();
     void reload();
   };
@@ -182,6 +250,7 @@ export function DatabaseView({ databaseId }: Props) {
     setNewColName("");
     setNewColType("text");
   };
+
   const submitNewCol = async () => {
     if (!newColName.trim()) return;
     setError(null);
@@ -198,13 +267,13 @@ export function DatabaseView({ databaseId }: Props) {
   // ── formula popover ──
   const openFormulaPopover = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
-    const rect = menuEl?.getBoundingClientRect()
-      ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
     const firstRow = rows[0];
     const preview = firstRow ? evalFormula(col.formula, firstRow, db?.columns ?? []) : "";
     setColMenu(null);
     setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview });
   };
+
   const updateFormulaPreview = (draft: string) => {
     if (!formulaPopover || !db) return;
     const col = db.columns.find(c => c.id === formulaPopover.colId);
@@ -213,6 +282,7 @@ export function DatabaseView({ databaseId }: Props) {
     const preview = firstRow ? evalFormula(draft, firstRow, db.columns) : "";
     setFormulaPopover(p => p ? { ...p, draft, preview } : p);
   };
+
   const saveFormula = async () => {
     if (!formulaPopover || !db) return;
     const col = db.columns.find(c => c.id === formulaPopover.colId);
@@ -222,9 +292,105 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
+  // ── select options management ──
+  const openSelectOptions = (e: React.MouseEvent, col: DBColumn) => {
+    const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
+    const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const options = parseOptions(col.options);
+    setColMenu(null);
+    setNewOptionName("");
+    setSelectOptionsPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, options });
+  };
+
+  const saveSelectOptions = async (colId: string, options: SelectOption[]) => {
+    if (!db) return;
+    const col = db.columns.find(c => c.id === colId);
+    if (!col) return;
+    await api.databases.updateColumn(databaseId, colId, { ...col, options: serializeOptions(options) });
+    void reload();
+  };
+
+  const addSelectOption = async () => {
+    if (!selectOptionsPopover || !newOptionName.trim()) return;
+    const newOpt: SelectOption = { value: newOptionName.trim(), colorIdx: selectOptionsPopover.options.length % TAG_COLORS.length };
+    const updated = [...selectOptionsPopover.options, newOpt];
+    setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+    setNewOptionName("");
+    await saveSelectOptions(selectOptionsPopover.colId, updated);
+  };
+
+  const removeSelectOption = async (idx: number) => {
+    if (!selectOptionsPopover) return;
+    const updated = selectOptionsPopover.options.filter((_, i) => i !== idx);
+    setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+    await saveSelectOptions(selectOptionsPopover.colId, updated);
+  };
+
+  // ── select dropdown ──
+  const openSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
+    e.stopPropagation();
+    const options = parseOptions(col.options);
+    if (options.length === 0) {
+      // fallback to free input if no options defined
+      startEdit(row.id, col.id, row.cells[col.id] ?? "");
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: rect.bottom + 2, options });
+  };
+
+  const selectOption = async (rowId: string, colId: string, value: string) => {
+    setSelectDropdown(null);
+    await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value }]);
+    void reload();
+  };
+
+  const clearSelectCell = async (rowId: string, colId: string) => {
+    setSelectDropdown(null);
+    await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: "" }]);
+    void reload();
+  };
+
+  // ── column resize ──
+  const startResize = (e: React.MouseEvent, colId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const th = (e.currentTarget as HTMLElement).closest("th") as HTMLElement;
+    const startWidth = th.getBoundingClientRect().width;
+    resizingRef.current = { colId, startX: e.clientX, startWidth };
+
+    const onMove = (mv: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = mv.clientX - resizingRef.current.startX;
+      const newWidth = Math.max(80, Math.min(500, resizingRef.current.startWidth + delta));
+      setColWidths(prev => ({ ...prev, [resizingRef.current!.colId]: newWidth }));
+    };
+    const onUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  // ── row detail modal ──
+  const openRowModal = (row: DBRow) => {
+    setRowModal({ row });
+    setRowModalDraft({ ...row.cells });
+  };
+
+  const saveRowModal = async () => {
+    if (!rowModal) return;
+    const cells: DBCell[] = Object.entries(rowModalDraft).map(([colId, value]) => ({ column_id: colId, value }));
+    await api.databases.updateCells(databaseId, rowModal.row.id, cells);
+    setRowModal(null);
+    void reload();
+  };
+
   if (!db) return <div className="db-loading">加载中…</div>;
 
-  const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index);
+  const cols = (db.columns ?? []).slice().sort((a, b) => a.order_index - b.order_index);
   const menuCol = colMenu ? db.columns.find(c => c.id === colMenu.colId) : null;
 
   return (
@@ -251,14 +417,14 @@ export function DatabaseView({ databaseId }: Props) {
         <table className="db-table">
           <thead>
             <tr>
-              {/* row-del placeholder */}
-              <th style={{ width: 28, minWidth: 28 }} />
+              <th className="th-row-actions" />
               {cols.map(col => (
-                <th key={col.id}>
+                <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
                   <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
                     <span className="col-icon">{COL_ICONS[col.type]}</span>
                     <span className="col-name-text">{col.name}</span>
                   </button>
+                  <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
                 </th>
               ))}
               <th className="col-add-th">
@@ -272,8 +438,11 @@ export function DatabaseView({ databaseId }: Props) {
             )}
             {rows.map(row => (
               <tr key={row.id}>
-                <td className="row-del-td">
-                  <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>
+                <td className="td-row-actions">
+                  <div className="row-actions-wrap">
+                    <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行">↗</button>
+                    <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>
+                  </div>
                 </td>
                 {cols.map(col => {
                   const val = row.cells[col.id] ?? "";
@@ -288,9 +457,14 @@ export function DatabaseView({ databaseId }: Props) {
                         <div className="cell-checkbox">
                           <input type="checkbox" checked={val === "true"} onChange={() => void toggleCheckbox(row.id, col.id, val)} />
                         </div>
-                      ) : col.type === "select" && val ? (
-                        <span className="cell-tag" style={{ background: tagColor(val).bg, color: tagColor(val).color }}
-                          onClick={() => startEdit(row.id, col.id, val)}>{val}</span>
+                      ) : col.type === "select" ? (
+                        <div className="cell-select-wrap" onClick={e => openSelectDropdown(e, row, col)}>
+                          {val ? (
+                            <span className="cell-tag" style={{ background: tagColor(val).bg, color: tagColor(val).color }}>{val}</span>
+                          ) : (
+                            <span className="cell-empty">　</span>
+                          )}
+                        </div>
                       ) : isEditing ? (
                         <input
                           ref={cellInputRef}
@@ -299,7 +473,7 @@ export function DatabaseView({ databaseId }: Props) {
                           value={cellDraft}
                           onChange={e => setCellDraft(e.target.value)}
                           onBlur={() => void commitEdit(row.id, col.id)}
-                          onKeyDown={e => { if (e.key === "Enter") void commitEdit(row.id, col.id); if (e.key === "Escape") setEditingCell(null); }}
+                          onKeyDown={e => handleCellKeyDown(e, row.id, col.id)}
                         />
                       ) : (
                         <span className={`cell-${col.type}-inner`} onClick={() => startEdit(row.id, col.id, val)}>
@@ -312,7 +486,6 @@ export function DatabaseView({ databaseId }: Props) {
                 <td />
               </tr>
             ))}
-            {/* add row */}
             <tr className="db-add-row-tr">
               <td colSpan={cols.length + 2}>
                 <button className="db-add-row-btn" onClick={() => void addRow()}>
@@ -329,7 +502,6 @@ export function DatabaseView({ databaseId }: Props) {
         <>
           <div className="col-menu-overlay" onClick={closeColMenu} />
           <div className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
-            {/* rename */}
             <div className="col-menu-rename">
               <input
                 ref={renameInputRef}
@@ -341,7 +513,6 @@ export function DatabaseView({ databaseId }: Props) {
               />
             </div>
             <div className="col-menu-divider" />
-            {/* type picker */}
             <div className="col-menu-type-label">列类型</div>
             {COL_TYPES.map(t => (
               <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
@@ -353,6 +524,12 @@ export function DatabaseView({ databaseId }: Props) {
               <>
                 <div className="col-menu-divider" />
                 <button className="col-menu-formula-btn" onClick={e => openFormulaPopover(e, menuCol)}>ƒ 编辑公式</button>
+              </>
+            )}
+            {menuCol.type === "select" && (
+              <>
+                <div className="col-menu-divider" />
+                <button className="col-menu-formula-btn" onClick={e => openSelectOptions(e, menuCol)}>≡ 管理选项</button>
               </>
             )}
             <div className="col-menu-divider" />
@@ -406,6 +583,74 @@ export function DatabaseView({ databaseId }: Props) {
         </>
       )}
 
+      {/* select options manager */}
+      {selectOptionsPopover && (
+        <>
+          <div className="formula-overlay" onClick={() => setSelectOptionsPopover(null)} />
+          <div className="select-opts-popover" style={{ top: selectOptionsPopover.y, left: selectOptionsPopover.x }}>
+            <div className="formula-popover-title">管理选项</div>
+            <div className="select-opts-list">
+              {selectOptionsPopover.options.map((opt, idx) => {
+                const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                return (
+                  <div key={idx} className="select-opt-row">
+                    <span className="cell-tag" style={{ background: c.bg, color: c.color }}>{opt.value}</span>
+                    <div className="select-opt-colors">
+                      {TAG_COLORS.map((tc, ci) => (
+                        <button
+                          key={ci}
+                          className={`color-dot${opt.colorIdx === ci ? " active" : ""}`}
+                          style={{ background: tc.color }}
+                          title={SELECT_COLOR_NAMES[ci]}
+                          onClick={async () => {
+                            const updated = selectOptionsPopover.options.map((o, i) => i === idx ? { ...o, colorIdx: ci } : o);
+                            setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+                            await saveSelectOptions(selectOptionsPopover.colId, updated);
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button className="select-opt-del" onClick={() => void removeSelectOption(idx)}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="select-opt-add">
+              <input
+                placeholder="新选项名称"
+                value={newOptionName}
+                onChange={e => setNewOptionName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") void addSelectOption(); }}
+              />
+              <button onClick={() => void addSelectOption()}>添加</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* select dropdown */}
+      {selectDropdown && (
+        <>
+          <div className="col-menu-overlay" onClick={() => setSelectDropdown(null)} />
+          <div className="select-dropdown" style={{ top: selectDropdown.y, left: selectDropdown.x }}>
+            {selectDropdown.options.map((opt, idx) => {
+              const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+              return (
+                <button key={idx} className="select-dd-item"
+                  onClick={() => void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value)}>
+                  <span className="cell-tag" style={{ background: c.bg, color: c.color }}>{opt.value}</span>
+                </button>
+              );
+            })}
+            <div className="col-menu-divider" />
+            <button className="select-dd-item select-dd-clear"
+              onClick={() => void clearSelectCell(selectDropdown.rowId, selectDropdown.colId)}>
+              清除选择
+            </button>
+          </div>
+        </>
+      )}
+
       {/* add column popover */}
       {addColPopover && (
         <>
@@ -424,6 +669,63 @@ export function DatabaseView({ databaseId }: Props) {
             <div className="add-col-actions">
               <button onClick={() => void submitNewCol()}>确认</button>
               <button onClick={() => setAddColPopover(null)}>取消</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* row detail modal */}
+      {rowModal && db && (
+        <>
+          <div className="row-modal-overlay" onClick={saveRowModal} />
+          <div className="row-modal" onClick={e => e.stopPropagation()}>
+            <div className="row-modal-header">
+              <span className="row-modal-title">行详情</span>
+              <button className="row-modal-close" onClick={() => void saveRowModal()}>×</button>
+            </div>
+            <div className="row-modal-body">
+              {cols.map(col => (
+                <div key={col.id} className="row-modal-field">
+                  <div className="row-modal-label">
+                    <span className="col-icon">{COL_ICONS[col.type]}</span>
+                    {col.name}
+                  </div>
+                  <div className="row-modal-value">
+                    {col.type === "formula" ? (
+                      <span className="cell-formula-inner">{evalFormula(col.formula, rowModal.row, cols) || "—"}</span>
+                    ) : col.type === "checkbox" ? (
+                      <input
+                        type="checkbox"
+                        checked={rowModalDraft[col.id] === "true"}
+                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.checked ? "true" : "false" }))}
+                        style={{ accentColor: "#2383e2", width: 15, height: 15 }}
+                      />
+                    ) : col.type === "select" ? (
+                      <select
+                        value={rowModalDraft[col.id] ?? ""}
+                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
+                        className="row-modal-select"
+                      >
+                        <option value="">—</option>
+                        {parseOptions(col.options).map((opt, idx) => (
+                          <option key={idx} value={opt.value}>{opt.value}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className="row-modal-input"
+                        type={col.type === "number" ? "number" : col.type === "date" ? "date" : "text"}
+                        value={rowModalDraft[col.id] ?? ""}
+                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
+                        placeholder="空"
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="row-modal-footer">
+              <button className="formula-save-btn" onClick={() => void saveRowModal()}>保存</button>
             </div>
           </div>
         </>
