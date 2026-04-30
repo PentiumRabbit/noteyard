@@ -13,14 +13,20 @@
     "@blocknote/react": "^0.26.0",
     "@mantine/core": "^7.0.0",
     "@mantine/hooks": "^7.0.0",
+    "pinyin-pro": "^3.28.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "@vitest/ui": "^4.1.5",
+    "jsdom": "^29.1.1",
     "typescript": "~5.8.3",
-    "vite": "^6.3.4"
+    "vite": "^6.3.4",
+    "vitest": "^4.1.5"
   }
 }
