@@ -1,0 +1,15 @@
+# Go
+server/bin/
+*.exe
+
+# Node
+web/node_modules/
+web/dist/
+
+# Data
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
