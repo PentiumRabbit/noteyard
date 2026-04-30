@@ -18,7 +18,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const api = {
   databases: {
-    create: (data: { page_id: string; title: string }) => req<Database>("POST", "/databases", data),
+    create: (data: { id: string; page_id: string; title: string }) => req<Database>("POST", "/databases", data),
     get: (id: string) => req<Database>("GET", `/databases/${id}`),
     delete: (id: string) => req<void>("DELETE", `/databases/${id}`),
     addColumn: (dbId: string, col: Partial<DBColumn>) =>
@@ -32,7 +32,7 @@ export const api = {
       req<void>("DELETE", `/databases/${dbId}/rows/${rowId}`),
     listRows: (dbId: string) => req<DBRow[]>("GET", `/databases/${dbId}/rows`),
     updateCells: (dbId: string, rowId: string, cells: DBCell[]) =>
-      req<void>("PUT", `/databases/${dbId}/rows/${rowId}/cells`, cells),
+      req<void>("PATCH", `/databases/${dbId}/rows/${rowId}/cells`, cells),
   },
   pages: {
     listAll: () => req<Page[]>("GET", "/pages"),

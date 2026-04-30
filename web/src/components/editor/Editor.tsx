@@ -173,7 +173,11 @@ function DatabaseSlashItem({
         const dbItem = {
           title: "Database",
           onItemClick: async () => {
-            const db = await api.databases.create({ page_id: pageId, title: "新建数据库" });
+            // 先创建 block 拿到 ID，再以该 ID 创建 database（外键约束）
+            const block = await api.blocks.create(pageId, { type: "database", content: "{}", order_index: 9999 });
+            const db = await api.databases.create({ id: block.id, page_id: pageId, title: "新建数据库" });
+            // 更新 block content 存入 databaseId，供持久化后恢复
+            await api.blocks.update(block.id, { content: JSON.stringify({ databaseId: db.id }) });
             insertOrUpdateBlock(editor, {
               type: "database",
               props: { databaseId: db.id },
