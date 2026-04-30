@@ -3,22 +3,61 @@ import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database } from "../../types";
 import "./DatabaseView.css";
 
-interface Props {
-  databaseId: string;
-}
+interface Props { databaseId: string }
 
 const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "date", "formula"];
+
+const COL_ICONS: Record<DBColumn["type"], string> = {
+  text: "Aa",
+  number: "#",
+  checkbox: "☑",
+  select: "≡",
+  date: "📅",
+  formula: "ƒ",
+};
+
+// select tag 颜色池，按 value hash 取色
+const TAG_COLORS = [
+  { bg: "#f3f0ff", color: "#6e5fd6" },
+  { bg: "#e8f4fd", color: "#2383e2" },
+  { bg: "#edfaf3", color: "#0f9b5c" },
+  { bg: "#fff3e0", color: "#d9730d" },
+  { bg: "#fce8e8", color: "#eb5757" },
+  { bg: "#f0f0f0", color: "#6b7280" },
+];
+function tagColor(val: string) {
+  let h = 0;
+  for (let i = 0; i < val.length; i++) h = (h * 31 + val.charCodeAt(i)) & 0xffff;
+  return TAG_COLORS[h % TAG_COLORS.length];
+}
+
+interface ColMenu {
+  colId: string;
+  x: number;
+  y: number;
+  renaming: boolean;
+  draft: string;
+  changingType: boolean;
+}
+
+interface AddColPopover { x: number; y: number }
 
 export function DatabaseView({ databaseId }: Props) {
   const [db, setDb] = useState<Database | null>(null);
   const [rows, setRows] = useState<DBRow[]>([]);
   const [editingCell, setEditingCell] = useState<{ rowId: string; colId: string } | null>(null);
   const [cellDraft, setCellDraft] = useState("");
-  const [addingCol, setAddingCol] = useState(false);
+  const [colMenu, setColMenu] = useState<ColMenu | null>(null);
+  const [addColPopover, setAddColPopover] = useState<AddColPopover | null>(null);
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState<DBColumn["type"]>("text");
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cellInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const newColInputRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
     const [dbData, rowData] = await Promise.all([
@@ -31,155 +70,260 @@ export function DatabaseView({ databaseId }: Props) {
 
   useEffect(() => { void reload(); }, [reload]);
 
-  useEffect(() => {
-    if (editingCell) inputRef.current?.focus();
-  }, [editingCell]);
+  useEffect(() => { if (editingCell) cellInputRef.current?.focus(); }, [editingCell]);
+  useEffect(() => { if (titleEditing) titleInputRef.current?.select(); }, [titleEditing]);
+  useEffect(() => { if (colMenu?.renaming) renameInputRef.current?.select(); }, [colMenu?.renaming]);
+  useEffect(() => { if (addColPopover) newColInputRef.current?.focus(); }, [addColPopover]);
 
-  const startEdit = (rowId: string, colId: string, current: string) => {
-    setEditingCell({ rowId, colId });
-    setCellDraft(current);
+  // ── title ──
+  const startTitleEdit = () => {
+    setTitleDraft(db?.title ?? "");
+    setTitleEditing(true);
+  };
+  const commitTitle = async () => {
+    setTitleEditing(false);
+    if (!titleDraft.trim() || titleDraft === db?.title) return;
+    await api.databases.updateTitle(databaseId, titleDraft.trim());
+    void reload();
   };
 
+  // ── cell edit ──
+  const startEdit = (rowId: string, colId: string, val: string) => {
+    setEditingCell({ rowId, colId });
+    setCellDraft(val);
+  };
   const commitEdit = async (rowId: string, colId: string) => {
     setEditingCell(null);
     const cells: DBCell[] = [{ column_id: colId, value: cellDraft }];
     await api.databases.updateCells(databaseId, rowId, cells);
     void reload();
   };
-
-  const toggleCheckbox = async (rowId: string, colId: string, current: string) => {
-    const next = current === "true" ? "false" : "true";
-    await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: next }]);
+  const toggleCheckbox = async (rowId: string, colId: string, val: string) => {
+    await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: val === "true" ? "false" : "true" }]);
     void reload();
   };
 
+  // ── rows ──
   const addRow = async () => {
     await api.databases.addRow(databaseId);
     void reload();
   };
-
   const deleteRow = async (rowId: string) => {
     await api.databases.deleteRow(databaseId, rowId);
     void reload();
   };
 
+  // ── column menu ──
+  const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setColMenu({ colId: col.id, x: rect.left, y: rect.bottom + 4, renaming: false, draft: col.name, changingType: false });
+  };
+  const closeColMenu = () => setColMenu(null);
+
+  const commitRename = async () => {
+    if (!colMenu) return;
+    const col = db?.columns.find(c => c.id === colMenu.colId);
+    if (!col || !colMenu.draft.trim()) { closeColMenu(); return; }
+    await api.databases.updateColumn(databaseId, col.id, { ...col, name: colMenu.draft.trim() });
+    closeColMenu();
+    void reload();
+  };
+
+  const changeColType = async (type: DBColumn["type"]) => {
+    if (!colMenu) return;
+    const col = db?.columns.find(c => c.id === colMenu.colId);
+    if (!col) return;
+    setError(null);
+    try {
+      await api.databases.updateColumn(databaseId, col.id, { ...col, type });
+    } catch (e) { setError((e as Error).message); }
+    closeColMenu();
+    void reload();
+  };
+
+  const deleteCol = async () => {
+    if (!colMenu) return;
+    if (!confirm("删除此列将同时删除所有该列数据，确认？")) return;
+    await api.databases.deleteColumn(databaseId, colMenu.colId);
+    closeColMenu();
+    void reload();
+  };
+
+  // ── add column ──
+  const openAddCol = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setAddColPopover({ x: rect.left, y: rect.bottom + 4 });
+    setNewColName("");
+    setNewColType("text");
+  };
   const submitNewCol = async () => {
     if (!newColName.trim()) return;
     setError(null);
     try {
       await api.databases.addColumn(databaseId, {
-        name: newColName.trim(),
-        type: newColType,
-        options: [],
-        formula: "",
-        order_index: (db?.columns.length ?? 0),
+        name: newColName.trim(), type: newColType,
+        options: [], formula: "", order_index: db?.columns.length ?? 0,
       });
-      setNewColName("");
-      setNewColType("text");
-      setAddingCol(false);
+      setAddColPopover(null);
       void reload();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-
-  const deleteCol = async (colId: string) => {
-    if (!confirm("删除此列将同时删除所有该列数据，确认？")) return;
-    await api.databases.deleteColumn(databaseId, colId);
-    void reload();
+    } catch (e) { setError((e as Error).message); }
   };
 
   if (!db) return <div className="db-loading">加载中…</div>;
 
   const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index);
+  const menuCol = colMenu ? db.columns.find(c => c.id === colMenu.colId) : null;
 
   return (
     <div className="db-wrap" contentEditable={false}>
-      <div className="db-title">{db.title}</div>
+      {/* title */}
+      <div className="db-title-wrap">
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            className="db-title-input"
+            value={titleDraft}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={() => void commitTitle()}
+            onKeyDown={e => { if (e.key === "Enter") void commitTitle(); if (e.key === "Escape") setTitleEditing(false); }}
+          />
+        ) : (
+          <span className="db-title" onClick={startTitleEdit}>{db.title}</span>
+        )}
+      </div>
+
       {error && <div className="db-error">{error}</div>}
+
       <div className="db-scroll">
         <table className="db-table">
           <thead>
             <tr>
-              {cols.map((col) => (
+              {/* row-del placeholder */}
+              <th style={{ width: 28, minWidth: 28 }} />
+              {cols.map(col => (
                 <th key={col.id}>
-                  <span className="col-name">{col.name}</span>
-                  <span className="col-type">{col.type}</span>
-                  <button className="col-del" onClick={() => deleteCol(col.id)} title="删除列">×</button>
+                  <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
+                    <span className="col-icon">{COL_ICONS[col.type]}</span>
+                    <span className="col-name-text">{col.name}</span>
+                  </button>
                 </th>
               ))}
-              <th className="col-add-header">
-                {addingCol ? (
-                  <div className="col-add-form">
-                    <input
-                      placeholder="列名"
-                      value={newColName}
-                      onChange={(e) => setNewColName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") void submitNewCol(); if (e.key === "Escape") setAddingCol(false); }}
-                      autoFocus
-                    />
-                    <select value={newColType} onChange={(e) => setNewColType(e.target.value as DBColumn["type"])}>
-                      {COL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <button onClick={() => void submitNewCol()}>确认</button>
-                    <button onClick={() => setAddingCol(false)}>取消</button>
-                  </div>
-                ) : (
-                  <button className="col-add-btn" onClick={() => setAddingCol(true)}>+ 列</button>
-                )}
+              <th className="col-add-th">
+                <button className="col-add-th-btn" onClick={openAddCol} title="添加列">+</button>
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={cols.length + 1} className="db-empty">暂无数据，点击下方"+ 行"添加</td>
-              </tr>
+            {rows.length === 0 && cols.length === 0 && (
+              <tr><td colSpan={3} className="db-empty-td">点击右上角 + 添加第一列</td></tr>
             )}
-            {rows.map((row) => (
+            {rows.map(row => (
               <tr key={row.id}>
-                {cols.map((col) => {
+                <td className="row-del-td">
+                  <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>
+                </td>
+                {cols.map(col => {
                   const val = row.cells[col.id] ?? "";
                   const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
                   return (
-                    <td key={col.id} className={`cell-${col.type}`}>
+                    <td key={col.id}>
                       {col.type === "formula" ? (
-                        <span className="cell-formula">{val || "—"}</span>
+                        <span className="cell-formula-inner">{val || <span className="cell-empty">—</span>}</span>
                       ) : col.type === "checkbox" ? (
-                        <input
-                          type="checkbox"
-                          checked={val === "true"}
-                          onChange={() => void toggleCheckbox(row.id, col.id, val)}
-                        />
+                        <div className="cell-checkbox">
+                          <input type="checkbox" checked={val === "true"} onChange={() => void toggleCheckbox(row.id, col.id, val)} />
+                        </div>
+                      ) : col.type === "select" && val ? (
+                        <span className="cell-tag" style={{ background: tagColor(val).bg, color: tagColor(val).color }}
+                          onClick={() => startEdit(row.id, col.id, val)}>{val}</span>
                       ) : isEditing ? (
                         <input
-                          ref={inputRef}
+                          ref={cellInputRef}
+                          className="cell-input"
                           type={col.type === "number" ? "number" : col.type === "date" ? "date" : "text"}
                           value={cellDraft}
-                          onChange={(e) => setCellDraft(e.target.value)}
+                          onChange={e => setCellDraft(e.target.value)}
                           onBlur={() => void commitEdit(row.id, col.id)}
-                          onKeyDown={(e) => { if (e.key === "Enter") void commitEdit(row.id, col.id); if (e.key === "Escape") setEditingCell(null); }}
+                          onKeyDown={e => { if (e.key === "Enter") void commitEdit(row.id, col.id); if (e.key === "Escape") setEditingCell(null); }}
                         />
                       ) : (
-                        <span
-                          className="cell-value"
-                          onClick={() => startEdit(row.id, col.id, val)}
-                        >
-                          {val || <span className="cell-placeholder">空</span>}
+                        <span className={`cell-${col.type}-inner`} onClick={() => startEdit(row.id, col.id, val)}>
+                          {val || <span className="cell-empty">　</span>}
                         </span>
                       )}
                     </td>
                   );
                 })}
-                <td className="row-actions">
-                  <button onClick={() => void deleteRow(row.id)} title="删除行">×</button>
-                </td>
+                <td />
               </tr>
             ))}
+            {/* add row */}
+            <tr className="db-add-row-tr">
+              <td colSpan={cols.length + 2}>
+                <button className="db-add-row-btn" onClick={() => void addRow()}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> 新建
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
-      <button className="db-add-row" onClick={() => void addRow()}>+ 行</button>
+
+      {/* column header menu */}
+      {colMenu && menuCol && (
+        <>
+          <div className="col-menu-overlay" onClick={closeColMenu} />
+          <div className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
+            {/* rename */}
+            <div className="col-menu-rename">
+              <input
+                ref={renameInputRef}
+                value={colMenu.draft}
+                onChange={e => setColMenu(m => m ? { ...m, draft: e.target.value } : m)}
+                onKeyDown={e => { if (e.key === "Enter") void commitRename(); if (e.key === "Escape") closeColMenu(); }}
+                onBlur={() => void commitRename()}
+                placeholder="列名"
+              />
+            </div>
+            <div className="col-menu-divider" />
+            {/* type picker */}
+            <div className="col-menu-type-label">列类型</div>
+            {COL_TYPES.map(t => (
+              <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
+                onClick={() => void changeColType(t)}>
+                <span>{COL_ICONS[t]}</span>{t}
+              </button>
+            ))}
+            <div className="col-menu-divider" />
+            <button className="col-menu-del-btn" onClick={() => void deleteCol()}>🗑 删除列</button>
+          </div>
+        </>
+      )}
+
+      {/* add column popover */}
+      {addColPopover && (
+        <>
+          <div className="add-col-overlay" onClick={() => setAddColPopover(null)} />
+          <div className="add-col-popover" style={{ top: addColPopover.y, left: addColPopover.x }}>
+            <input
+              ref={newColInputRef}
+              placeholder="列名"
+              value={newColName}
+              onChange={e => setNewColName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") void submitNewCol(); if (e.key === "Escape") setAddColPopover(null); }}
+            />
+            <select value={newColType} onChange={e => setNewColType(e.target.value as DBColumn["type"])}>
+              {COL_TYPES.map(t => <option key={t} value={t}>{COL_ICONS[t]} {t}</option>)}
+            </select>
+            <div className="add-col-actions">
+              <button onClick={() => void submitNewCol()}>确认</button>
+              <button onClick={() => setAddColPopover(null)}>取消</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
