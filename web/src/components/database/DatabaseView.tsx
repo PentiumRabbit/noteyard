@@ -31,6 +31,25 @@ function tagColor(val: string) {
   return TAG_COLORS[h % TAG_COLORS.length];
 }
 
+function evalFormula(formula: string, row: DBRow, cols: DBColumn[]): string {
+  if (!formula.trim()) return "";
+  try {
+    let expr = formula;
+    for (const col of cols) {
+      if (col.type === "formula") continue;
+      const val = row.cells[col.id] ?? "";
+      const num = Number(val);
+      const replacement = col.type === "number" && !isNaN(num) && val !== "" ? String(num) : `"${val.replace(/"/g, '\\"')}"`;
+      expr = expr.split(`prop("${col.name}")`).join(replacement);
+    }
+    // eslint-disable-next-line no-new-func
+    const result = new Function("return (" + expr + ")")();
+    return result === undefined || result === null ? "" : String(result);
+  } catch {
+    return "⚠";
+  }
+}
+
 interface ColMenu {
   colId: string;
   x: number;
@@ -42,6 +61,8 @@ interface ColMenu {
 
 interface AddColPopover { x: number; y: number }
 
+interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string }
+
 export function DatabaseView({ databaseId }: Props) {
   const [db, setDb] = useState<Database | null>(null);
   const [rows, setRows] = useState<DBRow[]>([]);
@@ -49,6 +70,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [cellDraft, setCellDraft] = useState("");
   const [colMenu, setColMenu] = useState<ColMenu | null>(null);
   const [addColPopover, setAddColPopover] = useState<AddColPopover | null>(null);
+  const [formulaPopover, setFormulaPopover] = useState<FormulaPopover | null>(null);
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState<DBColumn["type"]>("text");
   const [titleEditing, setTitleEditing] = useState(false);
@@ -58,6 +80,7 @@ export function DatabaseView({ databaseId }: Props) {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const newColInputRef = useRef<HTMLInputElement>(null);
+  const formulaInputRef = useRef<HTMLTextAreaElement>(null);
 
   const reload = useCallback(async () => {
     const [dbData, rowData] = await Promise.all([
@@ -74,6 +97,7 @@ export function DatabaseView({ databaseId }: Props) {
   useEffect(() => { if (titleEditing) titleInputRef.current?.select(); }, [titleEditing]);
   useEffect(() => { if (colMenu?.renaming) renameInputRef.current?.select(); }, [colMenu?.renaming]);
   useEffect(() => { if (addColPopover) newColInputRef.current?.focus(); }, [addColPopover]);
+  useEffect(() => { if (formulaPopover) formulaInputRef.current?.focus(); }, [formulaPopover]);
 
   // ── title ──
   const startTitleEdit = () => {
@@ -171,6 +195,32 @@ export function DatabaseView({ databaseId }: Props) {
     } catch (e) { setError((e as Error).message); }
   };
 
+  // ── formula popover ──
+  const openFormulaPopover = (e: React.MouseEvent, col: DBColumn) => {
+    closeColMenu();
+    const rect = (e.currentTarget as HTMLElement).closest(".col-menu")?.getBoundingClientRect()
+      ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const firstRow = rows[0];
+    const preview = firstRow ? evalFormula(col.formula, firstRow, db?.columns ?? []) : "";
+    setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview });
+  };
+  const updateFormulaPreview = (draft: string) => {
+    if (!formulaPopover || !db) return;
+    const col = db.columns.find(c => c.id === formulaPopover.colId);
+    if (!col) return;
+    const firstRow = rows[0];
+    const preview = firstRow ? evalFormula(draft, firstRow, db.columns) : "";
+    setFormulaPopover(p => p ? { ...p, draft, preview } : p);
+  };
+  const saveFormula = async () => {
+    if (!formulaPopover || !db) return;
+    const col = db.columns.find(c => c.id === formulaPopover.colId);
+    if (!col) return;
+    await api.databases.updateColumn(databaseId, col.id, { ...col, formula: formulaPopover.draft });
+    setFormulaPopover(null);
+    void reload();
+  };
+
   if (!db) return <div className="db-loading">加载中…</div>;
 
   const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index);
@@ -230,7 +280,9 @@ export function DatabaseView({ databaseId }: Props) {
                   return (
                     <td key={col.id}>
                       {col.type === "formula" ? (
-                        <span className="cell-formula-inner">{val || <span className="cell-empty">—</span>}</span>
+                        <span className="cell-formula-inner">
+                          {(() => { const r = evalFormula(col.formula, row, cols); return r || <span className="cell-empty">—</span>; })()}
+                        </span>
                       ) : col.type === "checkbox" ? (
                         <div className="cell-checkbox">
                           <input type="checkbox" checked={val === "true"} onChange={() => void toggleCheckbox(row.id, col.id, val)} />
@@ -296,8 +348,59 @@ export function DatabaseView({ databaseId }: Props) {
                 <span>{COL_ICONS[t]}</span>{t}
               </button>
             ))}
+            {menuCol.type === "formula" && (
+              <>
+                <div className="col-menu-divider" />
+                <button className="col-menu-formula-btn" onClick={e => openFormulaPopover(e, menuCol)}>ƒ 编辑公式</button>
+              </>
+            )}
             <div className="col-menu-divider" />
             <button className="col-menu-del-btn" onClick={() => void deleteCol()}>🗑 删除列</button>
+          </div>
+        </>
+      )}
+
+      {/* formula editor popover */}
+      {formulaPopover && db && (
+        <>
+          <div className="formula-overlay" onClick={() => setFormulaPopover(null)} />
+          <div className="formula-popover" style={{ top: formulaPopover.y, left: formulaPopover.x }}>
+            <div className="formula-popover-title">编辑公式</div>
+            <textarea
+              ref={formulaInputRef}
+              className="formula-input"
+              value={formulaPopover.draft}
+              onChange={e => updateFormulaPreview(e.target.value)}
+              onKeyDown={e => { if (e.key === "Escape") setFormulaPopover(null); }}
+              placeholder={`prop("列名") + prop("列名")`}
+              rows={3}
+              spellCheck={false}
+            />
+            <div className="formula-props-label">可引用属性</div>
+            <div className="formula-props">
+              {db.columns.filter(c => c.type !== "formula").map(c => (
+                <button key={c.id} className="formula-prop-chip"
+                  onClick={() => {
+                    const ins = `prop("${c.name}")`;
+                    const next = formulaPopover.draft + ins;
+                    updateFormulaPreview(next);
+                  }}>
+                  {COL_ICONS[c.type]} {c.name}
+                </button>
+              ))}
+            </div>
+            {formulaPopover.preview !== "" && (
+              <div className="formula-preview">
+                <span className="formula-preview-label">预览：</span>
+                <span className={formulaPopover.preview === "⚠" ? "formula-preview-err" : "formula-preview-val"}>
+                  {formulaPopover.preview}
+                </span>
+              </div>
+            )}
+            <div className="formula-actions">
+              <button className="formula-save-btn" onClick={() => void saveFormula()}>完成</button>
+              <button className="formula-cancel-btn" onClick={() => setFormulaPopover(null)}>取消</button>
+            </div>
           </div>
         </>
       )}
