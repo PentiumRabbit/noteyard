@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { Page } from "../../types";
 import "./Sidebar.css";
@@ -22,72 +22,84 @@ function buildTree(pages: Page[]): Page[] {
   return roots;
 }
 
+interface CtxMenu { pageId: string; x: number; y: number }
+
 function PageItem({
   page,
   depth,
   selectedId,
   onSelect,
   onRefresh,
+  onContextMenu,
 }: {
   page: Page;
   depth: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onRefresh: () => void;
+  onContextMenu: (e: React.MouseEvent, pageId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(page.title || "Untitled");
   const hasChildren = (page.children?.length ?? 0) > 0;
 
   const handleRename = async () => {
     await api.pages.update(page.id, { ...page, title });
-    setEditing(false);
+    setRenaming(false);
     onRefresh();
   };
 
-  const handleAddChild = async () => {
+  const handleAddChild = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     const maxOrder = Math.max(0, ...(page.children?.map((c) => c.order_index) ?? [0]));
     await api.pages.create({ parent_id: page.id, title: "Untitled", order_index: maxOrder + 1 });
     setExpanded(true);
     onRefresh();
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete "${page.title || "Untitled"}" and all subpages?`)) return;
-    await api.pages.delete(page.id);
-    onRefresh();
-  };
+  const icon = page.icon || "📄";
 
   return (
-    <div className="page-item" style={{ paddingLeft: depth * 16 }}>
-      <div className={`page-row${selectedId === page.id ? " selected" : ""}`}>
-        <span className="expand-btn" onClick={() => setExpanded((v) => !v)}>
-          {hasChildren ? (expanded ? "▾" : "▸") : "·"}
+    <div className="page-item">
+      <div
+        className={`page-row${selectedId === page.id ? " selected" : ""}`}
+        style={{ paddingLeft: 8 + depth * 16 }}
+        onClick={() => { if (!renaming) onSelect(page.id); }}
+        onContextMenu={e => onContextMenu(e, page.id)}
+      >
+        <span
+          className={`expand-btn${hasChildren ? " has-children" : ""}`}
+          onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(v => !v); }}
+        >
+          {hasChildren ? (expanded ? "▾" : "▸") : ""}
         </span>
-        {editing ? (
+
+        <span className="page-icon">{icon}</span>
+
+        {renaming ? (
           <input
             autoFocus
-            className="title-input"
+            className="page-rename-input"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleRename}
-            onKeyDown={(e) => { if (e.key === "Enter") handleRename(); }}
+            onClick={e => e.stopPropagation()}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => void handleRename()}
+            onKeyDown={e => {
+              if (e.key === "Enter") { e.preventDefault(); void handleRename(); }
+              if (e.key === "Escape") { setTitle(page.title || "Untitled"); setRenaming(false); }
+            }}
           />
         ) : (
-          <span
-            className="page-title"
-            onClick={() => onSelect(page.id)}
-            onDoubleClick={() => setEditing(true)}
-          >
-            {page.title || "Untitled"}
-          </span>
+          <span className="page-title">{page.title || "Untitled"}</span>
         )}
-        <span className="page-actions">
-          <button onClick={handleAddChild} title="Add subpage">+</button>
-          <button onClick={handleDelete} title="Delete">×</button>
+
+        <span className="page-actions" onClick={e => e.stopPropagation()}>
+          <button className="page-action-btn" onClick={e => onContextMenu(e, page.id)} title="更多操作">⋯</button>
+          <button className="page-action-btn" onClick={e => void handleAddChild(e)} title="新建子页面">+</button>
         </span>
       </div>
+
       {expanded && page.children?.map((child) => (
         <PageItem
           key={child.id}
@@ -96,6 +108,7 @@ function PageItem({
           selectedId={selectedId}
           onSelect={onSelect}
           onRefresh={onRefresh}
+          onContextMenu={onContextMenu}
         />
       ))}
     </div>
@@ -104,6 +117,9 @@ function PageItem({
 
 export function Sidebar({ selectedId, onSelect }: Props) {
   const [tree, setTree] = useState<Page[]>([]);
+  const [collapsed, setCollapsed] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
+  const renamingPageIdRef = useRef<string | null>(null);
 
   const refresh = async () => {
     const pages = await api.pages.listAll();
@@ -119,24 +135,216 @@ export function Sidebar({ selectedId, onSelect }: Props) {
     onSelect(page.id);
   };
 
+  const openCtxMenu = (e: React.MouseEvent, pageId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ pageId, x: e.clientX, y: e.clientY });
+  };
+
+  const closeCtxMenu = () => setCtxMenu(null);
+
+  const handleCtxRename = () => {
+    renamingPageIdRef.current = ctxMenu?.pageId ?? null;
+    closeCtxMenu();
+    // trigger rename on matching PageItem via DOM focus hack — simpler: re-render via key
+    // We'll use a global event pattern
+    if (ctxMenu?.pageId) {
+      const evt = new CustomEvent("rename-page", { detail: ctxMenu.pageId });
+      window.dispatchEvent(evt);
+    }
+  };
+
+  const handleCtxDelete = async () => {
+    if (!ctxMenu) return;
+    const page = findPage(tree, ctxMenu.pageId);
+    if (!confirm(`删除"${page?.title || "Untitled"}"及所有子页面？`)) { closeCtxMenu(); return; }
+    await api.pages.delete(ctxMenu.pageId);
+    closeCtxMenu();
+    void refresh();
+  };
+
+  if (collapsed) {
+    return (
+      <div className="sidebar sidebar-collapsed">
+        <button className="sidebar-expand-btn" onClick={() => setCollapsed(false)} title="展开侧边栏">›</button>
+      </div>
+    );
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-logo">noteyard</span>
-        <button className="new-page-btn" onClick={() => void handleAddRoot()} title="New page">+</button>
+        <div className="sidebar-header-actions">
+          <button className="sidebar-icon-btn" onClick={() => void handleAddRoot()} title="新建页面">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+          <button className="sidebar-icon-btn" onClick={() => setCollapsed(true)} title="收起侧边栏">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
       </div>
+
       <div className="sidebar-pages">
+        {tree.length === 0 && (
+          <div className="sidebar-empty">暂无页面</div>
+        )}
         {tree.map((p) => (
-          <PageItem
+          <RenameAwarePageItem
             key={p.id}
             page={p}
             depth={0}
             selectedId={selectedId}
             onSelect={onSelect}
             onRefresh={refresh}
+            onContextMenu={openCtxMenu}
           />
         ))}
       </div>
+
+      <div className="sidebar-footer">
+        <button className="sidebar-new-page-btn" onClick={() => void handleAddRoot()}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          新建页面
+        </button>
+      </div>
+
+      {ctxMenu && (
+        <>
+          <div className="ctx-overlay" onClick={closeCtxMenu} />
+          <div className="ctx-menu" style={{ top: ctxMenu.y, left: ctxMenu.x }}>
+            <button className="ctx-item" onClick={handleCtxRename}>重命名</button>
+            <div className="ctx-divider" />
+            <button className="ctx-item ctx-item-danger" onClick={() => void handleCtxDelete()}>删除</button>
+          </div>
+        </>
+      )}
     </aside>
+  );
+}
+
+function findPage(tree: Page[], id: string): Page | null {
+  for (const p of tree) {
+    if (p.id === id) return p;
+    if (p.children) {
+      const found = findPage(p.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// Wrapper that listens for global rename events
+function RenameAwarePageItem(props: React.ComponentProps<typeof PageItem>) {
+  const [renameTrigger, setRenameTrigger] = useState(0);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail === props.page.id) {
+        setRenameTrigger(v => v + 1);
+      }
+    };
+    window.addEventListener("rename-page", handler);
+    return () => window.removeEventListener("rename-page", handler);
+  }, [props.page.id]);
+
+  return <PageItemWithRename {...props} renameTrigger={renameTrigger} />;
+}
+
+function PageItemWithRename({
+  page,
+  depth,
+  selectedId,
+  onSelect,
+  onRefresh,
+  onContextMenu,
+  renameTrigger,
+}: React.ComponentProps<typeof PageItem> & { renameTrigger: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [title, setTitle] = useState(page.title || "Untitled");
+  const hasChildren = (page.children?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (renameTrigger > 0) {
+      setTitle(page.title || "Untitled");
+      setRenaming(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameTrigger]);
+
+  // sync title when page prop updates
+  useEffect(() => {
+    if (!renaming) setTitle(page.title || "Untitled");
+  }, [page.title, renaming]);
+
+  const handleRename = async () => {
+    await api.pages.update(page.id, { ...page, title });
+    setRenaming(false);
+    onRefresh();
+  };
+
+  const handleAddChild = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const maxOrder = Math.max(0, ...(page.children?.map((c) => c.order_index) ?? [0]));
+    await api.pages.create({ parent_id: page.id, title: "Untitled", order_index: maxOrder + 1 });
+    setExpanded(true);
+    onRefresh();
+  };
+
+  const icon = page.icon || "📄";
+
+  return (
+    <div className="page-item">
+      <div
+        className={`page-row${selectedId === page.id ? " selected" : ""}`}
+        style={{ paddingLeft: 8 + depth * 16 }}
+        onClick={() => { if (!renaming) onSelect(page.id); }}
+        onContextMenu={e => onContextMenu(e, page.id)}
+      >
+        <span
+          className={`expand-btn${hasChildren ? " has-children" : ""}`}
+          onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(v => !v); }}
+        >
+          {hasChildren ? (expanded ? "▾" : "▸") : ""}
+        </span>
+
+        <span className="page-icon">{icon}</span>
+
+        {renaming ? (
+          <input
+            autoFocus
+            className="page-rename-input"
+            value={title}
+            onClick={e => e.stopPropagation()}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => void handleRename()}
+            onKeyDown={e => {
+              if (e.key === "Enter") { e.preventDefault(); void handleRename(); }
+              if (e.key === "Escape") { setTitle(page.title || "Untitled"); setRenaming(false); }
+            }}
+          />
+        ) : (
+          <span className="page-title">{page.title || "Untitled"}</span>
+        )}
+
+        <span className="page-actions" onClick={e => e.stopPropagation()}>
+          <button className="page-action-btn" onClick={e => onContextMenu(e, page.id)} title="更多操作">⋯</button>
+          <button className="page-action-btn" onClick={e => void handleAddChild(e)} title="新建子页面">+</button>
+        </span>
+      </div>
+
+      {expanded && page.children?.map((child) => (
+        <RenameAwarePageItem
+          key={child.id}
+          page={child}
+          depth={depth + 1}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onRefresh={onRefresh}
+          onContextMenu={onContextMenu}
+        />
+      ))}
+    </div>
   );
 }
