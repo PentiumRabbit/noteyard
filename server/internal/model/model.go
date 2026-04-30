@@ -17,6 +17,7 @@ type Block struct {
 	ParentBlockID *string `json:"parent_block_id"`
 	Type          string  `json:"type"`
 	Content       string  `json:"content"`
+	Props         string  `json:"props"`
 	OrderIndex    float64 `json:"order_index"`
 	CreatedAt     int64   `json:"created_at"`
 	UpdatedAt     int64   `json:"updated_at"`
