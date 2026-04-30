@@ -1,4 +1,4 @@
-import type { Block, Page } from "../types";
+import type { Block, DBCell, DBColumn, DBRow, Database, Page } from "../types";
 
 const BASE = "http://localhost:8080/api";
 
@@ -17,6 +17,23 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 export const api = {
+  databases: {
+    create: (data: { page_id: string; title: string }) => req<Database>("POST", "/databases", data),
+    get: (id: string) => req<Database>("GET", `/databases/${id}`),
+    delete: (id: string) => req<void>("DELETE", `/databases/${id}`),
+    addColumn: (dbId: string, col: Partial<DBColumn>) =>
+      req<DBColumn>("POST", `/databases/${dbId}/columns`, col),
+    updateColumn: (dbId: string, colId: string, col: Partial<DBColumn>) =>
+      req<DBColumn>("PUT", `/databases/${dbId}/columns/${colId}`, col),
+    deleteColumn: (dbId: string, colId: string) =>
+      req<void>("DELETE", `/databases/${dbId}/columns/${colId}`),
+    addRow: (dbId: string) => req<DBRow>("POST", `/databases/${dbId}/rows`, {}),
+    deleteRow: (dbId: string, rowId: string) =>
+      req<void>("DELETE", `/databases/${dbId}/rows/${rowId}`),
+    listRows: (dbId: string) => req<DBRow[]>("GET", `/databases/${dbId}/rows`),
+    updateCells: (dbId: string, rowId: string, cells: DBCell[]) =>
+      req<void>("PUT", `/databases/${dbId}/rows/${rowId}/cells`, cells),
+  },
   pages: {
     listAll: () => req<Page[]>("GET", "/pages"),
     get: (id: string) => req<Page>("GET", `/pages/${id}`),
