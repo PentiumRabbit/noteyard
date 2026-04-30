@@ -1,0 +1,80 @@
+import "@blocknote/mantine/style.css";
+import "@blocknote/react/style.css";
+import { BlockNoteView } from "@blocknote/mantine";
+import { useCreateBlockNote } from "@blocknote/react";
+import { useEffect, useRef } from "react";
+import { api } from "../../api/client";
+import type { Block } from "../../types";
+import "./Editor.css";
+
+interface Props {
+  pageId: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toBlockNote(blocks: Block[]): any[] {
+  return blocks.map((b) => {
+    let content: unknown[] = [];
+    try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
+    return { id: b.id, type: b.type, props: {}, content, children: [] };
+  });
+}
+
+export function Editor({ pageId }: Props) {
+  const editor = useCreateBlockNote();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    readyRef.current = false;
+    let cancelled = false;
+
+    void (async () => {
+      const blocks = await api.blocks.listByPage(pageId);
+      if (cancelled) return;
+      if (blocks && blocks.length > 0) {
+        try {
+          editor.replaceBlocks(editor.document, toBlockNote(blocks));
+        } catch {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
+        }
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        editor.replaceBlocks(editor.document, [{ type: "paragraph" }] as any);
+      }
+      readyRef.current = true;
+    })();
+
+    return () => { cancelled = true; };
+  }, [pageId, editor]);
+
+  const save = () => {
+    const dtos: Partial<Block>[] = editor.document.map((b, i) => ({
+      id: b.id,
+      page_id: pageId,
+      type: b.type,
+      content: JSON.stringify(b.content ?? []),
+      order_index: i,
+    }));
+    void api.blocks.batchUpdate(dtos);
+  };
+
+  const handleChange = () => {
+    if (!readyRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(save, 800);
+  };
+
+  useEffect(() => {
+    const flush = () => save();
+    window.addEventListener("beforeunload", flush);
+    return () => window.removeEventListener("beforeunload", flush);
+  });
+
+  return (
+    <div className="editor-wrap">
+      <BlockNoteView editor={editor} onChange={handleChange} />
+    </div>
+  );
+}
