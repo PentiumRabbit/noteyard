@@ -38,6 +38,7 @@ type DBColumn struct {
 	Type       string  `json:"type"`
 	Options    string  `json:"options"`
 	Formula    string  `json:"formula"`
+	IsHidden   bool    `json:"is_hidden"`
 	OrderIndex float64 `json:"order_index"`
 	CreatedAt  int64   `json:"created_at"`
 	UpdatedAt  int64   `json:"updated_at"`

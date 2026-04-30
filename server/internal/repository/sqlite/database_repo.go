@@ -58,7 +58,7 @@ func (r *DatabaseRepo) Delete(ctx context.Context, id string) error {
 
 func (r *DatabaseRepo) listColumns(ctx context.Context, dbID string) ([]*model.DBColumn, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id,database_id,name,type,options,formula,order_index,created_at,updated_at
+		`SELECT id,database_id,name,type,options,formula,is_hidden,order_index,created_at,updated_at
 		 FROM database_columns WHERE database_id=? ORDER BY order_index`, dbID)
 	if err != nil {
 		return nil, err
@@ -67,10 +67,12 @@ func (r *DatabaseRepo) listColumns(ctx context.Context, dbID string) ([]*model.D
 	cols := make([]*model.DBColumn, 0)
 	for rows.Next() {
 		c := &model.DBColumn{}
+		var isHidden int
 		if err := rows.Scan(&c.ID, &c.DatabaseID, &c.Name, &c.Type, &c.Options, &c.Formula,
-			&c.OrderIndex, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			&isHidden, &c.OrderIndex, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
+		c.IsHidden = isHidden != 0
 		cols = append(cols, c)
 	}
 	return cols, rows.Err()
@@ -88,11 +90,15 @@ func (r *DatabaseRepo) AddColumn(ctx context.Context, col *model.DBColumn) error
 	now := time.Now().Unix()
 	col.CreatedAt = now
 	col.UpdatedAt = now
+	isHidden := 0
+	if col.IsHidden {
+		isHidden = 1
+	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO database_columns(id,database_id,name,type,options,formula,order_index,created_at,updated_at)
-		 VALUES(?,?,?,?,?,?,?,?,?)`,
+		`INSERT INTO database_columns(id,database_id,name,type,options,formula,is_hidden,order_index,created_at,updated_at)
+		 VALUES(?,?,?,?,?,?,?,?,?,?)`,
 		col.ID, col.DatabaseID, col.Name, col.Type, col.Options, col.Formula,
-		col.OrderIndex, now, now)
+		isHidden, col.OrderIndex, now, now)
 	return err
 }
 
@@ -103,9 +109,13 @@ func (r *DatabaseRepo) UpdateColumn(ctx context.Context, col *model.DBColumn) er
 		}
 	}
 	col.UpdatedAt = time.Now().Unix()
+	isHidden := 0
+	if col.IsHidden {
+		isHidden = 1
+	}
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE database_columns SET name=?,type=?,options=?,formula=?,order_index=?,updated_at=? WHERE id=?`,
-		col.Name, col.Type, col.Options, col.Formula, col.OrderIndex, col.UpdatedAt, col.ID)
+		`UPDATE database_columns SET name=?,type=?,options=?,formula=?,is_hidden=?,order_index=?,updated_at=? WHERE id=?`,
+		col.Name, col.Type, col.Options, col.Formula, isHidden, col.OrderIndex, col.UpdatedAt, col.ID)
 	return err
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE database_columns ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0;
