@@ -160,3 +160,17 @@ func scanPages(rows *sql.Rows) ([]*model.Page, error) {
 	}
 	return pages, rows.Err()
 }
+
+func (r *PageRepo) Backlinks(ctx context.Context, id string) ([]*model.Page, error) {
+	pattern := `%"pageId":"` + id + `"%`
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT DISTINCT p.id,p.parent_id,p.title,p.icon,p.cover,p.order_index,p.created_at,p.updated_at,p.deleted_at
+		 FROM pages p
+		 INNER JOIN blocks b ON b.page_id = p.id
+		 WHERE p.deleted_at IS NULL AND b.content LIKE ?`, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPages(rows)
+}

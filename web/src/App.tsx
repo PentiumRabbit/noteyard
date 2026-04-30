@@ -47,6 +47,8 @@ export default function App() {
 
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
+  const [backlinks, setBacklinks] = useState<{ id: string; title: string; icon: string | null }[]>([]);
+  const [backlinksOpen, setBacklinksOpen] = useState(true);
   const [titleDraft, setTitleDraft] = useState("");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
@@ -67,6 +69,13 @@ export default function App() {
     if (!selectedPageId) { setPageMeta(null); return; }
     void loadPageMeta(selectedPageId);
   }, [selectedPageId, loadPageMeta]);
+
+  useEffect(() => {
+    if (!selectedPageId) { setBacklinks([]); return; }
+    api.pages.backlinks(selectedPageId).then(pages => {
+      setBacklinks(pages.map(p => ({ id: p.id, title: p.title ?? "Untitled", icon: p.icon ?? null })));
+    }).catch(() => setBacklinks([]));
+  }, [selectedPageId]);
 
   const handleSelect = (id: string) => {
     editorRef.current?.flush();
@@ -229,6 +238,24 @@ export default function App() {
               />
             </div>
             <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
+            {backlinks.length > 0 && (
+              <div className="backlinks-section">
+                <button className="backlinks-toggle" onClick={() => setBacklinksOpen(v => !v)}>
+                  <span className="backlinks-toggle-arrow">{backlinksOpen ? "▾" : "▸"}</span>
+                  {backlinks.length} 个反向链接
+                </button>
+                {backlinksOpen && (
+                  <div className="backlinks-list">
+                    {backlinks.map(p => (
+                      <button key={p.id} className="backlink-item" onClick={() => handleSelect(p.id)}>
+                        <span className="backlink-icon">{p.icon ?? "📄"}</span>
+                        <span className="backlink-title">{p.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           </>
         ) : selectedPageId ? (

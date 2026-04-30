@@ -18,6 +18,7 @@ type PageRepository interface {
 	PermanentDelete(ctx context.Context, id string) error
 	Move(ctx context.Context, id, newParentID string, newOrder float64) error
 	Search(ctx context.Context, q string) ([]*model.Page, error)
+	Backlinks(ctx context.Context, id string) ([]*model.Page, error)
 }
 
 type BlockRepository interface {

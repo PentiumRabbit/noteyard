@@ -138,3 +138,16 @@ func (h *PageHandler) GetAncestors(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, ancestors)
 }
+
+func (h *PageHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	pages, err := h.pages.Backlinks(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if pages == nil {
+		pages = []*model.Page{}
+	}
+	writeJSON(w, http.StatusOK, pages)
+}

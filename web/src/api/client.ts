@@ -55,6 +55,7 @@ export const api = {
     restore: (id: string) => req<void>("POST", `/pages/${id}/restore`),
     permanentDelete: (id: string) => req<void>("DELETE", `/pages/${id}/permanent`),
     search: (q: string) => req<Page[]>("GET", `/pages/search?q=${encodeURIComponent(q)}`),
+    backlinks: (id: string) => req<Page[]>("GET", `/pages/${id}/backlinks`),
   },
   blocks: {
     listByPage: (pageId: string) => req<Block[]>("GET", `/pages/${pageId}/blocks`),

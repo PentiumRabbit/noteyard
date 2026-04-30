@@ -65,6 +65,7 @@ func main() {
 			r.Get("/{id}/blocks", bh.ListByPage)
 			r.Post("/{id}/blocks", bh.Create)
 			r.Get("/{id}/ancestors", ph.GetAncestors)
+			r.Get("/{id}/backlinks", ph.Backlinks)
 		})
 		r.Route("/blocks", func(r chi.Router) {
 			r.Put("/{id}", bh.Update)
