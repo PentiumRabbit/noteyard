@@ -1,4 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
 import type { Page } from "../../types";
 import { SettingsPanel } from "../settings/SettingsPanel";
@@ -127,8 +137,10 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashedPages, setTrashedPages] = useState<Page[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const renamingPageIdRef = useRef<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const refresh = async () => {
     const pages = await api.pages.listAll();
@@ -192,6 +204,26 @@ export function Sidebar({ selectedId, onSelect }: Props) {
     setTrashedPages(pages ?? []);
   };
 
+  const handleDragEnd = async (e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = tree.findIndex(p => p.id === active.id);
+    const newIndex = tree.findIndex(p => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = [...tree];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    // 计算新的 order_index：取相邻项的中间值
+    const prev = reordered[newIndex - 1];
+    const next = reordered[newIndex + 1];
+    const newOrder = prev && next
+      ? (prev.order_index + next.order_index) / 2
+      : prev ? prev.order_index + 1 : next ? next.order_index - 1 : 0;
+    await api.pages.update(String(active.id), { order_index: newOrder });
+    void refresh();
+  };
+
   if (collapsed) {
     return (
       <div className="sidebar sidebar-collapsed">
@@ -220,17 +252,31 @@ export function Sidebar({ selectedId, onSelect }: Props) {
         {tree.length === 0 && (
           <div className="sidebar-empty">暂无页面</div>
         )}
-        {tree.map((p) => (
-          <RenameAwarePageItem
-            key={p.id}
-            page={p}
-            depth={0}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            onRefresh={refresh}
-            onContextMenu={openCtxMenu}
-          />
-        ))}
+        <DndContext sensors={sensors} onDragStart={e => setActiveDragId(String(e.active.id))} onDragEnd={e => void handleDragEnd(e)}>
+          <SortableContext items={tree.map(p => p.id)} strategy={verticalListSortingStrategy}>
+            {tree.map((p) => (
+              <SortablePageItem
+                key={p.id}
+                page={p}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                onRefresh={refresh}
+                onContextMenu={openCtxMenu}
+              />
+            ))}
+          </SortableContext>
+          <DragOverlay>
+            {activeDragId && (() => {
+              const p = tree.find(x => x.id === activeDragId);
+              return p ? (
+                <div className="page-row page-row-drag-overlay" style={{ paddingLeft: 8 }}>
+                  <span className="page-icon">{p.icon || "📄"}</span>
+                  <span className="page-title">{p.title || "Untitled"}</span>
+                </div>
+              ) : null;
+            })()}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       <div className="sidebar-footer">
@@ -427,6 +473,29 @@ function PageItemWithRename({
           onContextMenu={onContextMenu}
         />
       ))}
+    </div>
+  );
+}
+
+function SortablePageItem({ page, selectedId, onSelect, onRefresh, onContextMenu }: {
+  page: Page;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onRefresh: () => void;
+  onContextMenu: (e: React.MouseEvent, pageId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <RenameAwarePageItem
+        page={page}
+        depth={0}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        onRefresh={onRefresh}
+        onContextMenu={onContextMenu}
+      />
     </div>
   );
 }
