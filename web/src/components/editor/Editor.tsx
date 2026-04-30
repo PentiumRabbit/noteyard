@@ -23,7 +23,7 @@ import {
   locales,
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
-import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { api } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
@@ -94,13 +94,76 @@ const DatabaseBlock = createReactBlockSpec(
   },
 );
 
-// T03 — schema 注册 horizontalRule、quote
+// T03 — Callout 自定义块
+const CALLOUT_EMOJIS = ["💡", "📌", "⚠️", "✅", "❌", "🔥", "💬", "📝", "🎯", "🚀"];
+
+const CalloutBlock = createReactBlockSpec(
+  {
+    type: "callout" as const,
+    propSchema: { icon: { default: "💡" } },
+    content: "inline",
+  },
+  {
+    render: ({ block, contentRef }) => {
+      const [pickerOpen, setPickerOpen] = React.useState(false);
+      return (
+        <div className="callout-block">
+          <div className="callout-icon-wrap" style={{ position: "relative" }}>
+            <button className="callout-icon-btn" onClick={() => setPickerOpen(v => !v)}>
+              {block.props.icon}
+            </button>
+            {pickerOpen && (
+              <div className="callout-emoji-picker">
+                {CALLOUT_EMOJIS.map(e => (
+                  <button key={e} className="callout-emoji-opt"
+                    onMouseDown={ev => { ev.preventDefault(); block.props.icon = e; setPickerOpen(false); }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="callout-content" ref={contentRef} />
+        </div>
+      );
+    },
+  },
+);
+
+// T04 — Toggle 自定义块
+const ToggleBlock = createReactBlockSpec(
+  {
+    type: "toggle" as const,
+    propSchema: { open: { default: "true" }, summary: { default: "折叠块" } },
+    content: "inline",
+  },
+  {
+    render: ({ block, contentRef }) => {
+      const isOpen = block.props.open !== "false";
+      return (
+        <div className="toggle-block">
+          <div className="toggle-header">
+            <button
+              className={`toggle-arrow${isOpen ? " open" : ""}`}
+              onMouseDown={ev => { ev.preventDefault(); block.props.open = isOpen ? "false" : "true"; }}
+            >▶</button>
+            <span className="toggle-summary" ref={contentRef} />
+          </div>
+        </div>
+      );
+    },
+  },
+);
+
+// T05 — schema 注册
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     horizontalRule: HorizontalRuleBlock,
     quote: QuoteBlock,
     database: DatabaseBlock,
+    callout: CalloutBlock,
+    toggle: ToggleBlock,
   },
 });
 
@@ -293,7 +356,25 @@ function DatabaseSlashItem({
           icon: <span>❝</span>,
           hint: "插入引用块",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem];
+        const calloutItem = {
+          title: "Callout",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "callout", props: { icon: "💡" } } as any),
+          aliases: ["callout", "标注", "提示", "note"],
+          group: "基础块",
+          icon: <span>💡</span>,
+          hint: "插入标注块",
+        };
+        const toggleItem = {
+          title: "Toggle",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "toggle", props: { open: "true", summary: "折叠块" } } as any),
+          aliases: ["toggle", "折叠", "details"],
+          group: "基础块",
+          icon: <span>▶</span>,
+          hint: "插入折叠块",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||
