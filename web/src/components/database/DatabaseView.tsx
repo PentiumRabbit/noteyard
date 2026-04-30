@@ -4,6 +4,7 @@ import type { DBCell, DBColumn, DBRow, Database } from "../../types";
 import { evalFormula } from "./formulaEngine";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
+import { CalendarView } from "./CalendarView";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -153,7 +154,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [sortState, setSortState] = useState<SortState | null>(null);
   const [filterState, setFilterState] = useState<FilterState | null>(null);
   const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>(null);
-  const [viewMode, setViewMode] = useState<"table" | "kanban" | "gallery" | "list">("table");
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "gallery" | "list" | "calendar">("table");
   const [kanbanGroupColId, setKanbanGroupColId] = useState<string>("");
   const [groupByColId, setGroupByColId] = useState<string>("");
   const [multiSelectDropdown, setMultiSelectDropdown] = useState<{ rowId: string; colId: string; x: number; y: number; options: SelectOption[] } | null>(null);
@@ -541,6 +542,7 @@ export function DatabaseView({ databaseId }: Props) {
         <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}>看板</button>
         <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}>库</button>
         <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}>列表</button>
+        <button className={`db-view-btn${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}>日历</button>
       </div>
 
       {/* toolbar */}
@@ -685,6 +687,14 @@ export function DatabaseView({ databaseId }: Props) {
         />
       )}
 
+      {viewMode === "calendar" && (
+        <CalendarView
+          columns={allCols}
+          rows={rows}
+          onOpenRow={openRowModal}
+        />
+      )}
+
       {viewMode === "list" && (() => {
         const primaryCol = allCols[0];
         const groupCol = groupByColId ? allCols.find(c => c.id === groupByColId) : null;
@@ -720,7 +730,7 @@ export function DatabaseView({ databaseId }: Props) {
         );
       })()}
 
-      <div className="db-scroll" style={{ display: viewMode !== "table" ? "none" : undefined }}>
+      <div className="db-scroll" style={{ display: viewMode === "table" ? undefined : "none" }}>
         <table className="db-table">
           <thead>
             <tr>

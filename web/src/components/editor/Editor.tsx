@@ -259,6 +259,71 @@ function ColumnCell({ colIndex, initialContent, onSave }: {
   );
 }
 
+// T08 — Sub-page 块
+const SubpageBlock = createReactBlockSpec(
+  {
+    type: "subpage" as const,
+    propSchema: { pageId: { default: "" }, title: { default: "" }, icon: { default: "📄" } },
+    content: "none",
+  },
+  {
+    render: ({ block }) => {
+      return (
+        <div className="subpage-block" data-page-id={block.props.pageId}>
+          <span className="subpage-icon">{block.props.icon || "📄"}</span>
+          <span className="subpage-title">{block.props.title || "Untitled"}</span>
+          <span className="subpage-arrow">↗</span>
+        </div>
+      );
+    },
+  },
+);
+
+// T09 — File 块
+const FileAttachBlock = createReactBlockSpec(
+  {
+    type: "fileAttach" as const,
+    propSchema: { url: { default: "" }, name: { default: "" }, size: { default: "" } },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      const hasFile = !!block.props.url;
+      const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { alert("文件不超过 2MB"); return; }
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+        if (!res.ok) { alert("上传失败"); return; }
+        const data = await res.json() as { url: string };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateBlock({ props: { url: data.url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
+      };
+      if (!hasFile) {
+        return (
+          <label className="file-attach-upload">
+            <span>📎 上传文件</span>
+            <input type="file" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
+          </label>
+        );
+      }
+      return (
+        <div className="file-attach-block">
+          <span className="file-attach-icon">📎</span>
+          <a href={block.props.url} download={block.props.name} className="file-attach-name">{block.props.name}</a>
+          <span className="file-attach-size">{block.props.size}</span>
+          <label className="file-attach-reupload">
+            重新上传
+            <input type="file" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
+          </label>
+        </div>
+      );
+    },
+  },
+);
+
 // T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -269,6 +334,8 @@ const schema = BlockNoteSchema.create({
     callout: CalloutBlock,
     toggle: ToggleBlock,
     columns: ColumnsBlock,
+    subpage: SubpageBlock,
+    fileAttach: FileAttachBlock,
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
@@ -306,7 +373,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
         if (!dbId) return [];
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      if (b.type === "columns") {
+      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach") {
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
       return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
@@ -379,10 +446,17 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   useEffect(() => {
     if (!onSelectPage) return;
     const handler = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>(".mention-inline");
-      if (!el) return;
-      const pid = el.dataset.pageId;
-      if (pid) { e.preventDefault(); onSelectPage(pid); }
+      const mentionEl = (e.target as HTMLElement).closest<HTMLElement>(".mention-inline");
+      if (mentionEl) {
+        const pid = mentionEl.dataset.pageId;
+        if (pid) { e.preventDefault(); onSelectPage(pid); }
+        return;
+      }
+      const subpageEl = (e.target as HTMLElement).closest<HTMLElement>(".subpage-block");
+      if (subpageEl) {
+        const pid = subpageEl.dataset.pageId;
+        if (pid) { e.preventDefault(); onSelectPage(pid); }
+      }
     };
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
@@ -493,7 +567,31 @@ function DatabaseSlashItem({
           icon: <span>⫼</span>,
           hint: "插入两栏分栏块",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem];
+        const subpageItem = {
+          title: "Sub-page",
+          onItemClick: async () => {
+            const newPage = await api.pages.create({ title: "Untitled", order_index: 9999 });
+            insertOrUpdateBlock(editor, {
+              type: "subpage",
+              props: { pageId: newPage.id, title: newPage.title || "Untitled", icon: "📄" },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
+          },
+          aliases: ["subpage", "sub-page", "子页面", "page"],
+          group: "其他",
+          icon: <span>📄</span>,
+          hint: "插入子页面链接",
+        };
+        const fileItem = {
+          title: "File",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "fileAttach", props: { url: "", name: "", size: "" } } as any),
+          aliases: ["file", "attachment", "文件", "附件"],
+          group: "其他",
+          icon: <span>📎</span>,
+          hint: "上传文件附件",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||
