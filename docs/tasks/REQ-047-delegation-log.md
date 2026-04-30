@@ -2,5 +2,5 @@
 
 | # | 委派时机 | 委派给 | 任务描述 | 预期交付物 | 预期交付时间 | 延期次数 | 状态 | 备注 |
 |---|---------|--------|---------|-----------|-------------|---------|------|------|
-| 1 | N2批准后 | 模块工程师 | DatabaseView 新增 4 种列类型：url / email / created_time / last_edited_time | DatabaseView.tsx, DatabaseView.css | 2026-05-01 23:59 | 0 | ⏳待交付 | |
-| 2 | Task1交付后 | 测试人员 | 验证 4 种列类型功能与只读行为 | 测试报告（event-log 记录） | 2026-05-02 00:30 | 0 | ⏳待交付 | 依赖 Task 1 |
+| 1 | N2批准后 | 模块工程师 | DatabaseView 新增 4 种列类型：url / email / created_time / last_edited_time | DatabaseView.tsx, DatabaseView.css | 2026-05-01 23:59 | 0 | ✅已验收 | d067983 |
+| 2 | Task1交付后 | 测试人员 | 验证 4 种列类型功能与只读行为 | 测试报告（event-log 记录） | 2026-05-02 00:30 | 0 | ✅已验收 | S1-S8 全通过 |
