@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database } from "../../types";
+import { evalFormula } from "./formulaEngine";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -36,24 +37,6 @@ function tagColor(val: string) {
   return TAG_COLORS[h % TAG_COLORS.length];
 }
 
-function evalFormula(formula: string, row: DBRow, cols: DBColumn[]): string {
-  if (!formula.trim()) return "";
-  try {
-    let expr = formula;
-    for (const col of cols) {
-      if (col.type === "formula") continue;
-      const val = row.cells[col.id] ?? "";
-      const num = Number(val);
-      const replacement = col.type === "number" && !isNaN(num) && val !== "" ? String(num) : `"${val.replace(/"/g, '\\"')}"`;
-      expr = expr.split(`prop("${col.name}")`).join(replacement);
-    }
-    // eslint-disable-next-line no-new-func
-    const result = new Function("return (" + expr + ")")();
-    return result === undefined || result === null ? "" : String(result);
-  } catch {
-    return "⚠";
-  }
-}
 
 interface ColMenu {
   colId: string;
