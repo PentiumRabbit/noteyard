@@ -2,6 +2,27 @@
 
 本地版 Notion 替代品。Go 服务端 + SQLite + React + BlockNote。
 
+---
+
+## AI 启动入口
+
+> Claude Code 自动加载本文件。其他平台（Cursor、GPT、纯 prompt）需在 system prompt 中手动粘贴以下文件内容：
+
+```
+必须加载（按顺序）：
+1. ai-pro/docs/engineering/rules/all.md          ← 跨角色强制规则
+2. ai-pro/docs/engineering/rules/{role}.md       ← 本角色专属规则（替换 {role}）
+3. 本文件（noteyard/CLAUDE.md）                  ← 项目约束
+
+可选但推荐：
+4. ai-pro/docs/engineering/DELEGATION.md         ← 委派流程细则
+```
+
+角色标签对照：`[lead]` `[pm]` `[arch]` `[rd]` `[eng]` `[te]` `[td]`  
+规则文件位于：`ai-pro/docs/engineering/rules/{role}.md`
+
+---
+
 ## 快速启动
 
 ```bash
