@@ -14,6 +14,23 @@
   background: var(--color-bg-primary) !important;
 }
 
+/* Override BlockNote bn-colors variables to match our theme */
+.editor-wrap .bn-container {
+  --bn-colors-menu-background: var(--color-bg-surface);
+  --bn-colors-menu-text: var(--color-text-primary);
+  --bn-colors-editor-background: var(--color-bg-primary);
+  --bn-colors-editor-text: var(--color-text-primary);
+  --bn-colors-tooltip-background: var(--color-bg-surface);
+  --bn-colors-tooltip-text: var(--color-text-primary);
+  --bn-colors-hovered-background: var(--color-hover-bg-medium);
+  --bn-colors-hovered-text: var(--color-text-primary);
+  /* selected = active toolbar button (e.g. current text alignment) */
+  --bn-colors-selected-background: var(--color-selected-bg);
+  --bn-colors-selected-text: var(--color-text-primary);
+  --bn-colors-border: var(--color-border);
+  --bn-colors-side-menu: var(--color-text-secondary);
+}
+
 .editor-wrap [class*="mantine"] {
   --mantine-color-body: var(--color-bg-primary);
 }
