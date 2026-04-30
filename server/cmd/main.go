@@ -25,12 +25,18 @@ func main() {
 	}
 	defer db.Close()
 
+	uploadDir := uploadDirPath()
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Fatalf("create upload dir: %v", err)
+	}
+
 	pages := sqlite.NewPageRepo(db)
 	blocks := sqlite.NewBlockRepo(db)
 	databases := sqlite.NewDatabaseRepo(db)
 	ph := handler.NewPageHandler(pages)
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
+	uh := handler.NewUploadHandler(uploadDir, "http://localhost:8080")
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -41,7 +47,11 @@ func main() {
 		AllowedHeaders: []string{"Accept", "Content-Type"},
 	}))
 
+	// 静态图片文件服务
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
+
 	r.Route("/api", func(r chi.Router) {
+		r.Post("/uploads", uh.Upload)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
@@ -83,4 +93,12 @@ func dbFilePath() string {
 		return "noteyard.db"
 	}
 	return filepath.Join(home, ".local", "share", "noteyard", "noteyard.db")
+}
+
+func uploadDirPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "data/uploads"
+	}
+	return filepath.Join(home, ".local", "share", "noteyard", "uploads")
 }
