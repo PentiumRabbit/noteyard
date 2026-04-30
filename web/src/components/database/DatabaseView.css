@@ -202,7 +202,8 @@ tr:hover .row-del-btn { visibility: visible; }
   text-overflow: ellipsis;
   border-radius: 3px;
   padding: 2px 4px;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.4;
   color: #37352f;
 }
 .cell-text-inner:hover,
@@ -220,7 +221,8 @@ tr:hover .row-del-btn { visibility: visible; }
   outline: 1px solid #2383e2;
   border-radius: 3px;
   padding: 2px 4px;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.4;
   font-family: inherit;
   color: #37352f;
   background: #fff;

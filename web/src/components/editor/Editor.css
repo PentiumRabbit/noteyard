@@ -1,11 +1,191 @@
+/* ── editor wrap ── */
 .editor-wrap {
   flex: 1;
-  height: 100vh;
-  overflow-y: auto;
-  padding: 40px 0;
 }
 
-.editor-wrap .bn-container {
-  max-width: 720px;
-  margin: 0 auto;
+/* Remove BlockNote's built-in padding since App.tsx page-wrap handles layout */
+.editor-wrap .bn-editor {
+  padding-inline: 0;
+}
+
+/* ── base typography ── */
+.editor-wrap .bn-default-styles {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #37352f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ── headings ── */
+.editor-wrap .bn-block-content[data-content-type="heading"][data-level="1"] {
+  font-size: 1.875em;
+  font-weight: 700;
+  color: #37352f;
+  margin-top: 16px;
+  line-height: 1.3;
+}
+
+.editor-wrap .bn-block-content[data-content-type="heading"][data-level="2"] {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #37352f;
+  margin-top: 12px;
+  line-height: 1.3;
+}
+
+.editor-wrap .bn-block-content[data-content-type="heading"][data-level="3"] {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: #37352f;
+  margin-top: 8px;
+  line-height: 1.3;
+}
+
+/* Override BlockNote's em-based heading sizes with px */
+.editor-wrap .bn-block-outer:not([data-prev-type]) > .bn-block > .bn-block-content[data-content-type="heading"] {
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.editor-wrap [data-content-type="heading"][data-level="1"],
+.editor-wrap .bn-block-outer[data-prev-type="heading"][data-prev-level="1"] > .bn-block > .bn-block-content {
+  font-size: 1.875em !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+}
+
+.editor-wrap [data-content-type="heading"][data-level="2"],
+.editor-wrap .bn-block-outer[data-prev-type="heading"][data-prev-level="2"] > .bn-block > .bn-block-content {
+  font-size: 1.5em !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+.editor-wrap [data-content-type="heading"][data-level="3"],
+.editor-wrap .bn-block-outer[data-prev-type="heading"][data-prev-level="3"] > .bn-block > .bn-block-content {
+  font-size: 1.25em !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+/* ── paragraph ── */
+.editor-wrap .bn-block-content[data-content-type="paragraph"] {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* ── bullet list ── */
+.editor-wrap .bn-block-content[data-content-type="bulletListItem"] {
+  line-height: 1.6;
+}
+
+.editor-wrap .bn-block-content[data-content-type="bulletListItem"]:before {
+  color: #9b9a97;
+}
+
+/* ── numbered list ── */
+.editor-wrap .bn-block-content[data-content-type="numberedListItem"] {
+  line-height: 1.6;
+}
+
+.editor-wrap .bn-block-content[data-content-type="numberedListItem"]:before {
+  color: #9b9a97;
+}
+
+/* ── checkbox / to-do ── */
+.editor-wrap .bn-block-content[data-content-type="checkListItem"] > div > div > input {
+  accent-color: #2383e2;
+  width: 15px;
+  height: 15px;
+}
+
+.editor-wrap .bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content {
+  text-decoration: line-through;
+  color: #9b9a97;
+}
+
+/* ── code block ── */
+.editor-wrap .bn-block-content[data-content-type="codeBlock"] {
+  background-color: #f7f6f3 !important;
+  border-radius: 6px !important;
+  color: #37352f !important;
+}
+
+.editor-wrap .bn-block-content[data-content-type="codeBlock"] > pre {
+  padding: 16px !important;
+  font-size: 0.875em;
+  line-height: 1.6;
+  color: #37352f;
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.editor-wrap .bn-block-content[data-content-type="codeBlock"] > div > select {
+  color: #9b9a97 !important;
+}
+
+/* ── inline code ── */
+.editor-wrap .bn-inline-content code {
+  background: rgba(135, 131, 120, 0.15);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 14px;
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #e03e2f;
+}
+
+/* ── drag handle (side menu) ── */
+.editor-wrap .bn-side-menu {
+  color: #9b9a97;
+}
+
+.editor-wrap .bn-side-menu:hover {
+  color: #37352f;
+}
+
+/* ── block spacing ── */
+.editor-wrap .bn-block-outer {
+  margin-block: 1px;
+}
+
+/* ── formatting toolbar ── */
+.editor-wrap .bn-toolbar {
+  background: #fff;
+  border: 1px solid rgba(55, 53, 47, 0.16);
+  border-radius: 6px;
+  box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 3px 6px;
+  padding: 4px;
+}
+
+.editor-wrap .bn-toolbar button {
+  border-radius: 4px;
+  color: #37352f;
+}
+
+.editor-wrap .bn-toolbar button:hover {
+  background: rgba(55, 53, 47, 0.06);
+}
+
+/* ── slash menu ── */
+.editor-wrap .bn-suggestion-menu {
+  background: #fff;
+  border: 1px solid rgba(55, 53, 47, 0.16);
+  border-radius: 6px;
+  box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 3px 6px, rgba(15, 15, 15, 0.4) 0 9px 24px;
+}
+
+.editor-wrap .bn-suggestion-menu-item {
+  border-radius: 4px;
+  color: #37352f;
+  font-size: 14px;
+}
+
+.editor-wrap .bn-suggestion-menu-item:hover,
+.editor-wrap .bn-suggestion-menu-item[data-selected="true"] {
+  background: rgba(55, 53, 47, 0.06);
+}
+
+/* ── placeholder ── */
+.editor-wrap .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child):before {
+  color: #c7c6c3;
+  font-style: normal;
 }
