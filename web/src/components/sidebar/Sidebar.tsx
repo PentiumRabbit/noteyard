@@ -125,6 +125,8 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashedPages, setTrashedPages] = useState<Page[]>([]);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const renamingPageIdRef = useRef<string | null>(null);
 
@@ -164,10 +166,30 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const handleCtxDelete = async () => {
     if (!ctxMenu) return;
     const page = findPage(tree, ctxMenu.pageId);
-    if (!confirm(`删除"${page?.title || "Untitled"}"及所有子页面？`)) { closeCtxMenu(); return; }
+    if (!confirm(`将"${page?.title || "Untitled"}"移入回收站？`)) { closeCtxMenu(); return; }
     await api.pages.delete(ctxMenu.pageId);
     closeCtxMenu();
     void refresh();
+  };
+
+  const openTrash = async () => {
+    const pages = await api.pages.listTrashed();
+    setTrashedPages(pages ?? []);
+    setTrashOpen(true);
+  };
+
+  const handleRestore = async (id: string) => {
+    await api.pages.restore(id);
+    const pages = await api.pages.listTrashed();
+    setTrashedPages(pages ?? []);
+    void refresh();
+  };
+
+  const handlePermanentDelete = async (id: string, title: string) => {
+    if (!confirm(`永久删除"${title || "Untitled"}"？此操作无法撤销。`)) return;
+    await api.pages.permanentDelete(id);
+    const pages = await api.pages.listTrashed();
+    setTrashedPages(pages ?? []);
   };
 
   if (collapsed) {
@@ -216,6 +238,12 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           新建页面
         </button>
+        <button className="sidebar-new-page-btn" onClick={() => void openTrash()}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M11 3.5l-.7 7.7a.5.5 0 0 1-.5.45H4.2a.5.5 0 0 1-.5-.45L3 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          回收站
+        </button>
         <button
           ref={settingsBtnRef}
           className="sidebar-new-page-btn"
@@ -231,6 +259,32 @@ export function Sidebar({ selectedId, onSelect }: Props) {
 
       {settingsOpen && (
         <SettingsPanel anchorRef={settingsBtnRef} onClose={() => setSettingsOpen(false)} />
+      )}
+
+      {trashOpen && (
+        <div className="trash-overlay" onClick={() => setTrashOpen(false)}>
+          <div className="trash-panel" onClick={e => e.stopPropagation()}>
+            <div className="trash-header">
+              <span className="trash-title">回收站</span>
+              <button className="trash-close-btn" onClick={() => setTrashOpen(false)}>✕</button>
+            </div>
+            <div className="trash-list">
+              {trashedPages.length === 0 && (
+                <div className="trash-empty">回收站为空</div>
+              )}
+              {trashedPages.map(p => (
+                <div key={p.id} className="trash-item">
+                  <span className="trash-item-icon">{p.icon ?? "📄"}</span>
+                  <span className="trash-item-title">{p.title || "Untitled"}</span>
+                  <div className="trash-item-actions">
+                    <button className="trash-action-btn" title="恢复" onClick={() => void handleRestore(p.id)}>↩</button>
+                    <button className="trash-action-btn trash-action-danger" title="永久删除" onClick={() => void handlePermanentDelete(p.id, p.title || "")}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {ctxMenu && (
