@@ -31,13 +31,23 @@ export const api = {
     addRow: (dbId: string) => req<DBRow>("POST", `/databases/${dbId}/rows`, {}),
     deleteRow: (dbId: string, rowId: string) =>
       req<void>("DELETE", `/databases/${dbId}/rows/${rowId}`),
-    listRows: (dbId: string) => req<DBRow[]>("GET", `/databases/${dbId}/rows`),
+    listRows: (dbId: string, opts?: { sortCol?: string; sortOrder?: "asc" | "desc"; filterCol?: string; filterOp?: string; filterVal?: string }) => {
+      const params = new URLSearchParams();
+      if (opts?.sortCol) params.set("sort_col", opts.sortCol);
+      if (opts?.sortOrder) params.set("sort_order", opts.sortOrder);
+      if (opts?.filterCol) params.set("filter_col", opts.filterCol);
+      if (opts?.filterOp) params.set("filter_op", opts.filterOp);
+      if (opts?.filterVal !== undefined) params.set("filter_val", opts.filterVal);
+      const qs = params.toString();
+      return req<DBRow[]>("GET", `/databases/${dbId}/rows${qs ? "?" + qs : ""}`);
+    },
     updateCells: (dbId: string, rowId: string, cells: DBCell[]) =>
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}/cells`, cells),
   },
   pages: {
     listAll: () => req<Page[]>("GET", "/pages"),
     get: (id: string) => req<Page>("GET", `/pages/${id}`),
+    getAncestors: (id: string) => req<Page[]>("GET", `/pages/${id}/ancestors`),
     create: (data: Partial<Page>) => req<Page>("POST", "/pages", data),
     update: (id: string, data: Partial<Page>) => req<Page>("PUT", `/pages/${id}`, data),
     delete: (id: string) => req<void>("DELETE", `/pages/${id}`),

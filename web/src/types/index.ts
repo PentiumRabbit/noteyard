@@ -34,9 +34,10 @@ export interface DBColumn {
   id: string;
   database_id: string;
   name: string;
-  type: "text" | "number" | "checkbox" | "select" | "date" | "formula";
+  type: "text" | "number" | "checkbox" | "select" | "multi-select" | "date" | "formula";
   options: string;
   formula: string;
+  is_hidden: boolean;
   order_index: number;
   created_at: number;
   updated_at: number;

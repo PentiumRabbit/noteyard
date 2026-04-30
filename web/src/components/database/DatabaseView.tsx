@@ -5,13 +5,14 @@ import "./DatabaseView.css";
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "date", "formula"];
+const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula"];
 
 const COL_ICONS: Record<DBColumn["type"], string> = {
   text: "Aa",
   number: "#",
   checkbox: "☑",
   select: "≡",
+  "multi-select": "≡≡",
   date: "📅",
   formula: "ƒ",
 };
@@ -69,6 +70,9 @@ interface SelectOptionsPopover { colId: string; x: number; y: number; options: S
 interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
 interface RowModal { row: DBRow }
 interface SelectOption { value: string; colorIdx: number }
+interface SortState { colId: string; order: "asc" | "desc" }
+interface FilterState { colId: string; op: string; val: string }
+type ToolbarPanel = "sort" | "filter" | "hide" | null
 
 function parseOptions(raw: string): SelectOption[] {
   try {
@@ -110,6 +114,10 @@ export function DatabaseView({ databaseId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [newOptionName, setNewOptionName] = useState("");
+  const [sortState, setSortState] = useState<SortState | null>(null);
+  const [filterState, setFilterState] = useState<FilterState | null>(null);
+  const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>(null);
+  const [multiSelectDropdown, setMultiSelectDropdown] = useState<{ rowId: string; colId: string; x: number; y: number; options: SelectOption[] } | null>(null);
 
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -118,16 +126,22 @@ export function DatabaseView({ databaseId }: Props) {
   const formulaInputRef = useRef<HTMLTextAreaElement>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (sort?: SortState | null, filter?: FilterState | null) => {
     const [dbData, rowData] = await Promise.all([
       api.databases.get(databaseId),
-      api.databases.listRows(databaseId),
+      api.databases.listRows(databaseId, {
+        sortCol: sort?.colId,
+        sortOrder: sort?.order,
+        filterCol: filter?.colId,
+        filterOp: filter?.op,
+        filterVal: filter?.val,
+      }),
     ]);
     setDb(dbData);
     setRows(rowData ?? []);
   }, [databaseId]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void reload(sortState, filterState); }, [reload, sortState, filterState]);
 
   useEffect(() => { if (editingCell) cellInputRef.current?.focus(); }, [editingCell]);
   useEffect(() => { if (titleEditing) titleInputRef.current?.select(); }, [titleEditing]);
@@ -351,6 +365,36 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
+  // ── hide column ──
+  const toggleHideColumn = async (col: DBColumn) => {
+    await api.databases.updateColumn(databaseId, col.id, { ...col, is_hidden: !col.is_hidden });
+    void reload(sortState, filterState);
+  };
+
+  // ── multi-select ──
+  const openMultiSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
+    e.stopPropagation();
+    const options = parseOptions(col.options);
+    if (options.length === 0) {
+      startEdit(row.id, col.id, row.cells[col.id] ?? "");
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: rect.bottom + 2, options });
+  };
+
+  const toggleMultiSelectValue = async (rowId: string, colId: string, optValue: string, currentVal: string) => {
+    const selected = currentVal ? currentVal.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const idx = selected.indexOf(optValue);
+    const next = idx >= 0 ? selected.filter(v => v !== optValue) : [...selected, optValue];
+    await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: next.join(",") }]);
+    // update local state immediately for responsiveness
+    setRows(rs => rs.map(r => r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: next.join(",") } } : r));
+    if (multiSelectDropdown) {
+      setMultiSelectDropdown(d => d ? { ...d } : null);
+    }
+  };
+
   // ── column resize ──
   const startResize = (e: React.MouseEvent, colId: string) => {
     e.preventDefault();
@@ -390,8 +434,10 @@ export function DatabaseView({ databaseId }: Props) {
 
   if (!db) return <div className="db-loading">加载中…</div>;
 
-  const cols = (db.columns ?? []).slice().sort((a, b) => a.order_index - b.order_index);
+  const allCols = (db.columns ?? []).slice().sort((a, b) => a.order_index - b.order_index);
+  const cols = allCols.filter(c => !c.is_hidden);
   const menuCol = colMenu ? db.columns.find(c => c.id === colMenu.colId) : null;
+  const hiddenCount = allCols.filter(c => c.is_hidden).length;
 
   return (
     <div className="db-wrap" contentEditable={false}>
@@ -412,6 +458,96 @@ export function DatabaseView({ databaseId }: Props) {
       </div>
 
       {error && <div className="db-error">{error}</div>}
+
+      {/* toolbar */}
+      <div className="db-toolbar">
+        <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterState ? " has-value" : ""}`}
+          onClick={() => setToolbarPanel(p => p === "filter" ? null : "filter")}>
+          筛选{filterState ? " ●" : ""}
+        </button>
+        <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortState ? " has-value" : ""}`}
+          onClick={() => setToolbarPanel(p => p === "sort" ? null : "sort")}>
+          排序{sortState ? " ●" : ""}
+        </button>
+        <button className={`db-toolbar-btn${toolbarPanel === "hide" ? " active" : ""}`}
+          onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
+          隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+        </button>
+      </div>
+
+      {toolbarPanel && (
+        <div className="db-panel">
+          {toolbarPanel === "sort" && (
+            <div className="db-panel-content">
+              <div className="db-panel-title">排序</div>
+              <select value={sortState?.colId ?? ""}
+                onChange={e => setSortState(e.target.value ? { colId: e.target.value, order: sortState?.order ?? "asc" } : null)}>
+                <option value="">无排序</option>
+                {allCols.filter(c => c.type !== "formula").map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {sortState && (
+                <select value={sortState.order}
+                  onChange={e => setSortState(s => s ? { ...s, order: e.target.value as "asc" | "desc" } : null)}>
+                  <option value="asc">升序 ↑</option>
+                  <option value="desc">降序 ↓</option>
+                </select>
+              )}
+              {sortState && <button className="db-panel-clear" onClick={() => setSortState(null)}>清除</button>}
+            </div>
+          )}
+          {toolbarPanel === "filter" && (
+            <div className="db-panel-content">
+              <div className="db-panel-title">筛选</div>
+              <select value={filterState?.colId ?? ""}
+                onChange={e => setFilterState(e.target.value ? { colId: e.target.value, op: filterState?.op ?? "contains", val: filterState?.val ?? "" } : null)}>
+                <option value="">选择列</option>
+                {allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {filterState && (
+                <>
+                  <select value={filterState.op}
+                    onChange={e => setFilterState(s => s ? { ...s, op: e.target.value } : null)}>
+                    <option value="contains">包含</option>
+                    <option value="not_contains">不包含</option>
+                    <option value="equals">等于</option>
+                    <option value="not_equals">不等于</option>
+                    <option value="is_empty">为空</option>
+                    <option value="is_not_empty">不为空</option>
+                    <option value="gt">大于</option>
+                    <option value="lt">小于</option>
+                  </select>
+                  {filterState.op !== "is_empty" && filterState.op !== "is_not_empty" && (
+                    <input
+                      className="db-panel-input"
+                      placeholder="值"
+                      value={filterState.val}
+                      onChange={e => setFilterState(s => s ? { ...s, val: e.target.value } : null)}
+                    />
+                  )}
+                  <button className="db-panel-clear" onClick={() => setFilterState(null)}>清除</button>
+                </>
+              )}
+            </div>
+          )}
+          {toolbarPanel === "hide" && (
+            <div className="db-panel-content">
+              <div className="db-panel-title">隐藏字段</div>
+              {allCols.map(col => (
+                <label key={col.id} className="db-hide-row">
+                  <input type="checkbox" checked={!col.is_hidden}
+                    onChange={() => void toggleHideColumn(col)} />
+                  <span className="col-icon">{COL_ICONS[col.type]}</span>
+                  {col.name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="db-scroll">
         <table className="db-table">
@@ -464,6 +600,12 @@ export function DatabaseView({ databaseId }: Props) {
                           ) : (
                             <span className="cell-empty">　</span>
                           )}
+                        </div>
+                      ) : col.type === "multi-select" ? (
+                        <div className="cell-select-wrap" onClick={e => openMultiSelectDropdown(e, row, col)}>
+                          {val ? val.split(",").map(s => s.trim()).filter(Boolean).map((v, i) => (
+                            <span key={i} className="cell-tag" style={{ background: tagColor(v).bg, color: tagColor(v).color }}>{v}</span>
+                          )) : <span className="cell-empty">　</span>}
                         </div>
                       ) : isEditing ? (
                         <input
@@ -526,7 +668,7 @@ export function DatabaseView({ databaseId }: Props) {
                 <button className="col-menu-formula-btn" onClick={e => openFormulaPopover(e, menuCol)}>ƒ 编辑公式</button>
               </>
             )}
-            {menuCol.type === "select" && (
+            {(menuCol.type === "select" || menuCol.type === "multi-select") && (
               <>
                 <div className="col-menu-divider" />
                 <button className="col-menu-formula-btn" onClick={e => openSelectOptions(e, menuCol)}>≡ 管理选项</button>
@@ -674,6 +816,38 @@ export function DatabaseView({ databaseId }: Props) {
         </>
       )}
 
+      {/* multi-select dropdown */}
+      {multiSelectDropdown && (
+        <>
+          <div className="col-menu-overlay" onClick={() => setMultiSelectDropdown(null)} />
+          <div className="select-dropdown" style={{ top: multiSelectDropdown.y, left: multiSelectDropdown.x }}>
+            {multiSelectDropdown.options.map((opt, idx) => {
+              const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+              const currentVal = rows.find(r => r.id === multiSelectDropdown.rowId)?.cells[multiSelectDropdown.colId] ?? "";
+              const selected = currentVal.split(",").map(s => s.trim()).filter(Boolean);
+              const isSelected = selected.includes(opt.value);
+              return (
+                <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
+                  onClick={() => void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal)}>
+                  <span className="cell-tag" style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280" }}>
+                    {isSelected ? "✓ " : ""}{opt.value}
+                  </span>
+                </button>
+              );
+            })}
+            <div className="col-menu-divider" />
+            <button className="select-dd-item select-dd-clear"
+              onClick={async () => {
+                await api.databases.updateCells(databaseId, multiSelectDropdown.rowId, [{ column_id: multiSelectDropdown.colId, value: "" }]);
+                setMultiSelectDropdown(null);
+                void reload(sortState, filterState);
+              }}>
+              清除选择
+            </button>
+          </div>
+        </>
+      )}
+
       {/* row detail modal */}
       {rowModal && db && (
         <>
@@ -711,6 +885,25 @@ export function DatabaseView({ databaseId }: Props) {
                           <option key={idx} value={opt.value}>{opt.value}</option>
                         ))}
                       </select>
+                    ) : col.type === "multi-select" ? (
+                      <div className="row-modal-multiselect">
+                        {parseOptions(col.options).map((opt, idx) => {
+                          const selected = (rowModalDraft[col.id] ?? "").split(",").map(s => s.trim()).filter(Boolean);
+                          const isSelected = selected.includes(opt.value);
+                          const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                          return (
+                            <button key={idx}
+                              className={`cell-tag${isSelected ? " selected" : ""}`}
+                              style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280", border: isSelected ? `1.5px solid ${c.color}` : "1.5px solid transparent" }}
+                              onClick={() => {
+                                const next = isSelected ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
+                                setRowModalDraft(d => ({ ...d, [col.id]: next.join(",") }));
+                              }}>
+                              {opt.value}
+                            </button>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <input
                         className="row-modal-input"

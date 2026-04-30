@@ -75,7 +75,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
   pageIdRef.current = pageId;
 
   const buildDtos = (pid: string): Partial<Block>[] =>
-    editor.document.flatMap((b, i) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor.document as any[]).flatMap((b: any, i: number): Partial<Block>[] => {
       if (b.type === "database") {
         // database 块 content 由插入时写入后端，编辑器不覆盖（防止 flush 写入空 databaseId）
         const dbId = (b.props as { databaseId?: string }).databaseId;
@@ -156,7 +157,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId }
   );
 });
 
-// 斜杠菜单：默认项 + database 项
+// 斜杠菜单：默认项 + database + divider + quote
 function DatabaseSlashItem({
   editor,
   pageId,
@@ -173,10 +174,8 @@ function DatabaseSlashItem({
         const dbItem = {
           title: "Database",
           onItemClick: async () => {
-            // 先创建 block 拿到 ID，再以该 ID 创建 database（外键约束）
             const block = await api.blocks.create(pageId, { type: "database", content: "{}", order_index: 9999 });
             const db = await api.databases.create({ id: block.id, page_id: pageId, title: "新建数据库" });
-            // 更新 block content 存入 databaseId，供持久化后恢复
             await api.blocks.update(block.id, { content: JSON.stringify({ databaseId: db.id }) });
             insertOrUpdateBlock(editor, {
               type: "database",
@@ -189,7 +188,25 @@ function DatabaseSlashItem({
           icon: <span>🗄</span>,
           hint: "插入数据库表格块",
         };
-        const all = [...defaults, dbItem];
+        const dividerItem = {
+          title: "Divider",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "horizontalRule" } as any),
+          aliases: ["divider", "hr", "分隔线", "---"],
+          group: "基础块",
+          icon: <span>—</span>,
+          hint: "插入水平分隔线",
+        };
+        const quoteItem = {
+          title: "Quote",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "quote" } as any),
+          aliases: ["quote", "blockquote", "引用"],
+          group: "基础块",
+          icon: <span>❝</span>,
+          hint: "插入引用块",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem];
         const q = query.toLowerCase();
         return all.filter(
           (item) =>
