@@ -188,7 +188,7 @@ export function DatabaseView({ databaseId }: Props) {
     try {
       await api.databases.addColumn(databaseId, {
         name: newColName.trim(), type: newColType,
-        options: [], formula: "", order_index: db?.columns.length ?? 0,
+        options: "[]", formula: "", order_index: db?.columns.length ?? 0,
       });
       setAddColPopover(null);
       void reload();
