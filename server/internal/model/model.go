@@ -9,6 +9,7 @@ type Page struct {
 	OrderIndex float64 `json:"order_index"`
 	CreatedAt  int64   `json:"created_at"`
 	UpdatedAt  int64   `json:"updated_at"`
+	DeletedAt  *int64  `json:"deleted_at,omitempty"`
 }
 
 type Block struct {

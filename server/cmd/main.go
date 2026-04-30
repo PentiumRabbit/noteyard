@@ -55,9 +55,13 @@ func main() {
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
+			r.Get("/trash", ph.ListTrashed)
+			r.Get("/search", ph.Search)
 			r.Get("/{id}", ph.Get)
 			r.Put("/{id}", ph.Update)
 			r.Delete("/{id}", ph.Delete)
+			r.Post("/{id}/restore", ph.Restore)
+			r.Delete("/{id}/permanent", ph.PermanentDelete)
 			r.Get("/{id}/blocks", bh.ListByPage)
 			r.Post("/{id}/blocks", bh.Create)
 			r.Get("/{id}/ancestors", ph.GetAncestors)

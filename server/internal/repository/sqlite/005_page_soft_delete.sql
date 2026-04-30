@@ -1,0 +1,1 @@
+ALTER TABLE pages ADD COLUMN deleted_at INTEGER;

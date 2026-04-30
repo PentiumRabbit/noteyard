@@ -72,11 +72,58 @@ func (h *PageHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *PageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if err := h.pages.Delete(r.Context(), id); err != nil {
+	if err := h.pages.SoftDelete(r.Context(), id); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *PageHandler) ListTrashed(w http.ResponseWriter, r *http.Request) {
+	pages, err := h.pages.ListTrashed(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if pages == nil {
+		pages = []*model.Page{}
+	}
+	writeJSON(w, http.StatusOK, pages)
+}
+
+func (h *PageHandler) Restore(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.pages.Restore(r.Context(), id); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *PageHandler) PermanentDelete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.pages.PermanentDelete(r.Context(), id); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeJSON(w, http.StatusOK, []*model.Page{})
+		return
+	}
+	pages, err := h.pages.Search(r.Context(), q)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if pages == nil {
+		pages = []*model.Page{}
+	}
+	writeJSON(w, http.StatusOK, pages)
 }
 
 func (h *PageHandler) GetAncestors(w http.ResponseWriter, r *http.Request) {

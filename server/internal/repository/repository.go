@@ -9,11 +9,15 @@ type PageRepository interface {
 	GetByID(ctx context.Context, id string) (*model.Page, error)
 	ListChildren(ctx context.Context, parentID string) ([]*model.Page, error)
 	ListAll(ctx context.Context) ([]*model.Page, error)
+	ListTrashed(ctx context.Context) ([]*model.Page, error)
 	GetAncestors(ctx context.Context, id string) ([]*model.Page, error)
 	Create(ctx context.Context, page *model.Page) error
 	Update(ctx context.Context, page *model.Page) error
-	Delete(ctx context.Context, id string) error
+	SoftDelete(ctx context.Context, id string) error
+	Restore(ctx context.Context, id string) error
+	PermanentDelete(ctx context.Context, id string) error
 	Move(ctx context.Context, id, newParentID string, newOrder float64) error
+	Search(ctx context.Context, q string) ([]*model.Page, error)
 }
 
 type BlockRepository interface {

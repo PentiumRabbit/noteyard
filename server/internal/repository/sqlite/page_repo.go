@@ -15,7 +15,7 @@ func NewPageRepo(db *sql.DB) *PageRepo { return &PageRepo{db: db} }
 
 func (r *PageRepo) GetByID(ctx context.Context, id string) (*model.Page, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at FROM pages WHERE id=?`, id)
+		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE id=?`, id)
 	return scanPage(row)
 }
 
@@ -24,10 +24,10 @@ func (r *PageRepo) ListChildren(ctx context.Context, parentID string) ([]*model.
 	var err error
 	if parentID == "" {
 		rows, err = r.db.QueryContext(ctx,
-			`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at FROM pages WHERE parent_id IS NULL ORDER BY order_index`)
+			`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE parent_id IS NULL AND deleted_at IS NULL ORDER BY order_index`)
 	} else {
 		rows, err = r.db.QueryContext(ctx,
-			`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at FROM pages WHERE parent_id=? ORDER BY order_index`, parentID)
+			`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE parent_id=? AND deleted_at IS NULL ORDER BY order_index`, parentID)
 	}
 	if err != nil {
 		return nil, err
@@ -38,7 +38,28 @@ func (r *PageRepo) ListChildren(ctx context.Context, parentID string) ([]*model.
 
 func (r *PageRepo) ListAll(ctx context.Context) ([]*model.Page, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at FROM pages ORDER BY order_index`)
+		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE deleted_at IS NULL ORDER BY order_index`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPages(rows)
+}
+
+func (r *PageRepo) ListTrashed(ctx context.Context) ([]*model.Page, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPages(rows)
+}
+
+func (r *PageRepo) Search(ctx context.Context, q string) ([]*model.Page, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id,parent_id,title,icon,cover,order_index,created_at,updated_at,deleted_at FROM pages WHERE deleted_at IS NULL AND title LIKE ? ORDER BY updated_at DESC LIMIT 20`,
+		"%"+q+"%")
 	if err != nil {
 		return nil, err
 	}
@@ -67,21 +88,31 @@ func (r *PageRepo) Update(ctx context.Context, page *model.Page) error {
 	return err
 }
 
-func (r *PageRepo) Delete(ctx context.Context, id string) error {
+func (r *PageRepo) SoftDelete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE pages SET deleted_at=? WHERE id=?`, time.Now().Unix(), id)
+	return err
+}
+
+func (r *PageRepo) Restore(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE pages SET deleted_at=NULL WHERE id=?`, id)
+	return err
+}
+
+func (r *PageRepo) PermanentDelete(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM pages WHERE id=?`, id)
 	return err
 }
 
 func (r *PageRepo) GetAncestors(ctx context.Context, id string) ([]*model.Page, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		WITH RECURSIVE ancestors(id, parent_id, title, icon, cover, order_index, created_at, updated_at) AS (
-			SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at
+		WITH RECURSIVE ancestors(id, parent_id, title, icon, cover, order_index, created_at, updated_at, deleted_at) AS (
+			SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at, deleted_at
 			FROM pages WHERE id = (SELECT parent_id FROM pages WHERE id = ?)
 			UNION ALL
-			SELECT p.id, p.parent_id, p.title, p.icon, p.cover, p.order_index, p.created_at, p.updated_at
+			SELECT p.id, p.parent_id, p.title, p.icon, p.cover, p.order_index, p.created_at, p.updated_at, p.deleted_at
 			FROM pages p JOIN ancestors a ON p.id = a.parent_id
 		)
-		SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at FROM ancestors
+		SELECT id, parent_id, title, icon, cover, order_index, created_at, updated_at, deleted_at FROM ancestors
 	`, id)
 	if err != nil {
 		return nil, err
@@ -111,7 +142,7 @@ func (r *PageRepo) Move(ctx context.Context, id, newParentID string, newOrder fl
 
 func scanPage(row *sql.Row) (*model.Page, error) {
 	p := &model.Page{}
-	err := row.Scan(&p.ID, &p.ParentID, &p.Title, &p.Icon, &p.Cover, &p.OrderIndex, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.ParentID, &p.Title, &p.Icon, &p.Cover, &p.OrderIndex, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +153,7 @@ func scanPages(rows *sql.Rows) ([]*model.Page, error) {
 	var pages []*model.Page
 	for rows.Next() {
 		p := &model.Page{}
-		if err := rows.Scan(&p.ID, &p.ParentID, &p.Title, &p.Icon, &p.Cover, &p.OrderIndex, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.ParentID, &p.Title, &p.Icon, &p.Cover, &p.OrderIndex, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt); err != nil {
 			return nil, err
 		}
 		pages = append(pages, p)
