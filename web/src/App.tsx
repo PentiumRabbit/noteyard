@@ -142,10 +142,11 @@ export default function App() {
     await api.pages.update(selectedPageId, { cover: "" });
   };
 
-  // Cmd+K 全文搜索
+  // Cmd+K 全文搜索 / Cmd+S 阻止浏览器保存对话框（内容已自动保存）
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(v => !v); }
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); editorRef.current?.flush(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
