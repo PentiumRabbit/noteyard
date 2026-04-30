@@ -30,5 +30,12 @@ export const api = {
     update: (id: string, data: Partial<Block>) => req<Block>("PUT", `/blocks/${id}`, data),
     delete: (id: string) => req<void>("DELETE", `/blocks/${id}`),
     batchUpdate: (blocks: Partial<Block>[]) => req<void>("PATCH", "/blocks/batch", blocks),
+    // sendBeacon 用于页面卸载时可靠发送，不会被浏览器截断
+    batchUpdateBeacon: (blocks: Partial<Block>[]) => {
+      navigator.sendBeacon(
+        BASE + "/blocks/batch",
+        new Blob([JSON.stringify(blocks)], { type: "application/json" }),
+      );
+    },
   },
 };
