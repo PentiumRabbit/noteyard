@@ -505,7 +505,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const bnTheme = themeId === "dark" ? "dark" : "light";
   const editor = useCreateBlockNote({
     schema,
-    dictionary: { ...locales.zh, ...multiColumnLocales.zh },
+    dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
     uploadFile: async (file: File) => {
       const form = new FormData();
       form.append("file", file);
