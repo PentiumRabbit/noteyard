@@ -78,4 +78,59 @@ describe("toBlockNote", () => {
     expect(result[0].id).toBe("b1");
     expect(result[1].id).toBe("b2");
   });
+
+  // ── REQ-049: subpage 块 ──
+  it("subpage 块 content 解析为 props", () => {
+    const block = makeBlock({ type: "subpage", content: '{"pageId":"p-99","title":"子页","icon":"📄"}', props: "{}" });
+    const result = toBlockNote([block]);
+    expect(result[0].type).toBe("subpage");
+    expect(result[0].props).toEqual({ pageId: "p-99", title: "子页", icon: "📄" });
+    expect(result[0].content).toBeUndefined();
+  });
+
+  // ── REQ-049: fileAttach 块 ──
+  it("fileAttach 块 content 解析为 props", () => {
+    const block = makeBlock({ type: "fileAttach", content: '{"url":"/uploads/f.pdf","name":"f.pdf","size":"123"}', props: "{}" });
+    const result = toBlockNote([block]);
+    expect(result[0].type).toBe("fileAttach");
+    expect(result[0].props).toEqual({ url: "/uploads/f.pdf", name: "f.pdf", size: "123" });
+  });
+
+  // ── REQ-050: bookmark 块 ──
+  it("bookmark 块 content 解析为 props", () => {
+    const block = makeBlock({
+      type: "bookmark",
+      content: '{"url":"https://example.com","title":"Example","description":"Desc","favicon":"https://example.com/favicon.ico"}',
+      props: "{}",
+    });
+    const result = toBlockNote([block]);
+    expect(result[0].type).toBe("bookmark");
+    expect(result[0].props).toMatchObject({ url: "https://example.com", title: "Example" });
+  });
+
+  // ── REQ-050: embed 块 ──
+  it("embed 块 content 解析为 props", () => {
+    const block = makeBlock({ type: "embed", content: '{"url":"https://example.com","height":"400"}', props: "{}" });
+    const result = toBlockNote([block]);
+    expect(result[0].type).toBe("embed");
+    expect(result[0].props).toEqual({ url: "https://example.com", height: "400" });
+  });
+
+  // ── REQ-051: pdf 块 ──
+  it("pdf 块 content 解析为 props", () => {
+    const block = makeBlock({ type: "pdf", content: '{"url":"/uploads/doc.pdf","name":"doc.pdf","height":"600"}', props: "{}" });
+    const result = toBlockNote([block]);
+    expect(result[0].type).toBe("pdf");
+    expect(result[0].props).toEqual({ url: "/uploads/doc.pdf", name: "doc.pdf", height: "600" });
+  });
+
+  // ── props-as-content 块的 content 字段应为 undefined ──
+  it("props-as-content 块不含 content 数组", () => {
+    const propsBlocks = ["subpage", "fileAttach", "bookmark", "embed", "pdf", "database", "columns"];
+    for (const type of propsBlocks) {
+      const block = makeBlock({ type, content: '{"x":"1"}', props: "{}" });
+      const result = toBlockNote([block]);
+      expect(result[0].content, `type=${type}`).toBeUndefined();
+    }
+  });
 });
