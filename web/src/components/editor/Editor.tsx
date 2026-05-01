@@ -236,7 +236,7 @@ const ColumnsBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       const numCols = Math.max(2, Math.min(4, parseInt(block.props.cols || "2", 10)));
 
       let colsData: object[][] = [];
@@ -251,11 +251,11 @@ const ColumnsBlock = createReactBlockSpec(
         const next = [...colsData];
         next[colIdx] = blocks;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
+        editor.updateBlock(block, { props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
       };
       const saveWidths = (newWidths: number[]) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { ...block.props, widths: JSON.stringify(newWidths) } } as any);
+        editor.updateBlock(block, { props: { ...block.props, widths: JSON.stringify(newWidths) } } as any);
       };
 
       return (
@@ -331,44 +331,6 @@ function ColumnsBlockInner({ blockId, numCols, colsData, widths, onSaveCol, onSa
         </React.Fragment>
       ))}
     </div>
-  );
-}
-
-function ColumnCell({ cellKey, initialBlocks, onSave }: {
-  cellKey: string;
-  initialBlocks: object[];
-  onSave: (blocks: object[]) => void;
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editor = useCreateBlockNote({ schema: BlockNoteSchema.create({ blockSpecs: defaultBlockSpecs }) as any });
-  const readyRef = useRef(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // cellKey is stable per column — used only to satisfy exhaustive-deps
-  const cellKeyRef = useRef(cellKey);
-  cellKeyRef.current = cellKey;
-
-  useEffect(() => {
-    // apply initial content exactly once on mount
-    const blocks = initialBlocks.length > 0 ? initialBlocks : [{ type: "paragraph" }];
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      editor.replaceBlocks(editor.document, blocks as any);
-    } catch { /* empty */ }
-    requestAnimationFrame(() => { readyRef.current = true; });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleChange = () => {
-    if (!readyRef.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      onSave(editor.document as object[]);
-    }, 600);
-  };
-
-  return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <BlockNoteView editor={editor as any} onChange={handleChange} sideMenu={false} />
   );
 }
 
@@ -624,6 +586,82 @@ const PdfBlock = createReactBlockSpec(
     },
   },
 );
+
+// ColumnCell mini-editor schema（含所有自定义块，斜杠菜单过滤 columns）
+const columnCellSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    horizontalRule: HorizontalRuleBlock,
+    quote: QuoteBlock,
+    database: DatabaseBlock,
+    callout: CalloutBlock,
+    toggle: ToggleBlock,
+    columns: ColumnsBlock,
+    subpage: SubpageBlock,
+    fileAttach: FileAttachBlock,
+    bookmark: BookmarkBlock,
+    embed: EmbedBlock,
+    pdf: PdfBlock,
+  },
+  inlineContentSpecs: {
+    ...defaultInlineContentSpecs,
+    mention: MentionInlineContent,
+  },
+});
+
+function ColumnCell({ cellKey, initialBlocks, onSave }: {
+  cellKey: string;
+  initialBlocks: object[];
+  onSave: (blocks: object[]) => void;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editor = useCreateBlockNote({ schema: columnCellSchema as any });
+  const readyRef = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // cellKey is stable per column — used only to satisfy exhaustive-deps
+  const cellKeyRef = useRef(cellKey);
+  cellKeyRef.current = cellKey;
+
+  useEffect(() => {
+    // apply initial content exactly once on mount
+    const blocks = initialBlocks.length > 0 ? initialBlocks : [{ type: "paragraph" }];
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      editor.replaceBlocks(editor.document, blocks as any);
+    } catch { /* empty */ }
+    requestAnimationFrame(() => { readyRef.current = true; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChange = () => {
+    if (!readyRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      onSave(editor.document as object[]);
+    }, 600);
+  };
+
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <BlockNoteView editor={editor as any} onChange={handleChange} sideMenu={false} slashMenu={false}>
+      <SuggestionMenuController
+        triggerCharacter="/"
+        getItems={async (query) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const defaults = getDefaultReactSlashMenuItems(editor as any);
+          return defaults.filter((item) => {
+            const title = (item as { title?: string }).title ?? "";
+            if (pinyinMatch(title, query) || ((item as { aliases?: string[] }).aliases ?? []).some((a: string) => pinyinMatch(a, query))) {
+              // exclude columns to prevent nesting
+              return title.toLowerCase() !== "columns";
+            }
+            return false;
+          });
+        }}
+      />
+    </BlockNoteView>
+  );
+}
 
 // T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
