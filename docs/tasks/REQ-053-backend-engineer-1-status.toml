@@ -1,0 +1,12 @@
+role = "后端模块工程师"
+req  = "REQ-053"
+
+overall = "in_progress"   # in_progress / done / failed
+
+[checklist]
+delivered       = false   # 已写入交付清单
+awaiting_review = false   # 已等待上级验收通过
+
+[subordinates]
+# 终层角色无下级
+paths = []

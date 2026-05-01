@@ -40,13 +40,21 @@ func TestUpload_PNG(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
-	var resp map[string]string
+	var resp uploadResponse
 	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
-	url, ok := resp["url"]
-	if !ok || url == "" {
+	if resp.URL == "" {
 		t.Fatal("response missing url field")
+	}
+	if resp.Name != "test.png" {
+		t.Fatalf("expected name=test.png, got %s", resp.Name)
+	}
+	if resp.MIME != "image/png" {
+		t.Fatalf("expected mime=image/png, got %s", resp.MIME)
+	}
+	if resp.Size <= 0 {
+		t.Fatalf("expected size > 0, got %d", resp.Size)
 	}
 	// 验证文件确实写入了磁盘
 	entries, _ := os.ReadDir(dir)
@@ -62,7 +70,8 @@ func TestUpload_InvalidFormat(t *testing.T) {
 	dir := t.TempDir()
 	h := NewUploadHandler(dir, "http://localhost:8080")
 
-	req := newUploadRequest(t, "test.txt", []byte("hello world"))
+	// .exe is not in the allowlist — must return 400
+	req := newUploadRequest(t, "malware.exe", []byte("MZ\x90\x00"))
 	rr := httptest.NewRecorder()
 	h.Upload(rr, req)
 
@@ -109,9 +118,9 @@ func TestUpload_URLFormat(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.Upload(rr, req)
 
-	var resp map[string]string
+	var resp uploadResponse
 	json.NewDecoder(rr.Body).Decode(&resp)
-	url := resp["url"]
+	url := resp.URL
 	if len(url) < len("http://localhost:8080/uploads/") {
 		t.Fatalf("url too short: %s", url)
 	}
