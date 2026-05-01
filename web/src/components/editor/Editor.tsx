@@ -25,7 +25,7 @@ import {
   locales,
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
-import { withMultiColumn, getMultiColumnSlashMenuItems } from "@blocknote/xl-multi-column";
+import { withMultiColumn, getMultiColumnSlashMenuItems, locales as multiColumnLocales } from "@blocknote/xl-multi-column";
 import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
@@ -505,7 +505,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const bnTheme = themeId === "dark" ? "dark" : "light";
   const editor = useCreateBlockNote({
     schema,
-    dictionary: locales.zh,
+    dictionary: { ...locales.zh, ...multiColumnLocales.zh },
     uploadFile: async (file: File) => {
       const form = new FormData();
       form.append("file", file);
