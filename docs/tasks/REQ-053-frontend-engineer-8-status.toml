@@ -1,0 +1,6 @@
+task_id = 8
+role = "frontend-engineer"
+req = "REQ-053"
+status = "delivered"
+file_modified = "web/src/components/database/DatabaseView.css"
+description = "附件列 CSS 样式补全：FilesCell 表格视图 + FilesModalField 弹窗样式均已追加"

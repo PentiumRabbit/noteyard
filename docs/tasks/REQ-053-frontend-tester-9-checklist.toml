@@ -1,0 +1,14 @@
+status = "delivered"
+delivered_at = "2026-05-01T14:00:00Z"
+summary = ""
+review_result = "pass"
+reviewed_at = "2026-05-01T13:32:15Z"
+
+[[items]]
+  path = "web/src/components/database/DatabaseView.css"
+
+[[items]]
+  path = "web/src/components/database/FilesCell.tsx"
+
+[[items]]
+  path = "web/src/components/database/FilesModalField.tsx"
