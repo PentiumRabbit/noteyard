@@ -35,7 +35,7 @@ export interface DBColumn {
   id: string;
   database_id: string;
   name: string;
-  type: "text" | "number" | "checkbox" | "select" | "multi-select" | "date" | "formula" | "url" | "email" | "created_time" | "last_edited_time";
+  type: "text" | "number" | "checkbox" | "select" | "multi-select" | "date" | "formula" | "url" | "email" | "created_time" | "last_edited_time" | "files";
   options: string;
   formula: string;
   is_hidden: boolean;
@@ -56,4 +56,11 @@ export interface DBRow {
 export interface DBCell {
   column_id: string;
   value: string;
+}
+
+export interface FileAttachment {
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
 }

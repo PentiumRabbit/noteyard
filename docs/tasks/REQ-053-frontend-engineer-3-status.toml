@@ -1,0 +1,5 @@
+role = "前端模块工程师"
+task = "REQ-053 #3 前端类型定义"
+done = true
+done_at = "2026-05-01T00:00:00Z"
+notes = "新增 files 枚举值和 FileAttachment 接口"
