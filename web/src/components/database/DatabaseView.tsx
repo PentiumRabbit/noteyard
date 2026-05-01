@@ -1,16 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database } from "../../types";
+import type { DBCell, DBColumn, DBRow, Database, FileAttachment } from "../../types";
 import { evalFormula } from "./formulaEngine";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
 import { CalendarView } from "./CalendarView";
 import { TimelineView } from "./TimelineView";
+import { FilesCell } from "./FilesCell";
+import { FilesModalField } from "./FilesModalField";
 import "./DatabaseView.css";
+
+function parseFileAttachments(raw: string): FileAttachment[] {
+  if (!raw || raw === "[]") return [];
+  try {
+    return JSON.parse(raw) as FileAttachment[];
+  } catch {
+    console.warn("FilesCell: invalid JSON in cell", raw);
+    return [];
+  }
+}
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time"];
+const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files"];
 
 const COL_ICONS: Record<DBColumn["type"], string> = {
   text: "Aa",
@@ -24,6 +36,7 @@ const COL_ICONS: Record<DBColumn["type"], string> = {
   email: "✉",
   created_time: "🕐",
   last_edited_time: "🕑",
+  files: "📎",
 };
 
 const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time"]);
@@ -537,7 +550,10 @@ export function DatabaseView({ databaseId }: Props) {
 
   const saveRowModal = async () => {
     if (!rowModal) return;
-    const cells: DBCell[] = Object.entries(rowModalDraft).map(([colId, value]) => ({ column_id: colId, value }));
+    const fileColIds = new Set(cols.filter(c => c.type === "files").map(c => c.id));
+    const cells: DBCell[] = Object.entries(rowModalDraft)
+      .filter(([colId]) => !fileColIds.has(colId))
+      .map(([colId, value]) => ({ column_id: colId, value }));
     await api.databases.updateCells(databaseId, rowModal.row.id, cells);
     setRowModal(null);
     void reload();
@@ -927,6 +943,13 @@ export function DatabaseView({ databaseId }: Props) {
                             {val ? <a href={`mailto:${val}`} className="cell-url-link" onClick={e => e.stopPropagation()}>✉ {val}</a> : <span className="cell-empty">　</span>}
                           </span>
                         )
+                      ) : col.type === "files" ? (
+                        <FilesCell
+                          attachments={parseFileAttachments(row.cells[col.id])}
+                          onUpdate={(newAttachments) => {
+                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: JSON.stringify(newAttachments) }]).then(() => void reload(sortState, filterState));
+                          }}
+                        />
                       ) : isEditing ? (
                         <input
                           ref={cellInputRef}
@@ -1279,6 +1302,18 @@ export function DatabaseView({ databaseId }: Props) {
                           );
                         })}
                       </div>
+                    ) : col.type === "files" ? (
+                      <FilesModalField
+                        attachments={parseFileAttachments(rowModal.row.cells[col.id])}
+                        onUpdate={(newAtts) => {
+                          void api.databases.updateCells(databaseId, rowModal.row.id, [{ column_id: col.id, value: JSON.stringify(newAtts) }])
+                            .then(() => {
+                              // 同步更新 rowModal.row 的 cells，不走 rowModalDraft
+                              setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: JSON.stringify(newAtts) } } } : null);
+                              void reload(sortState, filterState);
+                            });
+                        }}
+                      />
                     ) : (
                       <input
                         className="row-modal-input"
