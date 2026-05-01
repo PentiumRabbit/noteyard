@@ -128,3 +128,71 @@ func TestUpload_URLFormat(t *testing.T) {
 		t.Fatalf("url prefix wrong: %s", url)
 	}
 }
+
+// 场景 8：上传超过 10MB 的文件，期望返回 400
+func TestUpload_OversizeFile(t *testing.T) {
+	dir := t.TempDir()
+	h := NewUploadHandler(dir, "http://localhost:8080")
+
+	// 11MB — exceeds the 10MB limit
+	bigContent := make([]byte, 11<<20)
+	req := newUploadRequest(t, "big.png", bigContent)
+	rr := httptest.NewRecorder()
+	h.Upload(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for oversize file, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+// 场景 10：特殊字符文件名（中文 + 全角括号），期望 200 且响应 name 字段与原始文件名一致
+func TestUpload_SpecialCharFilename(t *testing.T) {
+	dir := t.TempDir()
+	h := NewUploadHandler(dir, "http://localhost:8080")
+
+	filename := "项目报告（终版）.docx"
+	// Minimal 2-byte content; extension whitelist grants docx
+	req := newUploadRequest(t, filename, []byte("PK"))
+	rr := httptest.NewRecorder()
+	h.Upload(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 for special-char filename, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var resp uploadResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Name != filename {
+		t.Fatalf("expected name=%q, got %q", filename, resp.Name)
+	}
+}
+
+// 新 MIME 上传：PDF 文件（%PDF 文件头 + .pdf 扩展名），期望 200 且 mime 为 application/pdf
+func TestUpload_PDF(t *testing.T) {
+	dir := t.TempDir()
+	h := NewUploadHandler(dir, "http://localhost:8080")
+
+	// PDF magic bytes: %PDF
+	pdfHeader := []byte{0x25, 0x50, 0x44, 0x46}
+	req := newUploadRequest(t, "test.pdf", pdfHeader)
+	rr := httptest.NewRecorder()
+	h.Upload(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 for PDF upload, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var resp uploadResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.MIME != "application/pdf" {
+		t.Fatalf("expected mime=application/pdf, got %s", resp.MIME)
+	}
+	if resp.URL == "" {
+		t.Fatal("response missing url field")
+	}
+	if resp.Size <= 0 {
+		t.Fatalf("expected size > 0, got %d", resp.Size)
+	}
+}

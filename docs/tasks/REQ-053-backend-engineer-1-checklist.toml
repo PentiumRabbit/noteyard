@@ -1,0 +1,11 @@
+status = "delivered"
+delivered_at = "2026-05-01T13:18:00Z"
+summary = ""
+review_result = "pass"
+reviewed_at = "2026-05-01T13:21:52Z"
+
+[[items]]
+  path = "server/internal/handler/upload_handler.go"
+
+[[items]]
+  path = "server/internal/handler/upload_handler_test.go"
