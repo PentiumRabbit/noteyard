@@ -159,6 +159,10 @@ export function DatabaseView({ databaseId }: Props) {
   const [kanbanGroupColId, setKanbanGroupColId] = useState<string>("");
   const [groupByColId, setGroupByColId] = useState<string>("");
   const [multiSelectDropdown, setMultiSelectDropdown] = useState<{ rowId: string; colId: string; x: number; y: number; options: SelectOption[] } | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const [batchPanel, setBatchPanel] = useState(false);
+  const [batchColId, setBatchColId] = useState("");
+  const [batchVal, setBatchVal] = useState("");
 
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -260,6 +264,37 @@ export function DatabaseView({ databaseId }: Props) {
   // ── rows ──
   const addRow = async () => { await api.databases.addRow(databaseId); void reload(); };
   const deleteRow = async (rowId: string) => { await api.databases.deleteRow(databaseId, rowId); void reload(); };
+  const batchDelete = async () => {
+    if (selectedRowIds.size === 0) return;
+    if (!confirm(`删除选中的 ${selectedRowIds.size} 行？`)) return;
+    await Promise.all([...selectedRowIds].map(id => api.databases.deleteRow(databaseId, id)));
+    setSelectedRowIds(new Set());
+    void reload();
+  };
+
+  const batchUpdateCol = async () => {
+    if (selectedRowIds.size === 0 || !batchColId) return;
+    await Promise.all([...selectedRowIds].map(id =>
+      api.databases.updateCells(databaseId, id, [{ column_id: batchColId, value: batchVal }])
+    ));
+    setSelectedRowIds(new Set());
+    setBatchPanel(false);
+    void reload();
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedRowIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRowIds.size === rows.length) setSelectedRowIds(new Set());
+    else setSelectedRowIds(new Set(rows.map(r => r.id)));
+  };
+
   const duplicateRow = async (row: DBRow) => {
     const newRow = await api.databases.addRow(databaseId);
     if (!newRow) return;
@@ -569,6 +604,34 @@ export function DatabaseView({ databaseId }: Props) {
         )}
       </div>
 
+      {selectedRowIds.size > 0 && (
+        <div className="db-batch-bar">
+          <span className="db-batch-count">已选 {selectedRowIds.size} 行</span>
+          <button className="db-batch-btn" onClick={() => setBatchPanel(v => !v)}>修改列值</button>
+          <button className="db-batch-btn db-batch-danger" onClick={() => void batchDelete()}>删除</button>
+          <button className="db-batch-btn" onClick={() => setSelectedRowIds(new Set())}>取消选择</button>
+        </div>
+      )}
+      {batchPanel && selectedRowIds.size > 0 && (
+        <div className="db-panel">
+          <div className="db-panel-content">
+            <div className="db-panel-title">批量修改列值</div>
+            <select value={batchColId} onChange={e => setBatchColId(e.target.value)}>
+              <option value="">选择列</option>
+              {allCols.filter(c => !READONLY_COL_TYPES.has(c.type)).map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {batchColId && (
+              <input className="db-panel-input" placeholder="新值" value={batchVal}
+                onChange={e => setBatchVal(e.target.value)} />
+            )}
+            <button className="formula-save-btn" onClick={() => void batchUpdateCol()}>应用</button>
+            <button className="db-panel-clear" onClick={() => { setBatchPanel(false); setBatchColId(""); setBatchVal(""); }}>取消</button>
+          </div>
+        </div>
+      )}
+
       {toolbarPanel && (
         <div className="db-panel">
           {toolbarPanel === "sort" && (
@@ -744,7 +807,11 @@ export function DatabaseView({ databaseId }: Props) {
         <table className="db-table">
           <thead>
             <tr>
-              <th className="th-row-actions" />
+              <th className="th-row-actions">
+                <input type="checkbox" className="db-row-check"
+                  checked={rows.length > 0 && selectedRowIds.size === rows.length}
+                  onChange={toggleSelectAll} title="全选" />
+              </th>
               {cols.map(col => (
                 <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
                   <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
@@ -799,6 +866,9 @@ export function DatabaseView({ databaseId }: Props) {
               <tr key={row.id}>
                 <td className="td-row-actions">
                   <div className="row-actions-wrap">
+                    <input type="checkbox" className="db-row-check"
+                      checked={selectedRowIds.has(row.id)}
+                      onChange={() => toggleSelectRow(row.id)} />
                     <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行">↗</button>
                     <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行">⊕</button>
                     <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>

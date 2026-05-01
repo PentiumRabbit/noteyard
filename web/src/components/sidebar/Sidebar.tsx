@@ -12,6 +12,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
 import type { Page } from "../../types";
 import { SettingsPanel } from "../settings/SettingsPanel";
+import { TEMPLATES } from "../../templates";
 import "./Sidebar.css";
 
 interface RecentItem { id: string; title: string; icon: string | null; visitedAt: number }
@@ -165,6 +166,7 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [recentOpen, setRecentOpen] = useState(false);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [favoritesOpen, setFavoritesOpen] = useState(true);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
@@ -183,6 +185,27 @@ export function Sidebar({ selectedId, onSelect }: Props) {
     if (page) recordVisit(id, page.title || "Untitled", page.icon ?? null);
     setRecentItems(loadRecent());
     onSelect(id);
+  };
+
+  const applyTemplate = async (templateId: string) => {
+    const tpl = TEMPLATES.find(t => t.id === templateId);
+    if (!tpl) return;
+    const maxOrder = Math.max(0, ...tree.map(p => p.order_index));
+    const page = await api.pages.create({ title: tpl.name, icon: tpl.icon, order_index: maxOrder + 1 });
+    if (tpl.blocks.length > 0) {
+      await api.blocks.batchUpdate(tpl.blocks.map((b, i) => ({
+        id: crypto.randomUUID(),
+        page_id: page.id,
+        type: (b as { type: string }).type,
+        content: JSON.stringify((b as { content?: unknown }).content ?? []),
+        props: JSON.stringify((b as { props?: unknown }).props ?? {}),
+        order_index: i,
+        parent_block_id: null,
+      })));
+    }
+    setTemplateOpen(false);
+    void refresh();
+    handleSelect(page.id);
   };
 
   const toggleFavorite = (id: string) => {
@@ -383,6 +406,13 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           </svg>
           最近访问
         </button>
+        <button className="sidebar-new-page-btn" onClick={() => setTemplateOpen(true)}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1.5" y="1.5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M1.5 5.5h11M5.5 5.5v7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          模板
+        </button>
         <button className="sidebar-new-page-btn" onClick={() => void openTrash()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M11 3.5l-.7 7.7a.5.5 0 0 1-.5.45H4.2a.5.5 0 0 1-.5-.45L3 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -446,6 +476,28 @@ export function Sidebar({ selectedId, onSelect }: Props) {
                   <span className="trash-item-icon">{r.icon ?? "📄"}</span>
                   <span className="trash-item-title">{r.title}</span>
                   <span className="recent-item-time">{new Date(r.visitedAt).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {templateOpen && (
+        <div className="trash-overlay" onClick={() => setTemplateOpen(false)}>
+          <div className="trash-panel" onClick={e => e.stopPropagation()}>
+            <div className="trash-header">
+              <span className="trash-title">从模板新建</span>
+              <button className="trash-close-btn" onClick={() => setTemplateOpen(false)}>✕</button>
+            </div>
+            <div className="trash-list">
+              {TEMPLATES.map(tpl => (
+                <div key={tpl.id} className="template-item" onClick={() => void applyTemplate(tpl.id)}>
+                  <span className="template-icon">{tpl.icon}</span>
+                  <div className="template-info">
+                    <div className="template-name">{tpl.name}</div>
+                    <div className="template-desc">{tpl.description}</div>
+                  </div>
                 </div>
               ))}
             </div>

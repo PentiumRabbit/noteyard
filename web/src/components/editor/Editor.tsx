@@ -488,6 +488,73 @@ const EmbedBlock = createReactBlockSpec(
   },
 );
 
+// T12 — PDF 预览块
+const PdfBlock = createReactBlockSpec(
+  {
+    type: "pdf" as const,
+    propSchema: { url: { default: "" }, name: { default: "" }, height: { default: "500" } },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
+
+      const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert("PDF 不超过 10MB"); return; }
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+        if (!res.ok) { alert("上传失败"); return; }
+        const data = await res.json() as { url: string };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateBlock({ props: { url: data.url, name: file.name, height: "500" } } as any);
+      };
+
+      const startResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const h = parseInt(block.props.height || "500", 10);
+        resizeRef.current = { startY: e.clientY, startH: h };
+        const onMove = (mv: MouseEvent) => {
+          if (!resizeRef.current) return;
+          const newH = Math.max(200, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          updateBlock({ props: { ...block.props, height: String(newH) } } as any);
+        };
+        const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      };
+
+      if (!block.props.url) {
+        return (
+          <label className="file-attach-upload">
+            <span>📄 上传 PDF</span>
+            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
+          </label>
+        );
+      }
+
+      return (
+        <div className="pdf-block">
+          <div className="pdf-toolbar">
+            <span className="pdf-name">📄 {block.props.name}</span>
+            <a href={block.props.url} download={block.props.name} className="pdf-download">下载</a>
+          </div>
+          <iframe
+            src={block.props.url}
+            className="embed-iframe"
+            style={{ height: block.props.height + "px" }}
+            title={block.props.name}
+          />
+          <div className="embed-resize-handle" onMouseDown={startResize} title="拖拽调整高度" />
+        </div>
+      );
+    },
+  },
+);
+
 // T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -502,6 +569,7 @@ const schema = BlockNoteSchema.create({
     fileAttach: FileAttachBlock,
     bookmark: BookmarkBlock,
     embed: EmbedBlock,
+    pdf: PdfBlock,
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
@@ -539,7 +607,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
         if (!dbId) return [];
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed") {
+      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf") {
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
       return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
@@ -776,7 +844,16 @@ function DatabaseSlashItem({
           icon: <span>🌐</span>,
           hint: "嵌入网页",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem, bookmarkItem, embedItem];
+        const pdfItem = {
+          title: "PDF",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "pdf", props: { url: "", name: "", height: "500" } } as any),
+          aliases: ["pdf", "PDF", "文档"],
+          group: "其他",
+          icon: <span>📄</span>,
+          hint: "上传并预览 PDF 文件",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem, bookmarkItem, embedItem, pdfItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||

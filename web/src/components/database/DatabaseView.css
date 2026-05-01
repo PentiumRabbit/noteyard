@@ -1,3 +1,31 @@
+/* ── batch bar ── */
+.db-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #e8f0fe;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.db-batch-count { font-weight: 500; color: #2383e2; flex: 1; }
+.db-batch-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+.db-batch-btn:hover { background: var(--color-hover-bg); }
+.db-batch-danger { color: var(--color-danger) !important; border-color: rgba(235,87,87,0.3) !important; }
+.db-batch-danger:hover { background: rgba(235,87,87,0.06) !important; }
+
+.db-row-check { cursor: pointer; accent-color: #2383e2; }
+
 /* ── list view ── */
 .db-list-view {
   margin-top: 4px;

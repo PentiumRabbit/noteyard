@@ -3,7 +3,7 @@ import type { Block } from "../types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toBlockNote(blocks: Block[]): any[] {
   return blocks.map((b) => {
-    if (b.type === "database" || b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed") {
+    if (b.type === "database" || b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf") {
       let props: Record<string, unknown> = {};
       try { props = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
       return { id: b.id, type: b.type, props, content: undefined, children: [] };
