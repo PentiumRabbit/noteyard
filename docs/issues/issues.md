@@ -1,5 +1,32 @@
 # Issues
 
+## ISS-003: Columns block 仍崩溃（columnCellSchema 循环引用）
+
+| 字段 | 内容 |
+|------|------|
+| Issue ID | ISS-003 |
+| 严重程度 | P1 |
+| 状态 | ✅ 已修复 |
+| 指派给 | 总架构师 |
+
+**标题**: ISS-002 修复后 columns block 仍崩溃，columnCellSchema 与 ColumnsBlock 存在循环引用
+
+**复现步骤**:
+1. 打开编辑器
+2. 插入 columns 块
+
+**实际结果**: `Uncaught TypeError: Cannot read properties of undefined (reading 'type')` at BlockNote 内部 `Cr2` 组件
+
+**预期结果**: columns block 正常渲染
+
+**根因分析**: `columnCellSchema`（Editor.tsx:591）blockSpecs 中注册了 `columns: ColumnsBlock`（行599），mini-editor 初始化时 BlockNote 对 ColumnsBlock 注册 nodeView，触发 `getBlockFromPos` 在 mini-editor doc 中查找主编辑器的块 ID，返回 undefined，导致 `s.type` TypeError。
+
+**修复方案**: 
+- 当前修复（方案 A）：从 `columnCellSchema` 中删除 `columns: ColumnsBlock` 一行
+- 长期方案（方案 C）：迁移至 BlockNote 原生 columnList/column 架构，见 REQ-052
+
+---
+
 ## ISS-002: Columns block 崩溃 + 不支持子块类型
 
 | 字段 | 内容 |

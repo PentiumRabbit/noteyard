@@ -596,7 +596,6 @@ const columnCellSchema = BlockNoteSchema.create({
     database: DatabaseBlock,
     callout: CalloutBlock,
     toggle: ToggleBlock,
-    columns: ColumnsBlock,
     subpage: SubpageBlock,
     fileAttach: FileAttachBlock,
     bookmark: BookmarkBlock,

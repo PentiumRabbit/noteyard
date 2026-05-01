@@ -20,3 +20,6 @@
 | 1 | ISS-002 | 总负责人 | 总架构师 | columns block 崩溃根因分析 | docs/tasks/ISS-002-manager-log.md | docs/tasks/ISS-002-architect-checklist.md | — | ✅ |
 | 2 | ISS-002 | 研发负责人 | 模块工程师 | 方案 A 实现：修复 ColumnsBlock render props + 扩展 mini-editor schema | docs/tasks/ISS-002-dev-lead-log.md | docs/tasks/ISS-002-engineer-checklist.md | — | ✅ |
 | 3 | ISS-002 | 研发负责人 | 测试人员 | ISS-002 回归验证 | docs/tasks/ISS-002-dev-lead-log.md | docs/tasks/ISS-002-tester-checklist.md | #2 | ✅ |
+| 4 | ISS-003 | 总负责人 | 总架构师 | columnCellSchema 循环引用根因分析及修复方案 | docs/tasks/ISS-003-manager-log.md | docs/tasks/ISS-003-architect-checklist.md | — | ✅ |
+| 5 | ISS-003 | 研发负责人 | 模块工程师 | 方案 A：从 columnCellSchema 删除 columns: ColumnsBlock | docs/tasks/ISS-003-dev-lead-log.md | docs/tasks/ISS-003-engineer-checklist.md | — | ✅ |
+| 6 | ISS-003 | 研发负责人 | 测试人员 | ISS-003 回归验证 | docs/tasks/ISS-003-dev-lead-log.md | docs/tasks/ISS-003-tester-checklist.md | #5 | ✅ |
