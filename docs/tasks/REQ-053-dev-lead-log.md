@@ -1,0 +1,13 @@
+# REQ-053 研发负责人 委派登记表
+
+| # | 委派给 | 任务描述 | 验收标准 | 前置 | 交付清单路径 | 状态清单路径 | 预期交付时间（下级填）| 延期次数 | 状态 |
+|---|--------|---------|---------|------|------------|------------|---------------------|---------|------|
+| 1 | 后端模块工程师 | 扩展上传接口：`allowedTypes` 新增 6 种 MIME；响应追加 `name / size / mime` 字段 | 上传 PDF/docx 返回 200 + `{url,name,size,mime}`；上传超 10MB 返回 400；上传不支持类型返回 400 | — | docs/tasks/REQ-053-backend-engineer-1-checklist.toml | docs/tasks/REQ-053-backend-engineer-1-status.toml | | 0 | ⏳待交付 |
+| 2 | 后端测试人员 | 对 #1 做回归：覆盖场景 8（超限）、场景 10（特殊文件名）、新 MIME 上传、原有图片上传不退化 | 所有测试用例通过，覆盖上述 4 类场景 | #1 | docs/tasks/REQ-053-backend-tester-2-checklist.toml | docs/tasks/REQ-053-backend-tester-2-status.toml | | 0 | ⏳待交付 |
+| 3 | 前端模块工程师 | 前端类型定义：`DBColumn.type` 新增 `"files"`；新增 `FileAttachment` 接口 | 文件含 `"files"` 枚举值；含 `FileAttachment { url, name, size, mime }` 接口；TypeScript 编译无错误 | — | docs/tasks/REQ-053-frontend-engineer-3-checklist.toml | docs/tasks/REQ-053-frontend-engineer-3-status.toml | | 0 | ⏳待交付 |
+| 4 | 前端模块工程师 | 新建 FilesCell.tsx：单元格渲染（`COL_TYPES / COL_ICONS` 注册 `"files"`）、条目列表、+N 折叠、上传按钮、删除按钮、图片缩略图 tooltip、非图片下载；调用 `POST /api/uploads`；DatabaseView.tsx 保留 import + 调用入口（约 10 行） | 场景 1–6（含折叠、预览、下载、删除）均可操作；场景 9（10 个上限前端拦截）通过；场景 12（JSON 损坏降级）通过；TypeScript 编译无错误 | #1 #3 | docs/tasks/REQ-053-frontend-engineer-4-checklist.toml | docs/tasks/REQ-053-frontend-engineer-4-status.toml | | 0 | ⏳待交付 |
+| 5 | 前端测试人员 | 对 #4 单元格渲染做验收：逐条覆盖场景 1–6、8–9、12 | 上述场景全部通过，无控制台未捕获异常 | #4 | docs/tasks/REQ-053-frontend-tester-5-checklist.toml | docs/tasks/REQ-053-frontend-tester-5-status.toml | | 0 | ⏳待交付 |
+| 6 | 前端模块工程师 | 新建 FilesModalField.tsx：行详情弹窗附件管理区域（附件列表 + 上传 + 删除，即存即存不走 rowModalDraft）；与表格视图双向同步；DatabaseView.tsx 中 rowModal files 分支改为 `<FilesModalField>` 调用 | 场景 7（弹窗上传/删除与表格视图双向同步，刷新持久）通过；TypeScript 编译无错误 | #4 | docs/tasks/REQ-053-frontend-engineer-6-checklist.toml | docs/tasks/REQ-053-frontend-engineer-6-status.toml | | 0 | ⏳待交付 |
+| 7 | 前端测试人员 | 对 #6 行详情弹窗做验收：覆盖场景 7（上传、删除、刷新持久、双向同步）及场景 11（断网提示） | 场景 7、11 通过，刷新后数据持久 | #6 | docs/tasks/REQ-053-frontend-tester-7-checklist.toml | docs/tasks/REQ-053-frontend-tester-7-status.toml | | 0 | ⏳待交付 |
+| 8 | 前端模块工程师 | 样式：附件条目布局、文件图标、+N 折叠标签、缩略图 tooltip（≤200px）、上传/删除按钮悬停态 | 样式符合需求描述；tooltip 最大宽高 ≤ 200px；移开消失；视觉与现有 cell-tag / cell-url 风格一致 | #4 | docs/tasks/REQ-053-frontend-engineer-8-checklist.toml | docs/tasks/REQ-053-frontend-engineer-8-status.toml | | 0 | ⏳待交付 |
+| 9 | 前端测试人员 | 对 #8 样式做视觉验收：缩略图尺寸、折叠标签展示、hover 态 | 缩略图 ≤ 200px；超 3 个附件显示「+N」；删除/上传按钮 hover 态正常 | #8 | docs/tasks/REQ-053-frontend-tester-9-checklist.toml | docs/tasks/REQ-053-frontend-tester-9-status.toml | | 0 | ⏳待交付 |
