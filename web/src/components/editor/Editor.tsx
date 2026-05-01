@@ -25,7 +25,8 @@ import {
   locales,
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
-import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import { withMultiColumn, getMultiColumnSlashMenuItems } from "@blocknote/xl-multi-column";
+import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
@@ -221,118 +222,6 @@ const ToggleBlock = createReactBlockSpec(
     },
   },
 );
-
-// T07 — Columns 分栏块（每列一个 mini BlockNote 实例）
-const ColumnsBlock = createReactBlockSpec(
-  {
-    type: "columns" as const,
-    propSchema: {
-      cols: { default: "2" },
-      // 各列块内容，JSON.stringify(object[][])，每列是 BlockNote blocks 数组
-      columnsData: { default: "" },
-      // 各列宽度百分比，JSON.stringify(number[])
-      widths: { default: "" },
-    },
-    content: "none",
-  },
-  {
-    render: ({ block, editor }) => {
-      const numCols = Math.max(2, Math.min(4, parseInt(block.props.cols || "2", 10)));
-
-      let colsData: object[][] = [];
-      try { colsData = JSON.parse(block.props.columnsData) as object[][]; } catch { /* empty */ }
-      while (colsData.length < numCols) colsData.push([]);
-
-      let widths: number[] = [];
-      try { widths = JSON.parse(block.props.widths) as number[]; } catch { /* empty */ }
-      if (widths.length !== numCols) widths = Array(numCols).fill(100 / numCols);
-
-      const saveColBlocks = (colIdx: number, blocks: object[]) => {
-        const next = [...colsData];
-        next[colIdx] = blocks;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
-      };
-      const saveWidths = (newWidths: number[]) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { ...block.props, widths: JSON.stringify(newWidths) } } as any);
-      };
-
-      return (
-        <ColumnsBlockInner
-          blockId={block.id}
-          numCols={numCols}
-          colsData={colsData}
-          widths={widths}
-          onSaveCol={saveColBlocks}
-          onSaveWidths={saveWidths}
-        />
-      );
-    },
-  },
-);
-
-function ColumnsBlockInner({ blockId, numCols, colsData, widths, onSaveCol, onSaveWidths }: {
-  blockId: string;
-  numCols: number;
-  colsData: object[][];
-  widths: number[];
-  onSaveCol: (idx: number, blocks: object[]) => void;
-  onSaveWidths: (widths: number[]) => void;
-}) {
-  const [localWidths, setLocalWidths] = useState<number[]>(widths);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const startDrag = (sepIdx: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const containerW = containerRef.current?.offsetWidth ?? 800;
-    const startWidths = [...localWidths];
-
-    const onMove = (mv: MouseEvent) => {
-      const delta = ((mv.clientX - startX) / containerW) * 100;
-      const left = Math.max(10, startWidths[sepIdx] + delta);
-      const right = Math.max(10, startWidths[sepIdx + 1] - delta);
-      if (left >= 10 && right >= 10) {
-        const next = [...startWidths];
-        next[sepIdx] = left;
-        next[sepIdx + 1] = right;
-        setLocalWidths(next);
-      }
-    };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-      // persist widths on mouse up
-      setLocalWidths(prev => { onSaveWidths(prev); return prev; });
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  };
-
-  return (
-    <div className="columns-block" ref={containerRef}>
-      {Array.from({ length: numCols }).map((_, i) => (
-        <React.Fragment key={`${blockId}-col-${i}`}>
-          <div className="column-cell" style={{ flex: `0 0 ${localWidths[i].toFixed(1)}%`, minWidth: 0 }}>
-            <ColumnCell
-              cellKey={`${blockId}-${i}`}
-              initialBlocks={colsData[i] ?? []}
-              onSave={(blocks) => onSaveCol(i, blocks)}
-            />
-          </div>
-          {i < numCols - 1 && (
-            <div
-              className="column-divider"
-              onMouseDown={e => startDrag(i, e)}
-              title="拖动调整列宽"
-            />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
 
 // T08 — Sub-page 块
 const SubpageBlock = createReactBlockSpec(
@@ -587,102 +476,28 @@ const PdfBlock = createReactBlockSpec(
   },
 );
 
-// ColumnCell mini-editor schema（含所有自定义块，斜杠菜单过滤 columns）
-const columnCellSchema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs,
-    horizontalRule: HorizontalRuleBlock,
-    quote: QuoteBlock,
-    database: DatabaseBlock,
-    callout: CalloutBlock,
-    toggle: ToggleBlock,
-    subpage: SubpageBlock,
-    fileAttach: FileAttachBlock,
-    bookmark: BookmarkBlock,
-    embed: EmbedBlock,
-    pdf: PdfBlock,
-  },
-  inlineContentSpecs: {
-    ...defaultInlineContentSpecs,
-    mention: MentionInlineContent,
-  },
-});
-
-function ColumnCell({ cellKey, initialBlocks, onSave }: {
-  cellKey: string;
-  initialBlocks: object[];
-  onSave: (blocks: object[]) => void;
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editor = useCreateBlockNote({ schema: columnCellSchema as any });
-  const readyRef = useRef(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // cellKey is stable per column — used only to satisfy exhaustive-deps
-  const cellKeyRef = useRef(cellKey);
-  cellKeyRef.current = cellKey;
-
-  useEffect(() => {
-    // apply initial content exactly once on mount
-    const blocks = initialBlocks.length > 0 ? initialBlocks : [{ type: "paragraph" }];
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      editor.replaceBlocks(editor.document, blocks as any);
-    } catch { /* empty */ }
-    requestAnimationFrame(() => { readyRef.current = true; });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleChange = () => {
-    if (!readyRef.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      onSave(editor.document as object[]);
-    }, 600);
-  };
-
-  return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <BlockNoteView editor={editor as any} onChange={handleChange} sideMenu={false} slashMenu={false}>
-      <SuggestionMenuController
-        triggerCharacter="/"
-        getItems={async (query) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const defaults = getDefaultReactSlashMenuItems(editor as any);
-          return defaults.filter((item) => {
-            const title = (item as { title?: string }).title ?? "";
-            if (pinyinMatch(title, query) || ((item as { aliases?: string[] }).aliases ?? []).some((a: string) => pinyinMatch(a, query))) {
-              // exclude columns to prevent nesting
-              return title.toLowerCase() !== "columns";
-            }
-            return false;
-          });
-        }}
-      />
-    </BlockNoteView>
-  );
-}
-
-// T06 — schema 注册（块 + 内联）
-const schema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs,
-    horizontalRule: HorizontalRuleBlock,
-    quote: QuoteBlock,
-    database: DatabaseBlock,
-    callout: CalloutBlock,
-    toggle: ToggleBlock,
-    columns: ColumnsBlock,
-    subpage: SubpageBlock,
-    fileAttach: FileAttachBlock,
-    bookmark: BookmarkBlock,
-    embed: EmbedBlock,
-    pdf: PdfBlock,
-  },
-  inlineContentSpecs: {
-    ...defaultInlineContentSpecs,
-    mention: MentionInlineContent,
-  },
-});
+// T06 — schema 注册（块 + 内联）：使用 withMultiColumn 添加 columnList / column 节点
+const schema = withMultiColumn(
+  BlockNoteSchema.create({
+    blockSpecs: {
+      ...defaultBlockSpecs,
+      horizontalRule: HorizontalRuleBlock,
+      quote: QuoteBlock,
+      database: DatabaseBlock,
+      callout: CalloutBlock,
+      toggle: ToggleBlock,
+      subpage: SubpageBlock,
+      fileAttach: FileAttachBlock,
+      bookmark: BookmarkBlock,
+      embed: EmbedBlock,
+      pdf: PdfBlock,
+    },
+    inlineContentSpecs: {
+      ...defaultInlineContentSpecs,
+      mention: MentionInlineContent,
+    },
+  }),
+);
 
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, onSelectPage }, ref) {
@@ -706,19 +521,51 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const pageIdRef = useRef(pageId);
   pageIdRef.current = pageId;
 
-  const buildDtos = (pid: string): Partial<Block>[] =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildDtosRecursive = (blocks: any[], pid: string, parentBlockId: string | null): Partial<Block>[] =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (editor.document as any[]).flatMap((b: any, i: number): Partial<Block>[] => {
+    blocks.flatMap((b: any, i: number): Partial<Block>[] => {
+      if (b.type === "columnList") {
+        // columnList itself is stored; then recursively expand each column child
+        const dto: Partial<Block> = {
+          id: b.id,
+          page_id: pid,
+          parent_block_id: parentBlockId,
+          type: b.type,
+          content: "{}",
+          props: "{}",
+          order_index: i,
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const columnDtos = (b.children ?? []).flatMap((col: any, ci: number): Partial<Block>[] => {
+          const colDto: Partial<Block> = {
+            id: col.id,
+            page_id: pid,
+            parent_block_id: b.id,
+            type: col.type,
+            content: "{}",
+            props: JSON.stringify({ width: col.props?.width ?? 1 }),
+            order_index: ci,
+          };
+          const innerDtos = buildDtosRecursive(col.children ?? [], pid, col.id);
+          return [colDto, ...innerDtos];
+        });
+        return [dto, ...columnDtos];
+      }
       if (b.type === "database") {
         const dbId = (b.props as { databaseId?: string }).databaseId;
         if (!dbId) return [];
-        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
+        return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf") {
-        return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
+      if (b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf") {
+        return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
+      return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
     });
+
+  const buildDtos = (pid: string): Partial<Block>[] =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    buildDtosRecursive(editor.document as any[], pid, null);
 
   const save = (pid: string) => {
     if (!readyRef.current) return;
@@ -900,15 +747,25 @@ function DatabaseSlashItem({
           icon: <span>▶</span>,
           hint: "插入折叠块",
         };
-        const columnsItem = {
-          title: "Columns",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onItemClick: () => insertOrUpdateBlock(editor, { type: "columns", props: { cols: "2", columnsData: "[[],[]]" } } as any),
-          aliases: ["columns", "分栏", "column", "col", "并排"],
-          group: "高级块",
-          icon: <span>⫼</span>,
-          hint: "插入两栏分栏块",
-        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const multiColItems = getMultiColumnSlashMenuItems(editor as any);
+        // 检测光标是否在 column 块内，若是则过滤掉 columnList 类型的菜单项，防止嵌套分栏
+        const isInsideColumn = (() => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const pos = (editor as any).getTextCursorPosition?.();
+            if (!pos) return false;
+            // 向上遍历祖先，检查是否有 column 类型的块
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let node: any = pos.block;
+            while (node) {
+              if (node.type === "column") return true;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              node = node.parentBlockId ? (editor as any).getBlock?.(node.parentBlockId) : null;
+            }
+            return false;
+          } catch { return false; }
+        })();
         const subpageItem = {
           title: "Sub-page",
           onItemClick: async () => {
@@ -960,7 +817,9 @@ function DatabaseSlashItem({
           icon: <span>📄</span>,
           hint: "上传并预览 PDF 文件",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem, bookmarkItem, embedItem, pdfItem];
+        // 若光标在 column 内，过滤掉 columnList 相关的多列菜单项
+        const filteredMultiColItems = isInsideColumn ? [] : multiColItems;
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, ...filteredMultiColItems, subpageItem, fileItem, bookmarkItem, embedItem, pdfItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||
