@@ -228,9 +228,9 @@ const ColumnsBlock = createReactBlockSpec(
     type: "columns" as const,
     propSchema: {
       cols: { default: "2" },
-      // 各列文本内容，JSON.stringify(string[])
+      // 各列块内容，JSON.stringify(object[][])，每列是 BlockNote blocks 数组
       columnsData: { default: "" },
-      // 各列宽度百分比，JSON.stringify(number[])，缺省则均分
+      // 各列宽度百分比，JSON.stringify(number[])
       widths: { default: "" },
     },
     content: "none",
@@ -239,55 +239,49 @@ const ColumnsBlock = createReactBlockSpec(
     render: ({ block, updateBlock }) => {
       const numCols = Math.max(2, Math.min(4, parseInt(block.props.cols || "2", 10)));
 
-      let texts: string[] = [];
-      try { texts = JSON.parse(block.props.columnsData) as string[]; } catch { /* empty */ }
-      while (texts.length < numCols) texts.push("");
+      let colsData: object[][] = [];
+      try { colsData = JSON.parse(block.props.columnsData) as object[][]; } catch { /* empty */ }
+      while (colsData.length < numCols) colsData.push([]);
 
       let widths: number[] = [];
       try { widths = JSON.parse(block.props.widths) as number[]; } catch { /* empty */ }
-      if (widths.length !== numCols) {
-        widths = Array(numCols).fill(100 / numCols);
-      }
+      if (widths.length !== numCols) widths = Array(numCols).fill(100 / numCols);
 
-      const save = (newTexts: string[], newWidths: number[]) => {
+      const saveColBlocks = (colIdx: number, blocks: object[]) => {
+        const next = [...colsData];
+        next[colIdx] = blocks;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(newTexts), widths: JSON.stringify(newWidths) } } as any);
+        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
+      };
+      const saveWidths = (newWidths: number[]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateBlock({ props: { ...block.props, widths: JSON.stringify(newWidths) } } as any);
       };
 
       return (
         <ColumnsBlockInner
+          blockId={block.id}
           numCols={numCols}
-          texts={texts}
+          colsData={colsData}
           widths={widths}
-          onSave={save}
+          onSaveCol={saveColBlocks}
+          onSaveWidths={saveWidths}
         />
       );
     },
   },
 );
 
-function ColumnsBlockInner({ numCols, texts, widths, onSave }: {
+function ColumnsBlockInner({ blockId, numCols, colsData, widths, onSaveCol, onSaveWidths }: {
+  blockId: string;
   numCols: number;
-  texts: string[];
+  colsData: object[][];
   widths: number[];
-  onSave: (texts: string[], widths: number[]) => void;
+  onSaveCol: (idx: number, blocks: object[]) => void;
+  onSaveWidths: (widths: number[]) => void;
 }) {
-  const [localTexts, setLocalTexts] = useState<string[]>(texts);
   const [localWidths, setLocalWidths] = useState<number[]>(widths);
   const containerRef = useRef<HTMLDivElement>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = (t: string[], w: number[]) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => onSave(t, w), 600);
-  };
-
-  const handleTextChange = (idx: number, val: string) => {
-    const next = [...localTexts];
-    next[idx] = val;
-    setLocalTexts(next);
-    scheduleSave(next, localWidths);
-  };
 
   const startDrag = (sepIdx: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -297,20 +291,20 @@ function ColumnsBlockInner({ numCols, texts, widths, onSave }: {
 
     const onMove = (mv: MouseEvent) => {
       const delta = ((mv.clientX - startX) / containerW) * 100;
-      const next = [...startWidths];
-      const left = Math.max(10, next[sepIdx] + delta);
-      const right = Math.max(10, next[sepIdx + 1] - delta);
-      // only adjust if both sides stay above minimum
+      const left = Math.max(10, startWidths[sepIdx] + delta);
+      const right = Math.max(10, startWidths[sepIdx + 1] - delta);
       if (left >= 10 && right >= 10) {
+        const next = [...startWidths];
         next[sepIdx] = left;
         next[sepIdx + 1] = right;
         setLocalWidths(next);
-        scheduleSave(localTexts, next);
       }
     };
     const onUp = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
+      // persist widths on mouse up
+      setLocalWidths(prev => { onSaveWidths(prev); return prev; });
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -319,13 +313,12 @@ function ColumnsBlockInner({ numCols, texts, widths, onSave }: {
   return (
     <div className="columns-block" ref={containerRef}>
       {Array.from({ length: numCols }).map((_, i) => (
-        <React.Fragment key={i}>
+        <React.Fragment key={`${blockId}-col-${i}`}>
           <div className="column-cell" style={{ flex: `0 0 ${localWidths[i].toFixed(1)}%`, minWidth: 0 }}>
-            <textarea
-              className="column-textarea"
-              value={localTexts[i] ?? ""}
-              onChange={e => handleTextChange(i, e.target.value)}
-              placeholder={`第 ${i + 1} 列…`}
+            <ColumnCell
+              cellKey={`${blockId}-${i}`}
+              initialBlocks={colsData[i] ?? []}
+              onSave={(blocks) => onSaveCol(i, blocks)}
             />
           </div>
           {i < numCols - 1 && (
@@ -338,6 +331,44 @@ function ColumnsBlockInner({ numCols, texts, widths, onSave }: {
         </React.Fragment>
       ))}
     </div>
+  );
+}
+
+function ColumnCell({ cellKey, initialBlocks, onSave }: {
+  cellKey: string;
+  initialBlocks: object[];
+  onSave: (blocks: object[]) => void;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editor = useCreateBlockNote({ schema: BlockNoteSchema.create({ blockSpecs: defaultBlockSpecs }) as any });
+  const readyRef = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // cellKey is stable per column — used only to satisfy exhaustive-deps
+  const cellKeyRef = useRef(cellKey);
+  cellKeyRef.current = cellKey;
+
+  useEffect(() => {
+    // apply initial content exactly once on mount
+    const blocks = initialBlocks.length > 0 ? initialBlocks : [{ type: "paragraph" }];
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      editor.replaceBlocks(editor.document, blocks as any);
+    } catch { /* empty */ }
+    requestAnimationFrame(() => { readyRef.current = true; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChange = () => {
+    if (!readyRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      onSave(editor.document as object[]);
+    }, 600);
+  };
+
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <BlockNoteView editor={editor as any} onChange={handleChange} sideMenu={false} />
   );
 }
 

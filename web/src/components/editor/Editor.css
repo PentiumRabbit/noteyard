@@ -478,24 +478,12 @@
 .column-cell {
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  padding: 4px 8px;
   min-height: 80px;
   background: var(--color-bg-primary);
   overflow: hidden;
 }
-.column-textarea {
-  width: 100%;
-  min-height: 72px;
-  border: none;
-  background: none;
-  outline: none;
-  resize: none;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  padding: 2px 0;
-}
+.column-cell .bn-editor { padding-inline: 8px !important; }
+.column-cell .bn-block-outer { margin-block: 0; }
 .column-divider {
   width: 8px;
   cursor: col-resize;
