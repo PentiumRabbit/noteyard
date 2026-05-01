@@ -1,0 +1,91 @@
+.tl-wrap { margin-top: 4px; }
+
+.tl-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.tl-granularity { display: flex; gap: 2px; }
+
+.tl-scroll {
+  overflow-x: auto;
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.tl-date-row {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.tl-date-cell {
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+  padding: 4px 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.tl-date-cell:last-child { border-right: none; }
+.tl-today { background: #e8f0fe; }
+
+.tl-date-num { display: block; font-weight: 500; }
+.tl-date-dow { display: block; font-size: 10px; color: var(--color-text-tertiary); }
+
+.tl-today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #2383e2;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tl-rows {
+  position: relative;
+  min-height: 60px;
+  padding: 8px 0;
+}
+
+.tl-row {
+  height: 32px;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.tl-bar-wrap { position: relative; height: 100%; }
+
+.tl-bar {
+  position: absolute;
+  height: 28px;
+  background: #e8f0fe;
+  color: #2383e2;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 8px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 28px;
+}
+.tl-bar:hover { background: #c7d9fc; }
+
+.tl-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}

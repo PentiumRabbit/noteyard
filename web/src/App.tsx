@@ -166,6 +166,17 @@ export default function App() {
     handleSelect(pageId);
   };
 
+  const handleExportMarkdown = () => {
+    if (!editorRef.current || !pageMeta) return;
+    const md = `# ${pageMeta.title || "Untitled"}\n\n${editorRef.current.exportMarkdown()}`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${pageMeta.title || "Untitled"}.md`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   // auto-resize textarea
   useEffect(() => {
     const el = titleInputRef.current;
@@ -195,7 +206,10 @@ export default function App() {
             )}
           <div className="page-wrap">
             <div className="page-header">
-              <Breadcrumb pageId={selectedPageId} onSelect={(id) => handleSelect(id)} />
+              <div className="page-header-top">
+                <Breadcrumb pageId={selectedPageId} onSelect={(id) => handleSelect(id)} />
+                <button className="page-export-btn" onClick={handleExportMarkdown} title="导出 Markdown">⬇ MD</button>
+              </div>
               {/* icon area */}
               <div className="page-icon-row">
                 {pageMeta.icon ? (

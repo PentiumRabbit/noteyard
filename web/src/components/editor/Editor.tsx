@@ -34,8 +34,51 @@ import { useSettings } from "../../settings/settingsStore";
 import { toBlockNote } from "../../utils/toBlockNote";
 import "./Editor.css";
 
+interface BNInline { type: string; text?: string; content?: BNInline[]; props?: Record<string, string> }
+interface BNBlock { id: string; type: string; props: Record<string, string>; content?: BNInline[]; children?: BNBlock[] }
+
+function inlinesToText(content: BNInline[] | undefined): string {
+  if (!content) return "";
+  return content.map(c => {
+    if (c.type === "text") return c.text ?? "";
+    if (c.type === "mention") return `[${c.props?.icon ?? "📄"} ${c.props?.title ?? ""}](page:${c.props?.pageId ?? ""})`;
+    if (c.type === "link") return `[${inlinesToText(c.content)}](${c.props?.href ?? ""})`;
+    return c.text ?? "";
+  }).join("");
+}
+
+function blocksToMarkdown(blocks: BNBlock[]): string {
+  return blocks.map(b => blockToMd(b)).filter(Boolean).join("\n\n");
+}
+
+function blockToMd(b: BNBlock): string {
+  const text = inlinesToText(b.content);
+  switch (b.type) {
+    case "heading": {
+      const lvl = parseInt(b.props?.level ?? "1", 10);
+      return "#".repeat(lvl) + " " + text;
+    }
+    case "bulletListItem": return "- " + text;
+    case "numberedListItem": return "1. " + text;
+    case "checkListItem": return (b.props?.checked === "true" ? "- [x] " : "- [ ] ") + text;
+    case "quote": return "> " + text;
+    case "horizontalRule": return "---";
+    case "callout": return `> ${b.props?.icon ?? "💡"} ${text}`;
+    case "toggle": return `**${text}**`;
+    case "subpage": return `📄 [${b.props?.title ?? "Untitled"}](page:${b.props?.pageId ?? ""})`;
+    case "bookmark": return `🔖 [${b.props?.title || b.props?.url}](${b.props?.url})`;
+    case "embed": return `🌐 <${b.props?.url}>`;
+    case "fileAttach": return `📎 [${b.props?.name}](${b.props?.url})`;
+    case "image": return `![image](${b.props?.url ?? ""})`;
+    case "paragraph": return text;
+    case "codeBlock": return "```\n" + text + "\n```";
+    default: return text;
+  }
+}
+
 export interface EditorHandle {
   flush: () => void;
+  exportMarkdown: () => string;
 }
 
 interface Props {
@@ -324,6 +367,127 @@ const FileAttachBlock = createReactBlockSpec(
   },
 );
 
+// T10 — Bookmark 书签块
+interface BookmarkMeta { title: string; description: string; favicon: string }
+
+const BookmarkBlock = createReactBlockSpec(
+  {
+    type: "bookmark" as const,
+    propSchema: { url: { default: "" }, title: { default: "" }, description: { default: "" }, favicon: { default: "" } },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
+      const [loading, setLoading] = React.useState(false);
+
+      const fetchMeta = async (url: string) => {
+        if (!url.startsWith("http")) return;
+        setLoading(true);
+        try {
+          const res = await fetch(`http://localhost:8080/api/meta?url=${encodeURIComponent(url)}`);
+          const data = await res.json() as BookmarkMeta;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          updateBlock({ props: { url, title: data.title || url, description: data.description, favicon: data.favicon } } as any);
+        } catch { /* ignore */ } finally { setLoading(false); }
+      };
+
+      if (!block.props.url) {
+        return (
+          <div className="bookmark-input-wrap">
+            <span className="bookmark-input-icon">🔗</span>
+            <input
+              className="bookmark-url-input"
+              placeholder="粘贴网址，按 Enter 确认"
+              value={urlDraft}
+              onChange={e => setUrlDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") void fetchMeta(urlDraft); }}
+              onBlur={() => { if (urlDraft) void fetchMeta(urlDraft); }}
+            />
+            {loading && <span className="bookmark-loading">加载中…</span>}
+          </div>
+        );
+      }
+
+      return (
+        <a href={block.props.url} target="_blank" rel="noopener noreferrer" className="bookmark-card">
+          <div className="bookmark-card-body">
+            <div className="bookmark-card-title">{block.props.title || block.props.url}</div>
+            {block.props.description && <div className="bookmark-card-desc">{block.props.description}</div>}
+            <div className="bookmark-card-url">
+              {block.props.favicon && <img src={block.props.favicon} className="bookmark-favicon" alt="" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+              <span>{block.props.url}</span>
+            </div>
+          </div>
+        </a>
+      );
+    },
+  },
+);
+
+// T11 — Embed 嵌入块
+const EmbedBlock = createReactBlockSpec(
+  {
+    type: "embed" as const,
+    propSchema: { url: { default: "" }, height: { default: "400" } },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
+      const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
+
+      const startResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const h = parseInt(block.props.height || "400", 10);
+        resizeRef.current = { startY: e.clientY, startH: h };
+        const onMove = (mv: MouseEvent) => {
+          if (!resizeRef.current) return;
+          const newH = Math.max(100, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          updateBlock({ props: { ...block.props, height: String(newH) } } as any);
+        };
+        const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      };
+
+      if (!block.props.url) {
+        return (
+          <div className="bookmark-input-wrap">
+            <span className="bookmark-input-icon">🌐</span>
+            <input
+              className="bookmark-url-input"
+              placeholder="粘贴网址嵌入，按 Enter 确认"
+              value={urlDraft}
+              onChange={e => setUrlDraft(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && urlDraft.startsWith("http")) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  updateBlock({ props: { url: urlDraft, height: "400" } } as any);
+                }
+              }}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="embed-wrap" style={{ height: parseInt(block.props.height || "400", 10) + 20 }}>
+          <iframe
+            src={block.props.url}
+            className="embed-iframe"
+            style={{ height: block.props.height + "px" }}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            title="embed"
+          />
+          <div className="embed-resize-handle" onMouseDown={startResize} title="拖拽调整高度" />
+        </div>
+      );
+    },
+  },
+);
+
 // T06 — schema 注册（块 + 内联）
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -336,6 +500,8 @@ const schema = BlockNoteSchema.create({
     columns: ColumnsBlock,
     subpage: SubpageBlock,
     fileAttach: FileAttachBlock,
+    bookmark: BookmarkBlock,
+    embed: EmbedBlock,
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
@@ -373,7 +539,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
         if (!dbId) return [];
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach") {
+      if (b.type === "columns" || b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed") {
         return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
       return [{ id: b.id, page_id: pid, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
@@ -392,6 +558,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       }
       save(pageIdRef.current);
     },
+    exportMarkdown: () => blocksToMarkdown(editor.document as unknown as BNBlock[]),
   }));
 
   useEffect(() => {
@@ -591,7 +758,25 @@ function DatabaseSlashItem({
           icon: <span>📎</span>,
           hint: "上传文件附件",
         };
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem];
+        const bookmarkItem = {
+          title: "Bookmark",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "bookmark", props: { url: "", title: "", description: "", favicon: "" } } as any),
+          aliases: ["bookmark", "书签", "link", "链接"],
+          group: "其他",
+          icon: <span>🔖</span>,
+          hint: "插入网页书签预览",
+        };
+        const embedItem = {
+          title: "Embed",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "embed", props: { url: "", height: "400" } } as any),
+          aliases: ["embed", "嵌入", "iframe"],
+          group: "其他",
+          icon: <span>🌐</span>,
+          hint: "嵌入网页",
+        };
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, columnsItem, subpageItem, fileItem, bookmarkItem, embedItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||

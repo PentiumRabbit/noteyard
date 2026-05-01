@@ -37,6 +37,26 @@
   margin-bottom: 4px;
 }
 
+.page-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-export-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.page-header:hover .page-export-btn { opacity: 1; }
+.page-export-btn:hover { background: var(--color-hover-bg); color: var(--color-text-primary); }
+
 .page-header-loading {
   height: 80px;
 }

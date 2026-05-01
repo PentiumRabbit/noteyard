@@ -42,7 +42,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowedOrigins: []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Accept", "Content-Type"},
 	}))
@@ -52,6 +52,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/uploads", uh.Upload)
+		r.Get("/meta", handler.MetaHandler)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
