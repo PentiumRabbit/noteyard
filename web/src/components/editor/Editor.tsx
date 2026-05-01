@@ -25,7 +25,7 @@ import {
   locales,
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
-import { withMultiColumn, getMultiColumnSlashMenuItems, locales as multiColumnLocales } from "@blocknote/xl-multi-column";
+import { withMultiColumn, getMultiColumnSlashMenuItems, locales as multiColumnLocales, multiColumnDropCursor } from "@blocknote/xl-multi-column";
 import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { api } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
@@ -515,6 +515,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       return data.url;
     },
   });
+  useEffect(() => {
+    const plugin = multiColumnDropCursor({ editor });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any)._tiptapEditor.registerPlugin(plugin);
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (editor as any)._tiptapEditor.unregisterPlugin(plugin.spec.key);
+    };
+  // editor 实例稳定，仅需注册一次
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const readyRef = useRef(false);
