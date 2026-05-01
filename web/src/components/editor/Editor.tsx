@@ -228,76 +228,115 @@ const ColumnsBlock = createReactBlockSpec(
     type: "columns" as const,
     propSchema: {
       cols: { default: "2" },
-      // 每列内容序列化为 JSON，最多 4 列，columnsData = JSON.stringify(string[][])
+      // 各列文本内容，JSON.stringify(string[])
       columnsData: { default: "" },
+      // 各列宽度百分比，JSON.stringify(number[])，缺省则均分
+      widths: { default: "" },
     },
     content: "none",
   },
   {
     render: ({ block, updateBlock }) => {
       const numCols = Math.max(2, Math.min(4, parseInt(block.props.cols || "2", 10)));
-      let initialData: string[][] = [];
-      try { initialData = JSON.parse(block.props.columnsData) as string[][]; } catch { /* empty */ }
-      while (initialData.length < numCols) initialData.push([]);
 
-      const saveColData = (colIdx: number, content: string) => {
-        const next = [...initialData];
-        next[colIdx] = JSON.parse(content) as string[];
+      let texts: string[] = [];
+      try { texts = JSON.parse(block.props.columnsData) as string[]; } catch { /* empty */ }
+      while (texts.length < numCols) texts.push("");
+
+      let widths: number[] = [];
+      try { widths = JSON.parse(block.props.widths) as number[]; } catch { /* empty */ }
+      if (widths.length !== numCols) {
+        widths = Array(numCols).fill(100 / numCols);
+      }
+
+      const save = (newTexts: string[], newWidths: number[]) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(next) } } as any);
+        updateBlock({ props: { ...block.props, columnsData: JSON.stringify(newTexts), widths: JSON.stringify(newWidths) } } as any);
       };
 
       return (
-        <div className="columns-block" style={{ gridTemplateColumns: `repeat(${numCols}, 1fr)` }}>
-          {Array.from({ length: numCols }).map((_, i) => (
-            <ColumnCell
-              key={i}
-              colIndex={i}
-              initialContent={JSON.stringify(initialData[i] ?? [])}
-              onSave={saveColData}
-            />
-          ))}
-        </div>
+        <ColumnsBlockInner
+          numCols={numCols}
+          texts={texts}
+          widths={widths}
+          onSave={save}
+        />
       );
     },
   },
 );
 
-function ColumnCell({ colIndex, initialContent, onSave }: {
-  colIndex: number;
-  initialContent: string;
-  onSave: (idx: number, content: string) => void;
+function ColumnsBlockInner({ numCols, texts, widths, onSave }: {
+  numCols: number;
+  texts: string[];
+  widths: number[];
+  onSave: (texts: string[], widths: number[]) => void;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const miniEditor = useCreateBlockNote({ schema: BlockNoteSchema.create({ blockSpecs: defaultBlockSpecs }) as any });
+  const [localTexts, setLocalTexts] = useState<string[]>(texts);
+  const [localWidths, setLocalWidths] = useState<number[]>(widths);
+  const containerRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const readyRef = useRef(false);
 
-  useEffect(() => {
-    setTimeout(() => {
-      try {
-        let blocks: unknown[] = [];
-        try { blocks = JSON.parse(initialContent) as unknown[]; } catch { /* empty */ }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        miniEditor.replaceBlocks(miniEditor.document, (blocks.length > 0 ? blocks : [{ type: "paragraph" }]) as any);
-      } catch { /* empty */ }
-      requestAnimationFrame(() => { readyRef.current = true; });
-    }, 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleChange = () => {
-    if (!readyRef.current) return;
+  const scheduleSave = (t: string[], w: number[]) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      onSave(colIndex, JSON.stringify(miniEditor.document));
-    }, 800);
+    saveTimer.current = setTimeout(() => onSave(t, w), 600);
+  };
+
+  const handleTextChange = (idx: number, val: string) => {
+    const next = [...localTexts];
+    next[idx] = val;
+    setLocalTexts(next);
+    scheduleSave(next, localWidths);
+  };
+
+  const startDrag = (sepIdx: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const containerW = containerRef.current?.offsetWidth ?? 800;
+    const startWidths = [...localWidths];
+
+    const onMove = (mv: MouseEvent) => {
+      const delta = ((mv.clientX - startX) / containerW) * 100;
+      const next = [...startWidths];
+      const left = Math.max(10, next[sepIdx] + delta);
+      const right = Math.max(10, next[sepIdx + 1] - delta);
+      // only adjust if both sides stay above minimum
+      if (left >= 10 && right >= 10) {
+        next[sepIdx] = left;
+        next[sepIdx + 1] = right;
+        setLocalWidths(next);
+        scheduleSave(localTexts, next);
+      }
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   };
 
   return (
-    <div className="column-cell">
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <BlockNoteView editor={miniEditor as any} onChange={handleChange} slashMenu={true} formattingToolbar={true} />
+    <div className="columns-block" ref={containerRef}>
+      {Array.from({ length: numCols }).map((_, i) => (
+        <React.Fragment key={i}>
+          <div className="column-cell" style={{ flex: `0 0 ${localWidths[i].toFixed(1)}%`, minWidth: 0 }}>
+            <textarea
+              className="column-textarea"
+              value={localTexts[i] ?? ""}
+              onChange={e => handleTextChange(i, e.target.value)}
+              placeholder={`第 ${i + 1} 列…`}
+            />
+          </div>
+          {i < numCols - 1 && (
+            <div
+              className="column-divider"
+              onMouseDown={e => startDrag(i, e)}
+              title="拖动调整列宽"
+            />
+          )}
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -753,7 +792,7 @@ function DatabaseSlashItem({
             } as any);
           },
           aliases: ["database", "table", "db", "数据库"],
-          group: "其他",
+          group: "数据库",
           icon: <span>🗄</span>,
           hint: "插入数据库表格块",
         };
@@ -813,7 +852,7 @@ function DatabaseSlashItem({
             } as any);
           },
           aliases: ["subpage", "sub-page", "子页面", "page"],
-          group: "其他",
+          group: "高级块",
           icon: <span>📄</span>,
           hint: "插入子页面链接",
         };
@@ -822,7 +861,7 @@ function DatabaseSlashItem({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onItemClick: () => insertOrUpdateBlock(editor, { type: "fileAttach", props: { url: "", name: "", size: "" } } as any),
           aliases: ["file", "attachment", "文件", "附件"],
-          group: "其他",
+          group: "媒体块",
           icon: <span>📎</span>,
           hint: "上传文件附件",
         };
@@ -831,7 +870,7 @@ function DatabaseSlashItem({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onItemClick: () => insertOrUpdateBlock(editor, { type: "bookmark", props: { url: "", title: "", description: "", favicon: "" } } as any),
           aliases: ["bookmark", "书签", "link", "链接"],
-          group: "其他",
+          group: "媒体块",
           icon: <span>🔖</span>,
           hint: "插入网页书签预览",
         };
@@ -840,7 +879,7 @@ function DatabaseSlashItem({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onItemClick: () => insertOrUpdateBlock(editor, { type: "embed", props: { url: "", height: "400" } } as any),
           aliases: ["embed", "嵌入", "iframe"],
-          group: "其他",
+          group: "媒体块",
           icon: <span>🌐</span>,
           hint: "嵌入网页",
         };
@@ -849,7 +888,7 @@ function DatabaseSlashItem({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onItemClick: () => insertOrUpdateBlock(editor, { type: "pdf", props: { url: "", name: "", height: "500" } } as any),
           aliases: ["pdf", "PDF", "文档"],
-          group: "其他",
+          group: "媒体块",
           icon: <span>📄</span>,
           hint: "上传并预览 PDF 文件",
         };
