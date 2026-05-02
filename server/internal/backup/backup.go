@@ -14,10 +14,10 @@ import (
 
 // Manager tracks write operation counts and triggers backups automatically.
 type Manager struct {
-	dbPath      string      // absolute path to noteyard.db
-	backupsDir  func() string // resolved at call time (data dir may change)
-	threshold   func() int  // current ops_threshold from config
-	opsCount    atomic.Int64
+	dbPath     string        // absolute path to noteyard.db
+	backupsDir func() string // resolved at call time (data dir may change)
+	threshold  func() int    // current ops_threshold from config
+	opsCount   atomic.Int64
 }
 
 // NewManager creates a Manager. backupsDirFn and thresholdFn are called

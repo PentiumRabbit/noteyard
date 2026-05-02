@@ -13,8 +13,8 @@ import (
 
 // ConfigHandler serves GET /api/config and PUT /api/config.
 type ConfigHandler struct {
-	cfg          *config.Config
-	onDirChange  func(newDir string) error // called when data.dir changes
+	cfg         *config.Config
+	onDirChange func(newDir string) error // called when data.dir changes
 }
 
 // NewConfigHandler creates a ConfigHandler. onDirChange is invoked when
@@ -24,10 +24,10 @@ func NewConfigHandler(cfg *config.Config, onDirChange func(newDir string) error)
 }
 
 type configResponse struct {
-	DataDir       string `json:"data_dir"`
-	OpsThreshold  int    `json:"ops_threshold"`
-	BackupCount   int    `json:"backup_count"`
-	LastBackupAt  string `json:"last_backup_at"` // RFC3339 or ""
+	DataDir      string `json:"data_dir"`
+	OpsThreshold int    `json:"ops_threshold"`
+	BackupCount  int    `json:"backup_count"`
+	LastBackupAt string `json:"last_backup_at"` // RFC3339 or ""
 }
 
 type configUpdateRequest struct {
