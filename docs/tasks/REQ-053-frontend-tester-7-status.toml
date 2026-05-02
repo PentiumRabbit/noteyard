@@ -1,6 +1,0 @@
-[status]
-dispatch = 7
-role     = "frontend-tester"
-status   = "delivered"
-date     = "2026-05-01"
-summary  = "场景 7a/7b/7c/7d/11 全部 PASS；7e 发现潜在风险：saveRowModal 会将 files 列旧快照覆盖写回后端，建议修复"

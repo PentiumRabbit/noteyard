@@ -1,8 +1,0 @@
-[[items]]
-path = "web/src/components/database/DatabaseView.tsx"
-
-[[items]]
-path = "web/src/components/database/DatabaseView.css"
-
-review_result = ""
-reviewed_at = ""

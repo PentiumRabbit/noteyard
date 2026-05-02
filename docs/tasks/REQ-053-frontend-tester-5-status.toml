@@ -1,5 +1,0 @@
-role = "前端测试人员"
-task = "REQ-053 #5 单元格渲染验收"
-done = true
-done_at = "2026-05-01T00:00:00Z"
-notes = "9 个验收场景全部通过：COL_TYPES/COL_ICONS、上传、折叠、图片预览、下载、删除、HTTP 错误处理、数量上限、JSON 降级均实现正确"

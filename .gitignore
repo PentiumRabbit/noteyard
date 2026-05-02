@@ -22,3 +22,20 @@ src-tauri/binaries/noteyard-server-*
 
 # OS
 .DS_Store
+
+# Dispatch process files (not for git)
+docs/tasks/dispatch/
+docs/tasks/**/*-checklist.md
+docs/tasks/**/*-checklist.toml
+docs/tasks/**/*-status.toml
+docs/tasks/**/*-event-log.md
+docs/tasks/**/*-delegation-log.md
+docs/tasks/**/*-manager-log.md
+docs/tasks/**/*-dev-lead-log.md
+docs/tasks/**/*-architect-log.md
+docs/tasks/**/*-spike-report.md
+docs/tasks/**/*-spike-checklist.md
+docs/tasks/**/*-spike-status.md
+docs/tasks/**/*-impl-checklist.md
+docs/tasks/**/*-log.md
+docs/tasks/**/*-status.md
