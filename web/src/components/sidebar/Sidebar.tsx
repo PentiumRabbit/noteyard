@@ -11,7 +11,6 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
 import type { Page } from "../../types";
-import { SettingsPanel } from "../settings/SettingsPanel";
 import { TEMPLATES } from "../../templates";
 import "./Sidebar.css";
 
@@ -43,6 +42,8 @@ function saveFavorites(set: Set<string>) {
 interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onOpenSettings: () => void;
+  settingsActive: boolean;
 }
 
 function buildTree(pages: Page[]): Page[] {
@@ -156,11 +157,10 @@ function PageItem({
   );
 }
 
-export function Sidebar({ selectedId, onSelect }: Props) {
+export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }: Props) {
   const [tree, setTree] = useState<Page[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashedPages, setTrashedPages] = useState<Page[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -169,7 +169,6 @@ export function Sidebar({ selectedId, onSelect }: Props) {
   const [templateOpen, setTemplateOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [favoritesOpen, setFavoritesOpen] = useState(true);
-  const settingsBtnRef = useRef<HTMLButtonElement>(null);
   const renamingPageIdRef = useRef<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -420,9 +419,8 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           回收站
         </button>
         <button
-          ref={settingsBtnRef}
-          className="sidebar-new-page-btn"
-          onClick={() => setSettingsOpen((v) => !v)}
+          className={`sidebar-new-page-btn${settingsActive ? " active" : ""}`}
+          onClick={onOpenSettings}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.4"/>
@@ -431,10 +429,6 @@ export function Sidebar({ selectedId, onSelect }: Props) {
           设置
         </button>
       </div>
-
-      {settingsOpen && (
-        <SettingsPanel anchorRef={settingsBtnRef} onClose={() => setSettingsOpen(false)} />
-      )}
 
       {trashOpen && (
         <div className="trash-overlay" onClick={() => setTrashOpen(false)}>

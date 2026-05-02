@@ -215,6 +215,7 @@
   font-family: inherit;
 }
 .sidebar-new-page-btn:hover { background: var(--color-hover-bg); color: var(--color-text-primary); }
+.sidebar-new-page-btn.active { background: var(--color-hover-bg); color: var(--color-accent, var(--color-text-primary)); font-weight: 500; }
 
 /* ── drag overlay ── */
 .page-row-drag-overlay {

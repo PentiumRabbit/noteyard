@@ -3,6 +3,7 @@ import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
 import { Breadcrumb } from "./components/breadcrumb/Breadcrumb";
 import { SearchModal } from "./components/search/SearchModal";
+import { SettingsPage } from "./components/settings/SettingsPage";
 import { api } from "./api/client";
 import { SettingsContext, loadSavedSettings, saveFont, saveTheme } from "./settings/settingsStore";
 import { loadResource } from "./settings/resourceLoader";
@@ -45,6 +46,10 @@ export default function App() {
     return result;
   };
 
+  const [view, setView] = useState<"editor" | "settings">("editor");
+  const openSettings = () => setView("settings");
+  const closeSettings = () => setView("editor");
+
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
   const [backlinks, setBacklinks] = useState<{ id: string; title: string; icon: string | null }[]>([]);
@@ -80,6 +85,7 @@ export default function App() {
   const handleSelect = (id: string) => {
     editorRef.current?.flush();
     setSelectedPageId(id);
+    setView("editor");
   };
 
   const handleTitleChange = (val: string) => {
@@ -151,14 +157,21 @@ export default function App() {
     await api.pages.update(selectedPageId, { cover: "" });
   };
 
-  // Cmd+K 全文搜索 / Cmd+S 阻止浏览器保存对话框（内容已自动保存）
+  // Cmd+K 全文搜索 / Cmd+S 阻止浏览器保存对话框（内容已自动保存）/ Esc 关闭设置页
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(v => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); editorRef.current?.flush(); }
+      if (e.key === "Escape") {
+        const tag = (document.activeElement as HTMLElement | null)?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          closeSettings();
+        }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearchSelect = (pageId: string) => {
@@ -188,9 +201,17 @@ export default function App() {
   return (
     <SettingsContext.Provider value={{ fontId, themeId, setFont, setTheme }}>
     <div className="app">
-      <Sidebar key={sidebarKey} selectedId={selectedPageId} onSelect={handleSelect} />
+      <Sidebar
+        key={sidebarKey}
+        selectedId={selectedPageId}
+        onSelect={handleSelect}
+        onOpenSettings={openSettings}
+        settingsActive={view === "settings"}
+      />
       {searchOpen && <SearchModal onSelect={handleSearchSelect} onClose={() => setSearchOpen(false)} />}
       <main className="main">
+        {view === "settings" && <SettingsPage onClose={closeSettings} />}
+        <div style={{ display: view === "settings" ? "none" : "contents" }}>
         {selectedPageId && pageMeta !== null ? (
           <>
             {pageMeta.cover && (
@@ -282,6 +303,7 @@ export default function App() {
             <p>从左侧选择页面，或点击 + 新建</p>
           </div>
         )}
+        </div>
       </main>
     </div>
     </SettingsContext.Provider>

@@ -1,0 +1,257 @@
+/* SettingsPage — 独立设置页面，替换主内容区 */
+
+.settings-page {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Left navigation */
+.settings-page-nav {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+  padding: 24px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-bg-secondary, var(--color-bg-primary));
+}
+
+.settings-page-nav-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px 10px;
+}
+
+.settings-page-nav-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  transition: background 0.1s;
+}
+.settings-page-nav-item:hover {
+  background: var(--color-hover-bg-medium);
+}
+.settings-page-nav-item.active {
+  background: var(--color-hover-bg-medium);
+  font-weight: 500;
+}
+
+/* Right content area */
+.settings-page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-page-content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.settings-page-content-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.settings-page-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  transition: background 0.1s, color 0.1s;
+}
+.settings-page-close-btn:hover {
+  background: var(--color-hover-bg-medium);
+  color: var(--color-text-primary);
+}
+
+.settings-page-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 32px;
+}
+
+/* Sections */
+.settings-page-section {
+  padding: 4px 0 16px;
+  max-width: 540px;
+}
+
+.settings-page-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 8px;
+}
+
+.settings-page-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 8px 0 16px;
+  max-width: 540px;
+}
+
+/* Options (font / theme buttons) */
+.settings-page-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-page-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  transition: background 0.1s;
+}
+.settings-page-option:hover {
+  background: var(--color-hover-bg-medium);
+}
+.settings-page-option.active {
+  background: var(--color-hover-bg-medium);
+  border-color: var(--color-border-medium);
+  font-weight: 500;
+}
+.settings-page-option:disabled {
+  cursor: default;
+}
+
+.settings-page-option-name {
+  flex: 1;
+}
+
+.settings-page-option-badge {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.settings-page-option-loading {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--color-border-medium);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: settings-page-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes settings-page-spin {
+  to { transform: rotate(360deg); }
+}
+
+.settings-page-status {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px 0 2px;
+  line-height: 1.4;
+}
+
+.settings-page-status--error {
+  color: var(--color-danger, #e53e3e);
+}
+
+/* Form fields (data & backup) */
+.settings-page-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.settings-page-field--readonly {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-page-field-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.settings-page-field-value {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.settings-page-field-input {
+  font-size: 14px;
+  font-family: inherit;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.settings-page-field-input:focus {
+  border-color: var(--color-accent);
+}
+
+.settings-page-field-input--number {
+  width: 100px;
+}
+
+.settings-page-save-btn {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 7px 20px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+.settings-page-save-btn:hover {
+  opacity: 0.88;
+}
+.settings-page-save-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
