@@ -57,6 +57,7 @@ export interface DBRow {
   database_id: string;
   order_index: number;
   cells: Record<string, string>;
+  content?: string;
   created_at: number;
   updated_at: number;
 }

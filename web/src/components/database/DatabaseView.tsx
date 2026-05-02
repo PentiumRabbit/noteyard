@@ -3,6 +3,9 @@ import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mai
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { BlockNoteView } from "@blocknote/mantine";
+import { useCreateBlockNote } from "@blocknote/react";
+import { BlockNoteSchema, defaultBlockSpecs, locales } from "@blocknote/core";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions, FilterState, SortState } from "../../types";
 import { evalFormula } from "./formulaEngine";

@@ -1726,3 +1726,130 @@ tr:hover .row-del-btn { visibility: visible; }
   background: var(--color-border);
   margin: 4px 0 8px;
 }
+
+/* ── Notion-style list panel (filter / sort) ── */
+.db-panel-list-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 320px;
+  max-width: 560px;
+}
+
+.db-panel-list-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.db-panel-list-select {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.db-panel-list-select:focus { outline: none; border-color: var(--color-accent); }
+
+.db-panel-list-input {
+  font-size: 12px;
+  padding: 3px 7px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 4px;
+  outline: none;
+  width: 100px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  flex-shrink: 0;
+}
+.db-panel-list-input:focus { border-color: var(--color-accent); }
+
+.db-panel-row-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  border-radius: 4px;
+  padding: 0;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.db-panel-row-del:hover { color: var(--color-danger); background: rgba(235, 87, 87, 0.08); }
+
+.db-panel-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px 2px;
+  border-radius: 4px;
+  margin-top: 2px;
+  font-family: inherit;
+}
+.db-panel-add-btn:hover { color: var(--color-text-primary); background: var(--color-hover-bg); }
+
+.db-panel-order-btn {
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.db-panel-order-btn:hover { background: var(--color-hover-bg-medium); }
+
+/* ── group radio list ── */
+.db-group-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  border-radius: 4px;
+  text-align: left;
+  font-family: inherit;
+}
+.db-group-radio-row:hover { background: var(--color-hover-bg); }
+.db-group-radio-row.selected { background: var(--color-selected-bg); color: var(--color-accent); }
+
+.db-group-radio-label { flex: 1; }
+
+.db-group-radio-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-medium);
+  background: transparent;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.db-group-radio-row.selected .db-group-radio-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.db-group-radio-icon {
+  flex-shrink: 0;
+}
