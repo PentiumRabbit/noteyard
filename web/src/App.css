@@ -170,7 +170,7 @@
   cursor: pointer;
   backdrop-filter: blur(4px);
 }
-.page-cover-action-btn:hover { background: rgba(255,255,255,0.97); }
+.page-cover-action-btn:hover { background: var(--color-bg-primary); }
 
 .page-cover-add-btn {
   background: none;

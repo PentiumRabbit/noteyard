@@ -126,7 +126,7 @@
 /* 筛选/排序已设置强调色 */
 .db-toolbar-btn.has-filter,
 .db-toolbar-btn.has-sort {
-  color: #2383e2;
+  color: var(--color-accent);
 }
 
 /* ── view switcher ── */
