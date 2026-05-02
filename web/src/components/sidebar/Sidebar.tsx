@@ -57,6 +57,9 @@ function buildTree(pages: Page[]): Page[] {
       roots.push(p);
     }
   });
+  const byOrder = (a: Page, b: Page) => a.order_index - b.order_index;
+  roots.sort(byOrder);
+  roots.forEach((p) => p.children?.sort(byOrder));
   return roots;
 }
 

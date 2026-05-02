@@ -25,7 +25,7 @@ func WelcomeSeedMigration(tx *sql.Tx) error {
 
 	_, err := tx.Exec(
 		`INSERT INTO pages(id, parent_id, title, icon, cover, order_index, created_at, updated_at)
-		 VALUES(?, NULL, ?, ?, NULL, 1.0, ?, ?)`,
+		 VALUES(?, NULL, ?, ?, NULL, 0.0, ?, ?)`,
 		pageID, "欢迎使用 noteyard", "👋", now, now,
 	)
 	if err != nil {
