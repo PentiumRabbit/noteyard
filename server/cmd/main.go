@@ -62,6 +62,7 @@ func main() {
 	ph := handler.NewPageHandler(pages)
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
+	sh := handler.NewSearchHandler(db)
 	uh := handler.NewUploadHandler(uploadDir, "http://localhost:8080")
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
@@ -87,6 +88,7 @@ func main() {
 		r.Get("/meta", handler.MetaHandler)
 		r.Get("/config", ch.Get)
 		r.Put("/config", ch.Update)
+		r.Get("/search", sh.Handle)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
