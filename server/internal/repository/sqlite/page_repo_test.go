@@ -56,6 +56,13 @@ func TestPageRepo_ListAll(t *testing.T) {
 	r := newTestDB(t)
 	ctx := context.Background()
 
+	// newTestDB triggers the welcome-seed migration, so one page already exists.
+	baseline, err := r.ListAll(ctx)
+	if err != nil {
+		t.Fatalf("baseline ListAll: %v", err)
+	}
+	baseCount := len(baseline)
+
 	for _, title := range []string{"A", "B", "C"} {
 		if err := r.Create(ctx, &model.Page{Title: title}); err != nil {
 			t.Fatalf("Create %q: %v", title, err)
@@ -66,8 +73,8 @@ func TestPageRepo_ListAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListAll: %v", err)
 	}
-	if len(pages) != 3 {
-		t.Errorf("ListAll: got %d pages, want 3", len(pages))
+	if len(pages) != baseCount+3 {
+		t.Errorf("ListAll: got %d pages, want %d", len(pages), baseCount+3)
 	}
 }
 
@@ -75,17 +82,30 @@ func TestPageRepo_ListAll_ExcludesSoftDeleted(t *testing.T) {
 	r := newTestDB(t)
 	ctx := context.Background()
 
+	// newTestDB triggers the welcome-seed migration, so one page already exists.
+	baseline, _ := r.ListAll(ctx)
+	baseCount := len(baseline)
+
 	p := &model.Page{Title: "ToDelete"}
 	r.Create(ctx, p)
 	r.Create(ctx, &model.Page{Title: "Keep"})
 	r.SoftDelete(ctx, p.ID)
 
 	pages, _ := r.ListAll(ctx)
-	if len(pages) != 1 {
-		t.Errorf("expected 1 active page, got %d", len(pages))
+	// Expect: baseline + 1 ("Keep")
+	if len(pages) != baseCount+1 {
+		t.Errorf("expected %d active pages, got %d", baseCount+1, len(pages))
 	}
-	if pages[0].Title != "Keep" {
-		t.Errorf("expected 'Keep', got %q", pages[0].Title)
+	// Verify "Keep" is among the results
+	found := false
+	for _, pg := range pages {
+		if pg.Title == "Keep" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected 'Keep' in active pages")
 	}
 }
 
@@ -115,6 +135,10 @@ func TestPageRepo_SoftDelete_And_Restore(t *testing.T) {
 	r := newTestDB(t)
 	ctx := context.Background()
 
+	// newTestDB triggers the welcome-seed migration, so one page already exists.
+	baseline, _ := r.ListAll(ctx)
+	baseCount := len(baseline)
+
 	p := &model.Page{Title: "Temp"}
 	r.Create(ctx, p)
 
@@ -128,8 +152,9 @@ func TestPageRepo_SoftDelete_And_Restore(t *testing.T) {
 	}
 
 	active, _ := r.ListAll(ctx)
-	if len(active) != 0 {
-		t.Errorf("expected 0 active pages after soft delete, got %d", len(active))
+	// Only seed pages remain active.
+	if len(active) != baseCount {
+		t.Errorf("expected %d active pages after soft delete, got %d", baseCount, len(active))
 	}
 
 	if err := r.Restore(ctx, p.ID); err != nil {
@@ -137,8 +162,8 @@ func TestPageRepo_SoftDelete_And_Restore(t *testing.T) {
 	}
 
 	active, _ = r.ListAll(ctx)
-	if len(active) != 1 {
-		t.Errorf("expected 1 active page after restore, got %d", len(active))
+	if len(active) != baseCount+1 {
+		t.Errorf("expected %d active pages after restore, got %d", baseCount+1, len(active))
 	}
 }
 
