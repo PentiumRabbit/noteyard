@@ -1318,7 +1318,7 @@ export function DatabaseView({ databaseId }: Props) {
                             onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
                         ) : (
                           <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? <a href={val} target="_blank" rel="noopener noreferrer" className="cell-url-link" onClick={e => e.stopPropagation()}>🔗 {val}</a> : <span className="cell-empty">　</span>}
+                            {val ? <a href={val} target="_blank" rel="noopener noreferrer" className="cell-url-link" onClick={e => e.stopPropagation()}><Link size={12} /> {val}</a> : <span className="cell-empty">　</span>}
                           </span>
                         )
                       ) : col.type === "email" ? (
@@ -1329,7 +1329,7 @@ export function DatabaseView({ databaseId }: Props) {
                             onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
                         ) : (
                           <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? <a href={`mailto:${val}`} className="cell-url-link" onClick={e => e.stopPropagation()}>✉ {val}</a> : <span className="cell-empty">　</span>}
+                            {val ? <a href={`mailto:${val}`} className="cell-url-link" onClick={e => e.stopPropagation()}><Mail size={12} /> {val}</a> : <span className="cell-empty">　</span>}
                           </span>
                         )
                       ) : col.type === "files" ? (
@@ -1427,7 +1427,7 @@ export function DatabaseView({ databaseId }: Props) {
               </>
             )}
             <div className="col-menu-divider" />
-            <button className="col-menu-del-btn" onClick={() => void deleteCol()}>🗑 删除列</button>
+            <button className="col-menu-del-btn" onClick={() => void deleteCol()}><Trash2 size={14} /> 删除列</button>
           </div>
         </>
       )}
@@ -1767,7 +1767,7 @@ export function DatabaseView({ databaseId }: Props) {
                         <input className="row-modal-input" type="email" value={rowModalDraft[col.id] ?? ""}
                           onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="name@example.com" />
                         {rowModalDraft[col.id] && (
-                          <a href={`mailto:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open">✉</a>
+                          <a href={`mailto:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open"><Mail size={12} /></a>
                         )}
                       </div>
                     ) : col.type === "checkbox" ? (
@@ -1828,7 +1828,7 @@ export function DatabaseView({ databaseId }: Props) {
                         <input className="row-modal-input" type="tel" value={rowModalDraft[col.id] ?? ""}
                           onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="+86 138 0000 0000" />
                         {rowModalDraft[col.id] && (
-                          <a href={`tel:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open" onClick={e => e.stopPropagation()}>☎</a>
+                          <a href={`tel:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open" onClick={e => e.stopPropagation()}><Phone size={12} /></a>
                         )}
                       </div>
                     ) : col.type === "people" ? (
