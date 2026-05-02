@@ -3,6 +3,7 @@ server/bin/
 *.exe
 /cmd
 /main
+/migrate_columns
 
 # Node
 web/node_modules/
@@ -12,6 +13,12 @@ web/dist/
 *.db
 *.db-shm
 *.db-wal
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/noteyard-server-*
+!src-tauri/binaries/.gitkeep
 
 # OS
 .DS_Store

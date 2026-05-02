@@ -1,8 +1,0 @@
-cargo:rerun-if-changed=permissions
-cargo:PERMISSION_FILES_PATH=/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/build/tauri-plugin-fs-bd41431f5b22c51c/out/tauri-plugin-fs-permission-files
-cargo:rerun-if-env-changed=REMOVE_UNUSED_COMMANDS
-cargo:GLOBAL_SCOPE_SCHEMA_PATH=/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/build/tauri-plugin-fs-bd41431f5b22c51c/out/global-scope.json
-cargo:GLOBAL_API_SCRIPT_PATH=/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.0/api-iife.js
-cargo:rustc-check-cfg=cfg(mobile)
-cargo:rustc-check-cfg=cfg(desktop)
-cargo:rustc-cfg=desktop

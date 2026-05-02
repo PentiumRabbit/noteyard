@@ -1,1 +1,0 @@
-["/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-2.11.0/scripts/bundle.global.js","/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.0/api-iife.js","/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-shell-2.3.5/api-iife.js"]
