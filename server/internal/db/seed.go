@@ -11,10 +11,10 @@ import (
 // blocks the first time a fresh database is initialised (no pages exist).
 // It is registered as schema_migrations version 2.
 func WelcomeSeedMigration(tx *sql.Tx) error {
-	// Only seed when the pages table is empty — never overwrite user data.
+	// Only seed if the welcome page doesn't already exist (idempotent by fixed ID).
 	var count int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM pages`).Scan(&count); err != nil {
-		return fmt.Errorf("welcome seed: count pages: %w", err)
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM pages WHERE id = '00000000-0000-0000-0000-000000000001'`).Scan(&count); err != nil {
+		return fmt.Errorf("welcome seed: check welcome page: %w", err)
 	}
 	if count > 0 {
 		return nil
