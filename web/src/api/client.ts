@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import type { Block, DBCell, DBColumn, DBRow, Database, Page } from "../types";
+import type { Block, DBCell, DBColumn, DBRow, Database, Page, SearchResponse } from "../types";
 
 export const API_BASE = "http://localhost:8080";
 const BASE = API_BASE + "/api";
@@ -68,6 +68,7 @@ export const api = {
     search: (q: string) => req<Page[]>("GET", `/pages/search?q=${encodeURIComponent(q)}`),
     backlinks: (id: string) => req<Page[]>("GET", `/pages/${id}/backlinks`),
   },
+  globalSearch: (q: string) => req<SearchResponse>("GET", `/search?q=${encodeURIComponent(q)}`),
   blocks: {
     listByPage: (pageId: string) => req<Block[]>("GET", `/pages/${pageId}/blocks`),
     create: (pageId: string, data: Partial<Block>) => req<Block>("POST", `/pages/${pageId}/blocks`, data),

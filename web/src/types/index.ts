@@ -1,3 +1,16 @@
+export interface SearchResultItem {
+  page_id: string;
+  page_title: string;
+  page_icon: string | null;
+  page_path: string[];
+  match_type: "title" | "content";
+  snippet: string | null;
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+}
+
 export interface Page {
   id: string;
   parent_id: string | null;

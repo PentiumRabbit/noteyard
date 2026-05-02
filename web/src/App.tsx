@@ -4,9 +4,10 @@ import { Toaster } from "react-hot-toast";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
 import { Breadcrumb } from "./components/breadcrumb/Breadcrumb";
-import { SearchModal } from "./components/search/SearchModal";
+import { SearchModal, addRecentPageId } from "./components/search/SearchModal";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { api } from "./api/client";
+import type { Page } from "./types";
 import { SettingsContext, loadSavedSettings, saveFont, saveTheme } from "./settings/settingsStore";
 import { loadResource } from "./settings/resourceLoader";
 import { FONTS, DEFAULT_FONT_ID } from "./settings/fontConfig";
@@ -60,11 +61,16 @@ export default function App() {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [allPages, setAllPages] = useState<Page[]>([]);
   const editorRef = useRef<EditorHandle>(null);
   const titleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   const refreshSidebar = useCallback(() => setSidebarKey(k => k + 1), []);
+
+  useEffect(() => {
+    api.pages.listAll().then(setAllPages).catch(() => {});
+  }, [sidebarKey]);
 
   const loadPageMeta = useCallback(async (id: string) => {
     const page = await api.pages.get(id);
@@ -88,6 +94,7 @@ export default function App() {
     editorRef.current?.flush();
     setSelectedPageId(id);
     setView("editor");
+    addRecentPageId(id);
   };
 
   const handleTitleChange = (val: string) => {
@@ -197,7 +204,7 @@ export default function App() {
         onOpenSettings={openSettings}
         settingsActive={view === "settings"}
       />
-      {searchOpen && <SearchModal onSelect={handleSearchSelect} onClose={() => setSearchOpen(false)} />}
+      {searchOpen && <SearchModal onSelect={handleSearchSelect} onClose={() => setSearchOpen(false)} allPages={allPages} />}
       <main className="main">
         {view === "settings" && <SettingsPage onClose={closeSettings} />}
         <div style={{ display: view === "settings" ? "none" : "contents" }}>
