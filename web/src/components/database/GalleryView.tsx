@@ -1,4 +1,5 @@
-import type { DBColumn, DBRow, FileAttachment } from "../../types";
+import type { DBColumn, DBRow } from "../../types";
+import { parseFileAttachments } from "../../utils/fileAttachments";
 import "./GalleryView.css";
 
 interface Props {
@@ -8,15 +9,6 @@ interface Props {
 }
 
 const IMAGE_EXTS = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)(\?.*)?$/i;
-
-function parseFileAttachments(raw: string): FileAttachment[] {
-  if (!raw || raw === "[]") return [];
-  try {
-    return JSON.parse(raw) as FileAttachment[];
-  } catch {
-    return [];
-  }
-}
 
 function getCoverImage(columns: DBColumn[], row: DBRow): string | null {
   const filesCol = columns.find(c => c.type === "files");

@@ -27,7 +27,7 @@ import {
 import type { BlockNoteEditor } from "@blocknote/core";
 import { withMultiColumn, getMultiColumnSlashMenuItems, locales as multiColumnLocales, multiColumnDropCursor } from "@blocknote/xl-multi-column";
 import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
-import { api } from "../../api/client";
+import { api, API_BASE } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
 import { DatabaseView } from "../database/DatabaseView";
@@ -262,7 +262,7 @@ const FileAttachBlock = createReactBlockSpec(
         if (file.size > 2 * 1024 * 1024) { alert("文件不超过 2MB"); return; }
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+        const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
         if (!res.ok) { alert("上传失败"); return; }
         const data = await res.json() as { url: string };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,7 +309,7 @@ const BookmarkBlock = createReactBlockSpec(
         if (!url.startsWith("http")) return;
         setLoading(true);
         try {
-          const res = await fetch(`http://localhost:8080/api/meta?url=${encodeURIComponent(url)}`);
+          const res = await fetch(`${API_BASE}/api/meta?url=${encodeURIComponent(url)}`);
           const data = await res.json() as BookmarkMeta;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           editor.updateBlock(block, { props: { url, title: data.title || url, description: data.description, favicon: data.favicon } } as any);
@@ -429,7 +429,7 @@ const PdfBlock = createReactBlockSpec(
         if (file.size > 10 * 1024 * 1024) { alert("PDF 不超过 10MB"); return; }
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+        const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
         if (!res.ok) { alert("上传失败"); return; }
         const data = await res.json() as { url: string };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -639,7 +639,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     uploadFile: async (file: File) => {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("http://localhost:8080/api/uploads", { method: "POST", body: form });
+      const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
       if (!res.ok) throw new Error("图片上传失败");
       const data = await res.json() as { url: string };
       return data.url;
@@ -842,6 +842,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
 
     function hideOverlay() {
       if (columnOverlayRef.current) {
+        if (!columnOverlayRef.current.isConnected) {
+          columnOverlayRef.current = null;
+          return;
+        }
         columnOverlayRef.current.remove();
         columnOverlayRef.current = null;
       }
@@ -861,7 +865,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       }
     }
 
-    const editorDom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
+    let editorDom: HTMLElement | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      editorDom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
+    } catch (err) {
+      console.warn("[Editor] Failed to access _tiptapEditor:", err);
+    }
     if (!editorDom) return;
 
     editorDom.addEventListener("dragover", onDragover);

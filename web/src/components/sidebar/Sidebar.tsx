@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSidebarStore } from "../../stores/sidebarStore";
 import {
   DndContext,
   PointerSensor,
@@ -72,6 +73,7 @@ function PageItem({
   onSelect,
   onRefresh,
   onContextMenu,
+  renameRequested,
 }: {
   page: Page;
   depth: number;
@@ -79,11 +81,28 @@ function PageItem({
   onSelect: (id: string) => void;
   onRefresh: () => void;
   onContextMenu: (e: React.MouseEvent, pageId: string) => void;
+  renameRequested?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(page.title || "Untitled");
   const hasChildren = (page.children?.length ?? 0) > 0;
+  const setRenamingPageId = useSidebarStore(s => s.setRenamingPageId);
+
+  // Trigger rename when renameRequested becomes true
+  useEffect(() => {
+    if (renameRequested) {
+      setTitle(page.title || "Untitled");
+      setRenaming(true);
+      setRenamingPageId(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameRequested]);
+
+  // Sync title when page prop updates (while not actively renaming)
+  useEffect(() => {
+    if (!renaming) setTitle(page.title || "Untitled");
+  }, [page.title, renaming]);
 
   const handleRename = async () => {
     await api.pages.update(page.id, { ...page, title });
@@ -183,7 +202,7 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
   useEffect(() => { void refresh().catch(() => {}); }, []);
 
   const handleSelect = (id: string) => {
-    const page = findPageFlat(id, tree);
+    const page = findPage(tree, id);
     if (page) recordVisit(id, page.title || "Untitled", page.icon ?? null);
     setRecentItems(loadRecent());
     onSelect(id);
@@ -234,14 +253,14 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
 
   const closeCtxMenu = () => setCtxMenu(null);
 
+  const setRenamingPageId = useSidebarStore(s => s.setRenamingPageId);
+
   const handleCtxRename = () => {
     renamingPageIdRef.current = ctxMenu?.pageId ?? null;
+    const pageId = ctxMenu?.pageId ?? null;
     closeCtxMenu();
-    // trigger rename on matching PageItem via DOM focus hack — simpler: re-render via key
-    // We'll use a global event pattern
-    if (ctxMenu?.pageId) {
-      const evt = new CustomEvent("rename-page", { detail: ctxMenu.pageId });
-      window.dispatchEvent(evt);
+    if (pageId) {
+      setRenamingPageId(pageId);
     }
   };
 
@@ -531,129 +550,6 @@ function findPage(tree: Page[], id: string): Page | null {
   return null;
 }
 
-function findPageFlat(id: string, tree: Page[]): Page | null {
-  return findPage(tree, id);
-}
-
-// Wrapper that listens for global rename events
-function RenameAwarePageItem(props: React.ComponentProps<typeof PageItem>) {
-  const [renameTrigger, setRenameTrigger] = useState(0);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail === props.page.id) {
-        setRenameTrigger(v => v + 1);
-      }
-    };
-    window.addEventListener("rename-page", handler);
-    return () => window.removeEventListener("rename-page", handler);
-  }, [props.page.id]);
-
-  return <PageItemWithRename {...props} renameTrigger={renameTrigger} />;
-}
-
-function PageItemWithRename({
-  page,
-  depth,
-  selectedId,
-  onSelect,
-  onRefresh,
-  onContextMenu,
-  renameTrigger,
-}: React.ComponentProps<typeof PageItem> & { renameTrigger: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [title, setTitle] = useState(page.title || "Untitled");
-  const hasChildren = (page.children?.length ?? 0) > 0;
-
-  useEffect(() => {
-    if (renameTrigger > 0) {
-      setTitle(page.title || "Untitled");
-      setRenaming(true);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renameTrigger]);
-
-  // sync title when page prop updates
-  useEffect(() => {
-    if (!renaming) setTitle(page.title || "Untitled");
-  }, [page.title, renaming]);
-
-  const handleRename = async () => {
-    await api.pages.update(page.id, { ...page, title });
-    setRenaming(false);
-    onRefresh();
-  };
-
-  const handleAddChild = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const maxOrder = Math.max(0, ...(page.children?.map((c) => c.order_index) ?? [0]));
-    await api.pages.create({ parent_id: page.id, title: "Untitled", order_index: maxOrder + 1 });
-    setExpanded(true);
-    onRefresh();
-  };
-
-  const icon = page.icon || "📄";
-
-  return (
-    <div className="page-item">
-      <div
-        className={`page-row${selectedId === page.id ? " selected" : ""}`}
-        style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => { if (!renaming) onSelect(page.id); }}
-        onContextMenu={e => onContextMenu(e, page.id)}
-      >
-        <span
-          className={`expand-btn${hasChildren ? " has-children" : ""}`}
-          onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(v => !v); }}
-        >
-          {hasChildren ? (
-            expanded
-              ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              : <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          ) : null}
-        </span>
-
-        <span className="page-icon">{icon}</span>
-
-        {renaming ? (
-          <input
-            autoFocus
-            className="page-rename-input"
-            value={title}
-            onClick={e => e.stopPropagation()}
-            onChange={e => setTitle(e.target.value)}
-            onBlur={() => void handleRename()}
-            onKeyDown={e => {
-              if (e.key === "Enter") { e.preventDefault(); void handleRename(); }
-              if (e.key === "Escape") { setTitle(page.title || "Untitled"); setRenaming(false); }
-            }}
-          />
-        ) : (
-          <span className="page-title">{page.title || "Untitled"}</span>
-        )}
-
-        <span className="page-actions" onClick={e => e.stopPropagation()}>
-          <button className="page-action-btn" onClick={e => onContextMenu(e, page.id)} title="更多操作">⋯</button>
-          <button className="page-action-btn" onClick={e => void handleAddChild(e)} title="新建子页面">+</button>
-        </span>
-      </div>
-
-      {expanded && page.children?.map((child) => (
-        <RenameAwarePageItem
-          key={child.id}
-          page={child}
-          depth={depth + 1}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          onRefresh={onRefresh}
-          onContextMenu={onContextMenu}
-        />
-      ))}
-    </div>
-  );
-}
-
 function SortablePageItem({ page, selectedId, onSelect, onRefresh, onContextMenu }: {
   page: Page;
   selectedId: string | null;
@@ -663,15 +559,17 @@ function SortablePageItem({ page, selectedId, onSelect, onRefresh, onContextMenu
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  const renamingPageId = useSidebarStore(s => s.renamingPageId);
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <RenameAwarePageItem
+      <PageItem
         page={page}
         depth={0}
         selectedId={selectedId}
         onSelect={onSelect}
         onRefresh={onRefresh}
         onContextMenu={onContextMenu}
+        renameRequested={renamingPageId === page.id}
       />
     </div>
   );

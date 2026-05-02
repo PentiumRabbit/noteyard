@@ -1,7 +1,8 @@
 import toast from "react-hot-toast";
 import type { Block, DBCell, DBColumn, DBRow, Database, Page } from "../types";
 
-const BASE = "http://localhost:8080/api";
+export const API_BASE = "http://localhost:8080";
+const BASE = API_BASE + "/api";
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   try {

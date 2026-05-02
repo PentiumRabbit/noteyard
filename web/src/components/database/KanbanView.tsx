@@ -11,32 +11,8 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DBColumn, DBRow } from "../../types";
+import { TAG_COLORS, parseOptions } from "./shared";
 import "./KanbanView.css";
-
-const TAG_COLORS = [
-  { bg: "#f3f0ff", color: "#6e5fd6" },
-  { bg: "#e8f4fd", color: "#2383e2" },
-  { bg: "#edfaf3", color: "#0f9b5c" },
-  { bg: "#fff3e0", color: "#d9730d" },
-  { bg: "#fce8e8", color: "#eb5757" },
-  { bg: "#f0f0f0", color: "#6b7280" },
-  { bg: "#fdf4e3", color: "#b07d28" },
-  { bg: "#eef0ff", color: "#4361c2" },
-];
-
-interface SelectOption { value: string; colorIdx: number }
-
-function parseOptions(raw: string): SelectOption[] {
-  try {
-    const arr = JSON.parse(raw ?? "[]");
-    if (!Array.isArray(arr)) return [];
-    return arr.map((item: unknown) => {
-      if (typeof item === "string") return { value: item, colorIdx: 0 };
-      const o = item as { value: string; colorIdx?: number };
-      return { value: o.value, colorIdx: o.colorIdx ?? 0 };
-    });
-  } catch { return []; }
-}
 
 interface Props {
   columns: DBColumn[];
