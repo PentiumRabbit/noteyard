@@ -1,0 +1,12 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/tinystr-f8ac3dd339d1c312.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/macros.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ascii.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/asciibyte.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/error.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/int_ops.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/unvalidated.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ule.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/libtinystr-f8ac3dd339d1c312.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/macros.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ascii.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/asciibyte.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/error.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/int_ops.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/unvalidated.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ule.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/macros.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ascii.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/asciibyte.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/error.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/int_ops.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/unvalidated.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tinystr-0.8.3/src/ule.rs:

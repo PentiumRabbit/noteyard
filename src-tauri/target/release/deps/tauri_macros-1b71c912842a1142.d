@@ -1,0 +1,12 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/tauri_macros-1b71c912842a1142.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/handler.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/wrapper.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/menu.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/mobile.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/runtime.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/context.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libtauri_macros-1b71c912842a1142.dylib: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/handler.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/wrapper.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/menu.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/mobile.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/runtime.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/context.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/mod.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/handler.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/command/wrapper.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/menu.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/mobile.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/runtime.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-macros-2.6.0/src/context.rs:

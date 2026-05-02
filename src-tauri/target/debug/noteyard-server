@@ -1,0 +1,3 @@
+#!/bin/sh
+# placeholder sidecar binary — replaced by build-sidecar.sh (T3)
+echo "noteyard-server placeholder"

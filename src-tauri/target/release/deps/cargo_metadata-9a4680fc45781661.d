@@ -1,0 +1,11 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/cargo_metadata-9a4680fc45781661.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/dependency.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/diagnostic.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/errors.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/messages.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libcargo_metadata-9a4680fc45781661.rlib: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/dependency.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/diagnostic.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/errors.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/messages.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libcargo_metadata-9a4680fc45781661.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/dependency.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/diagnostic.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/errors.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/messages.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/dependency.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/diagnostic.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/errors.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cargo_metadata-0.19.2/src/messages.rs:

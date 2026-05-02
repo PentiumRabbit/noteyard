@@ -1,0 +1,11 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/unicode_segmentation-312d914916a7bee6.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/grapheme.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/sentence.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/word.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/tables.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libunicode_segmentation-312d914916a7bee6.rlib: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/grapheme.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/sentence.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/word.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/tables.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libunicode_segmentation-312d914916a7bee6.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/grapheme.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/sentence.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/word.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/tables.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/grapheme.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/sentence.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/word.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.2/src/tables.rs:

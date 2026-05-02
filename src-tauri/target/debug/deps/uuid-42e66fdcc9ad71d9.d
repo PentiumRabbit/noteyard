@@ -1,0 +1,14 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/uuid-42e66fdcc9ad71d9.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/macros.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/builder.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/error.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/non_nil.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/parser.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/fmt.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/timestamp.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external/serde_support.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/libuuid-42e66fdcc9ad71d9.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/macros.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/builder.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/error.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/non_nil.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/parser.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/fmt.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/timestamp.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external/serde_support.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/macros.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/builder.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/error.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/non_nil.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/parser.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/fmt.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/timestamp.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/uuid-1.23.1/src/external/serde_support.rs:

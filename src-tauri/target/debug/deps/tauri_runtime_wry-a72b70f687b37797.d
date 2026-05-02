@@ -1,0 +1,11 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/tauri_runtime_wry-a72b70f687b37797.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/macos.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/util.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/webview.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/macos.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/libtauri_runtime_wry-a72b70f687b37797.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/macos.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/util.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/webview.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/macos.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/mod.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/monitor/macos.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/util.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/webview.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/mod.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-runtime-wry-2.11.0/src/window/macos.rs:

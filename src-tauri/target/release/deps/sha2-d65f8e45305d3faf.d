@@ -1,0 +1,13 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/sha2-d65f8e45305d3faf.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/core_api.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/consts.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256/soft.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512/soft.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libsha2-d65f8e45305d3faf.rlib: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/core_api.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/consts.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256/soft.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512/soft.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/release/deps/libsha2-d65f8e45305d3faf.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/core_api.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/consts.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256/soft.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512/soft.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/core_api.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/consts.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha256/soft.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/sha2-0.10.9/src/sha512/soft.rs:

@@ -1,0 +1,10 @@
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/alloc_no_stdlib-3bc65242fa217db5.d: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/index_macro.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/stack_allocator.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_stack_memory.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/init.rs
+
+/Users/pr/Work/GitSource/noteyard/src-tauri/target/debug/deps/liballoc_no_stdlib-3bc65242fa217db5.rmeta: /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/lib.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/mod.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/index_macro.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/stack_allocator.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_stack_memory.rs /Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/init.rs
+
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/lib.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/mod.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_memory/index_macro.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/stack_allocator.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/allocated_stack_memory.rs:
+/Users/pr/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/alloc-no-stdlib-2.0.4/src/init.rs:
