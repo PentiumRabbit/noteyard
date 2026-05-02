@@ -1,0 +1,3 @@
+status = "delivered"
+delivered_at = "2026-05-02"
+summary = "数据库块宽度修复：通过负 margin 让 .db-wrap 突破 page-wrap 的 96px 水平内边距，同时为 BlockNote [data-content-type=database] 块添加 overflow:visible 覆盖，各视图可使用完整的 900px 页面宽度。"

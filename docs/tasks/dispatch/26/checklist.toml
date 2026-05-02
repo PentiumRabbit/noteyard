@@ -1,0 +1,14 @@
+status = "delivered"
+delivered_at = "2026-05-02"
+summary = "负 margin 扩宽 db-wrap，Editor.css 补充 database 块 overflow:visible"
+
+[[items]]
+path = "web/src/components/database/DatabaseView.css"
+done = true
+
+[[items]]
+path = "web/src/components/editor/Editor.css"
+done = true
+
+review_result = ""
+reviewed_at = ""
