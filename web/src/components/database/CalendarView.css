@@ -12,15 +12,16 @@
   height: 26px;
   background: none;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 16px;
   color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.15s;
 }
-.cal-nav-btn:hover { background: var(--color-hover-bg); color: var(--color-text-primary); }
+.cal-nav-btn:hover { background: rgba(0, 0, 0, 0.06); color: var(--color-text-primary); border-color: transparent; }
 
 .cal-title {
   font-size: 14px;
@@ -77,7 +78,7 @@
   min-height: 80px;
 }
 
-.cal-today { background: var(--color-selected-bg); }
+.cal-today { background: rgba(35, 131, 226, 0.06); }
 
 .cal-day-num {
   display: block;
@@ -88,15 +89,8 @@
 }
 
 .cal-today .cal-day-num {
-  background: #2383e2;
-  color: #fff;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  color: var(--color-accent, #2383e2);
+  font-weight: 700;
 }
 
 .cal-events { display: flex; flex-direction: column; gap: 2px; }
@@ -106,8 +100,8 @@
   width: 100%;
   text-align: left;
   padding: 2px 4px;
-  background: #e8f0fe;
-  color: #2383e2;
+  background: var(--color-accent, #2383e2);
+  color: #fff;
   border: none;
   border-radius: 3px;
   font-size: 11px;
@@ -116,4 +110,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cal-event:hover { background: #c7d9fc; }
+.cal-event:hover { background: var(--color-accent, #2383e2); opacity: 0.85; }
+
+.cal-more {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  padding: 1px 4px;
+  cursor: default;
+}

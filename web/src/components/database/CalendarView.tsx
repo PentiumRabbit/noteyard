@@ -75,11 +75,14 @@ export function CalendarView({ columns, rows, onOpenRow }: Props) {
             <div key={key} className={`cal-cell${isToday ? " cal-today" : ""}`}>
               <span className="cal-day-num">{day}</span>
               <div className="cal-events">
-                {dayRows.map(row => (
+                {dayRows.slice(0, 3).map(row => (
                   <button key={row.id} className="cal-event" onClick={() => onOpenRow(row)}>
                     {primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}
                   </button>
                 ))}
+                {dayRows.length > 3 && (
+                  <span className="cal-more">+{dayRows.length - 3} 更多</span>
+                )}
               </div>
             </div>
           );
