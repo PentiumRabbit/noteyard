@@ -124,8 +124,8 @@ func main() {
 		})
 	})
 
-	addr := ":8080"
-	log.Printf("noteyard listening on http://localhost%s", addr)
+	addr := "127.0.0.1:8080"
+	log.Printf("noteyard listening on http://%s", addr)
 	log.Fatal(http.ListenAndServe(addr, r))
 }
 
