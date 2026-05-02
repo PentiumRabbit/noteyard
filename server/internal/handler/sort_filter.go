@@ -1,12 +1,26 @@
 package handler
 
 import (
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
 	"noteyard/server/internal/model"
 )
+
+// ParseSortFilter extracts sort and filter query parameters from the request.
+// sortCol, sortOrder: column ID and "asc"/"desc" for sorting.
+// filterCol, filterOp, filterVal: column ID, operator, and value for filtering.
+func ParseSortFilter(r *http.Request) (sortCol, sortOrder, filterCol, filterOp, filterVal string) {
+	q := r.URL.Query()
+	sortCol = q.Get("sort_col")
+	sortOrder = q.Get("sort_order")
+	filterCol = q.Get("filter_col")
+	filterOp = q.Get("filter_op")
+	filterVal = q.Get("filter_val")
+	return
+}
 
 func applyFilter(rows []*model.DBRow, colID, op, val string) []*model.DBRow {
 	result := rows[:0]

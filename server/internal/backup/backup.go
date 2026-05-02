@@ -18,6 +18,7 @@ type Manager struct {
 	backupsDir func() string // resolved at call time (data dir may change)
 	threshold  func() int    // current ops_threshold from config
 	opsCount   atomic.Int64
+	running    atomic.Bool
 }
 
 // NewManager creates a Manager. backupsDirFn and thresholdFn are called
@@ -52,6 +53,10 @@ func (m *Manager) OnExit() {
 }
 
 func (m *Manager) triggerAsync() {
+	if !m.running.CompareAndSwap(false, true) {
+		return
+	}
+	defer m.running.Store(false)
 	if err := Backup(m.dbPath, m.backupsDir()); err != nil {
 		log.Printf("[backup] async backup failed: %v", err)
 	}

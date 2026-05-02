@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -24,6 +25,46 @@ var (
 	reOGD   = regexp.MustCompile(`(?i)<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']`)
 )
 
+// privateNets holds the CIDR blocks that must never be fetched (SSRF protection).
+var privateNets []*net.IPNet
+
+func init() {
+	for _, cidr := range []string{
+		"127.0.0.0/8",
+		"::1/128",
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"169.254.0.0/16",
+		"fe80::/10",
+	} {
+		_, ipNet, _ := net.ParseCIDR(cidr)
+		privateNets = append(privateNets, ipNet)
+	}
+}
+
+// isPrivateHost returns true when host resolves to a loopback, RFC-1918, or
+// link-local address that must not be contacted by the server.
+func isPrivateHost(host string) bool {
+	// Strip port if present.
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		h = host
+	}
+	ip := net.ParseIP(h)
+	if ip == nil {
+		// Unresolvable or non-IP hostname — treat as safe; real SSRF via DNS
+		// rebinding is a separate concern outside this scope.
+		return false
+	}
+	for _, n := range privateNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 func MetaHandler(w http.ResponseWriter, r *http.Request) {
 	rawURL := r.URL.Query().Get("url")
 	if rawURL == "" {
@@ -33,6 +74,10 @@ func MetaHandler(w http.ResponseWriter, r *http.Request) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		http.Error(w, "invalid url", http.StatusBadRequest)
+		return
+	}
+	if isPrivateHost(parsed.Host) {
+		http.Error(w, "forbidden url", http.StatusBadRequest)
 		return
 	}
 

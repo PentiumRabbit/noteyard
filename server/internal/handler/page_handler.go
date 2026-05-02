@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"noteyard/server/internal/model"
 	"noteyard/server/internal/repository"
@@ -20,7 +22,7 @@ func NewPageHandler(pages repository.PageRepository) *PageHandler {
 func (h *PageHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 	pages, err := h.pages.ListAll(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if pages == nil {
@@ -39,7 +41,7 @@ func (h *PageHandler) Create(w http.ResponseWriter, r *http.Request) {
 		page.Title = "Untitled"
 	}
 	if err := h.pages.Create(r.Context(), &page); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, page)
@@ -49,7 +51,11 @@ func (h *PageHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	page, err := h.pages.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "page not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -64,7 +70,7 @@ func (h *PageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	page.ID = id
 	if err := h.pages.Update(r.Context(), &page); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -73,7 +79,7 @@ func (h *PageHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *PageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.pages.SoftDelete(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -82,7 +88,7 @@ func (h *PageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *PageHandler) ListTrashed(w http.ResponseWriter, r *http.Request) {
 	pages, err := h.pages.ListTrashed(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if pages == nil {
@@ -94,7 +100,7 @@ func (h *PageHandler) ListTrashed(w http.ResponseWriter, r *http.Request) {
 func (h *PageHandler) Restore(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.pages.Restore(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -103,7 +109,7 @@ func (h *PageHandler) Restore(w http.ResponseWriter, r *http.Request) {
 func (h *PageHandler) PermanentDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.pages.PermanentDelete(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -117,7 +123,7 @@ func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	pages, err := h.pages.Search(r.Context(), q)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if pages == nil {
@@ -130,7 +136,7 @@ func (h *PageHandler) GetAncestors(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ancestors, err := h.pages.GetAncestors(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if ancestors == nil {
@@ -143,7 +149,7 @@ func (h *PageHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	pages, err := h.pages.Backlinks(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if pages == nil {
