@@ -3,10 +3,14 @@ package main
 import (
 	"log"
 	"net/http"
+	"noteyard/server/internal/backup"
+	"noteyard/server/internal/config"
 	"noteyard/server/internal/handler"
 	"noteyard/server/internal/repository/sqlite"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -14,10 +18,15 @@ import (
 )
 
 func main() {
-	dbPath := dbFilePath()
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		log.Fatal(err)
+	// Load application configuration from ~/.config/noteyard/config.toml.
+	cfg := config.Load()
+
+	// Ensure data directory and backups subdirectory exist.
+	if err := os.MkdirAll(filepath.Join(cfg.Data.Dir, "backups"), 0755); err != nil {
+		log.Fatalf("create data dir: %v", err)
 	}
+
+	dbPath := filepath.Join(cfg.Data.Dir, "noteyard.db")
 
 	db, err := sqlite.Open(dbPath)
 	if err != nil {
@@ -25,10 +34,27 @@ func main() {
 	}
 	defer db.Close()
 
-	uploadDir := uploadDirPath()
+	uploadDir := uploadDirPath(cfg)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		log.Fatalf("create upload dir: %v", err)
 	}
+
+	// Set up backup manager.
+	backupMgr := backup.NewManager(
+		dbPath,
+		func() string { return filepath.Join(cfg.Data.Dir, "backups") },
+		func() int { return cfg.Backup.OpsThreshold },
+	)
+
+	// Register OS signal handler for graceful-exit backup.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("[main] shutting down, running exit backup...")
+		backupMgr.OnExit()
+		os.Exit(0)
+	}()
 
 	pages := sqlite.NewPageRepo(db)
 	blocks := sqlite.NewBlockRepo(db)
@@ -37,6 +63,9 @@ func main() {
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
 	uh := handler.NewUploadHandler(uploadDir, "http://localhost:8080")
+	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
+		return config.MigrateDataDir(cfg, newDir)
+	})
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -47,12 +76,17 @@ func main() {
 		AllowedHeaders: []string{"Accept", "Content-Type"},
 	}))
 
-	// 静态图片文件服务
+	// Count write operations for backup triggering.
+	r.Use(writeCountMiddleware(backupMgr))
+
+	// Static image file server.
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/uploads", uh.Upload)
 		r.Get("/meta", handler.MetaHandler)
+		r.Get("/config", ch.Get)
+		r.Put("/config", ch.Update)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
@@ -95,18 +129,21 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, r))
 }
 
-func dbFilePath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "noteyard.db"
-	}
-	return filepath.Join(home, ".local", "share", "noteyard", "noteyard.db")
+// uploadDirPath returns the upload directory derived from the config.
+func uploadDirPath(cfg *config.Config) string {
+	return filepath.Join(cfg.Data.Dir, "uploads")
 }
 
-func uploadDirPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "data/uploads"
+// writeCountMiddleware counts mutating HTTP requests (POST/PUT/PATCH/DELETE)
+// and notifies the backup manager.
+func writeCountMiddleware(mgr *backup.Manager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+			switch r.Method {
+			case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+				mgr.RecordWrite()
+			}
+		})
 	}
-	return filepath.Join(home, ".local", "share", "noteyard", "uploads")
 }

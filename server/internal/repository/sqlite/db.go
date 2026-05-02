@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	appdb "noteyard/server/internal/db"
 	"sort"
 	"time"
 
@@ -21,6 +22,10 @@ func Open(path string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 	if err := migrate(db); err != nil {
 		return nil, fmt.Errorf("migration: %w", err)
+	}
+	// Run schema_migrations framework (content_version, future versioned changes).
+	if err := appdb.RunMigrations(db); err != nil {
+		return nil, fmt.Errorf("schema migration: %w", err)
 	}
 	return db, nil
 }
