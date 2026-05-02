@@ -1,0 +1,18 @@
+status = "delivered"
+delivered_at = "2026-05-02T00:00:00Z"
+summary = "T6: 创建 .github/workflows/ci.yml，包含 backend job（Go build/test，go.mod 在根目录）和 frontend job（npm ci + npm run build，工作目录 web/）"
+
+[[items]]
+id = "ci-yml"
+description = "创建 .github/workflows/ci.yml，触发条件 push/PR to main"
+status = "done"
+
+[[items]]
+id = "backend-job"
+description = "backend job：setup-go@v5 cache=true，go build ./... 和 go test ./..."
+status = "done"
+
+[[items]]
+id = "frontend-job"
+description = "frontend job：setup-node@v4，cache=npm，cache-dependency-path=web/package-lock.json，npm ci + npm run build"
+status = "done"
