@@ -181,29 +181,25 @@ func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRo
 			&row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
-		row.Cells = make(map[string]string)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
+	rowIDs := make([]string, 0, len(result))
 	for _, row := range result {
-		cells, err := r.db.QueryContext(ctx,
-			`SELECT column_id,value FROM database_cells WHERE row_id=?`, row.ID)
-		if err != nil {
-			return nil, err
+		rowIDs = append(rowIDs, row.ID)
+	}
+	allCells, err := r.batchFetchAllCells(ctx, rowIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range result {
+		row.Cells = allCells[row.ID]
+		if row.Cells == nil {
+			row.Cells = make(map[string]string)
 		}
-		for cells.Next() {
-			var colID, val string
-			if err := cells.Scan(&colID, &val); err != nil {
-				cells.Close()
-				return nil, err
-			}
-			row.Cells[colID] = val
-		}
-		cells.Close()
-
 		// 计算 formula 列
 		for _, col := range cols {
 			if col.Type != "formula" {
@@ -275,6 +271,44 @@ func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRo
 	}
 
 	return result, nil
+}
+
+// batchFetchAllCells 批量查询给定 rowIDs 的所有 cell 值。
+// 返回 map[rowID]map[colID]value。若 rowIDs 为空，返回空 map。
+func (r *DatabaseRepo) batchFetchAllCells(ctx context.Context, rowIDs []string) (map[string]map[string]string, error) {
+	result := make(map[string]map[string]string)
+	if len(rowIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(rowIDs))
+	args := make([]interface{}, len(rowIDs))
+	for i, id := range rowIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(
+		`SELECT row_id, column_id, value FROM database_cells WHERE row_id IN (%s)`,
+		strings.Join(placeholders, ","),
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rowID, colID, val string
+		if err := rows.Scan(&rowID, &colID, &val); err != nil {
+			return nil, err
+		}
+		if result[rowID] == nil {
+			result[rowID] = make(map[string]string)
+		}
+		result[rowID][colID] = val
+	}
+	return result, rows.Err()
 }
 
 // batchFetchCells 批量查询给定 rowID 集合中指定 columnID 的 cell 值。
