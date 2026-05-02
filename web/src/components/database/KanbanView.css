@@ -1,16 +1,16 @@
 .kanban-board {
   display: flex;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 16px;
+  padding: 16px 4px;
   overflow-x: auto;
   align-items: flex-start;
 }
 
 .kanban-col {
-  width: 220px;
-  min-width: 220px;
+  width: 260px;
+  min-width: 260px;
   background: var(--color-bg-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px 6px;
+  padding: 10px 10px 8px;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -30,6 +30,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .kanban-col-count {
@@ -38,33 +43,36 @@
   padding: 1px 6px;
   font-size: 11px;
   flex-shrink: 0;
+  margin-left: 6px;
 }
 
 .kanban-col-body {
-  padding: 4px 6px 6px;
+  padding: 4px 8px 8px;
   min-height: 40px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .kanban-card {
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 10px 12px;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
 }
 .kanban-card:hover {
-  box-shadow: 0 2px 6px rgba(0,0,0,.1);
+  box-shadow: var(--shadow-md);
 }
 .kanban-card:active { cursor: grabbing; }
 
 .kanban-card-overlay {
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  box-shadow: var(--shadow-lg);
   cursor: grabbing;
 }
 

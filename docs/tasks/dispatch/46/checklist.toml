@@ -1,0 +1,18 @@
+status = "delivered"
+delivered_at = "2026-05-02T00:00:00Z"
+summary = "REQ-059 T12：时间轴视图样式精细化完成。更新 TimelineView.css：bar 改为强调蓝背景白字含 box-shadow，当日竖线 opacity 0.6，今日列头背景高亮蓝色加粗。"
+
+[[items]]
+id = "bar-style"
+description = "时间线 bar 使用强调蓝色背景、白字、border-radius: 4px、box-shadow"
+status = "done"
+
+[[items]]
+id = "today-line"
+description = "当日竖线 2px、var(--color-accent) 颜色、opacity: 0.6"
+status = "done"
+
+[[items]]
+id = "today-header"
+description = "今日列头背景 rgba(35,131,226,0.06)、文字蓝色加粗"
+status = "done"
