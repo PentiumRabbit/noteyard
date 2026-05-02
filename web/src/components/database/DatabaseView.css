@@ -110,6 +110,25 @@
   color: var(--color-text-secondary);
 }
 
+/* 列类型图标通用样式 */
+.col-icon {
+  display: inline-flex;
+  align-items: center;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* 工具栏激活态 */
+.db-toolbar-btn.active {
+  color: #374151;
+}
+
+/* 筛选/排序已设置强调色 */
+.db-toolbar-btn.has-filter,
+.db-toolbar-btn.has-sort {
+  color: #2383e2;
+}
+
 /* ── view switcher ── */
 .db-view-switcher {
   display: flex;

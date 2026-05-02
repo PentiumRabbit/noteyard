@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle, GripVertical, X, FileText } from "lucide-react";
+import { Type, Hash, CheckSquare, ChevronDown, Tags, Calendar, FunctionSquare, Link, Mail, Clock, Clock3, Paperclip, ArrowUpRight, Sigma, HelpCircle, Table, Columns, LayoutGrid, List, CalendarDays, GanttChartSquare, Filter, ArrowUpDown, EyeOff, Rows, Plus, ExternalLink, Copy, Trash2, FileText, Phone, User, Circle, GripVertical, X } from "lucide-react";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -53,16 +53,16 @@ const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?:
   text: Type,
   number: Hash,
   checkbox: CheckSquare,
-  select: AlignJustify,
-  "multi-select": List,
+  select: ChevronDown,
+  "multi-select": Tags,
   date: Calendar,
-  formula: Sigma,
+  formula: FunctionSquare,
   url: Link,
   email: Mail,
   created_time: Clock,
-  last_edited_time: Clock4,
+  last_edited_time: Clock3,
   files: Paperclip,
-  relation: Link2,
+  relation: ArrowUpRight,
   rollup: Sigma,
   phone: Phone,
   people: User,
@@ -906,32 +906,32 @@ export function DatabaseView({ databaseId }: Props) {
 
       {/* view switcher */}
       <div className="db-view-switcher">
-        <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}><Table2 size={14} /> 表格</button>
-        <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}><Kanban size={14} /> 看板</button>
-        <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}><LayoutGrid size={14} /> 库</button>
-        <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}><ListIcon size={14} /> 列表</button>
-        <button className={`db-view-btn${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}><CalendarDays size={14} /> 日历</button>
-        <button className={`db-view-btn${viewMode === "timeline" ? " active" : ""}`} onClick={() => setViewMode("timeline")}><GanttChart size={14} /> 时间轴</button>
+        <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}><Table size={16} /><span>表格</span></button>
+        <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}><Columns size={16} /><span>看板</span></button>
+        <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}><LayoutGrid size={16} /><span>库</span></button>
+        <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}><List size={16} /><span>列表</span></button>
+        <button className={`db-view-btn${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}><CalendarDays size={16} /><span>日历</span></button>
+        <button className={`db-view-btn${viewMode === "timeline" ? " active" : ""}`} onClick={() => setViewMode("timeline")}><GanttChartSquare size={16} /><span>时间轴</span></button>
       </div>
 
       {/* toolbar */}
       <div className="db-toolbar">
-        <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterStates.length > 0 ? " has-value" : ""}`}
+        <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterStates.length > 0 ? " has-filter" : ""}`}
           onClick={() => setToolbarPanel(p => p === "filter" ? null : "filter")}>
-          <Filter size={14} /> {filterStates.length > 0 ? `筛选 ${filterStates.length}` : "筛选"}
+          <Filter size={16} /> {filterStates.length > 0 ? `筛选 ${filterStates.length}` : "筛选"}
         </button>
-        <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortStates.length > 0 ? " has-value" : ""}`}
+        <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortStates.length > 0 ? " has-sort" : ""}`}
           onClick={() => setToolbarPanel(p => p === "sort" ? null : "sort")}>
-          <ArrowUpDown size={14} /> {sortStates.length > 0 ? `排序 ${sortStates.length}` : "排序"}
+          <ArrowUpDown size={16} /> {sortStates.length > 0 ? `排序 ${sortStates.length}` : "排序"}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "hide" ? " active" : ""}`}
           onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
-          <EyeOff size={14} /> 隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+          <EyeOff size={16} /> 隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
         </button>
         {(viewMode === "table" || viewMode === "list") && (
           <button className={`db-toolbar-btn${toolbarPanel === "group" ? " active" : ""}${groupByColId ? " has-value" : ""}`}
             onClick={() => setToolbarPanel(p => p === "group" ? null : "group")}>
-            <Layers size={14} /> 分组{groupByColId ? " ●" : ""}
+            <Rows size={16} /> 分组{groupByColId ? ` (1)` : ""}
           </button>
         )}
       </div>
@@ -1237,9 +1237,9 @@ export function DatabaseView({ databaseId }: Props) {
                     <input type="checkbox" className="db-row-check"
                       checked={selectedRowIds.has(row.id)}
                       onChange={() => toggleSelectRow(row.id)} />
-                    <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行">↗</button>
-                    <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行">⊕</button>
-                    <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行">⊖</button>
+                    <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行"><ExternalLink size={14} /></button>
+                    <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行"><Copy size={14} /></button>
+                    <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行"><Trash2 size={14} /></button>
                   </div>
                 </td>
                 {cols.map(col => {
