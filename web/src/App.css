@@ -108,8 +108,8 @@
   z-index: 200;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border-medium);
-  border-radius: 8px;
-  box-shadow: rgba(15,15,15,.1) 0 0 0 1px, rgba(15,15,15,.2) 0 3px 6px, rgba(15,15,15,.4) 0 9px 24px;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 12px;
   width: 280px;
 }
@@ -163,10 +163,10 @@
 .page-cover-action-btn {
   background: rgba(255,255,255,0.85);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   padding: 4px 10px;
   font-size: 12px;
-  color: #37352f;
+  color: var(--color-text-primary);
   cursor: pointer;
   backdrop-filter: blur(4px);
 }
