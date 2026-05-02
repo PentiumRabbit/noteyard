@@ -1,579 +1,320 @@
-# ARCH-PLAN-FRONTEND — 前端修复技术方案
+# ARCH-PLAN-FRONTEND — REQ-064 前端修复技术方案
 
 | 字段 | 内容 |
 |------|------|
-| 方案 ID | ARCH-PLAN-FRONTEND |
-| 对应需求 | REQ-064 |
-| 来源审查 | CODE-REVIEW-001 |
+| 文档 ID | ARCH-PLAN-FRONTEND |
+| 版本 | v2.0（REQ-064 更新） |
 | 日期 | 2026-05-02 |
-| 产出人 | 前端架构师（arch-frontend） |
-| dispatch ID | 39 |
+| 作者角色 | 前端架构师-REQ064-66 |
+| 关联 REQ | REQ-064 |
+| 状态 | 待实现 |
 
 ---
 
-## 1. 执行摘要
+## 1. 概述
 
-本方案覆盖 CODE-REVIEW-001 中属于前端责任的 **16 个问题**（I-001、I-002、I-003、I-006、I-007、I-008、I-009、I-011、I-012、I-013、I-016、I-017、I-018、I-019、I-020、I-022），以及架构建议 AR-1（DatabaseView 拆分）、AR-2（统一错误处理）、AR-5（Zustand 状态管理引入）。
+本轮覆盖 REQ-064 前端问题清单全部 **16 个**待修复问题，跨以下层级：
 
-### 问题分布
+| 优先级 | 问题数 | 涉及层面 |
+|--------|--------|----------|
+| P0（紧急） | 3 | 竞态、错误处理、数据静默丢失 |
+| P1（重要） | 7 | 重复代码、硬编码、DOM 泄漏、类型 any、组件重复、Tauri 集成 |
+| P2（建议） | 6 | 耦合、重复 hook、Base64 存储、冗余函数、O(n) 请求、乐观更新 |
 
-| 优先级 | 问题 ID | 数量 |
-|--------|---------|------|
-| P0 | I-001、I-002、I-003 | 3 |
-| P1 | I-006、I-007、I-008、I-009、I-011、I-012、I-013 | 7 |
-| P2 | I-016、I-017、I-018、I-019、I-020、I-022 | 6 |
-
-### 核心原则
-
-1. 每个修复最小范围原则：不捎带重构、不扩大边界
-2. 类型化优先：消除 `any`，建立类型化中间层
-3. 复用优先：重复代码统一提取，单一来源
-4. 不在本轮写实现代码
+架构建议同步落地：AR-1（DatabaseView 拆分）、AR-2（统一错误层）、AR-5（Zustand 引入）。
 
 ---
 
 ## 2. 各问题修复方案
 
----
+### I-001 — DatabaseView useEffect 竞态（P0）
 
-### I-001 · DatabaseView useEffect 竞态
+**方案选择：使用 AbortController 标记过期 effect + useRef 持久化缓存**
 
-**问题**：`useEffect`（L408–454）依赖数组使用 `eslint-disable` 仅声明 `[db, rows]`，但内部闭包捕获了 `relationRowsCache` state。当 `rows` 更新触发新 effect 时，新旧 effect 并发执行，新 effect 会用 `new Map(updates)` 覆盖尚未写入的旧缓存 key，导致视图闪回空值。
+REQ-064 提供了两个方向：useCallback 重构依赖 vs useRef 保存缓存。选择后者，原因：
+- 当前 effect（L409–452）同时做"批量加载"和"写缓存"两件事，拆出 useCallback 会让依赖链更复杂，`rows` 和 `db` 的双重依赖难以彻底消除。
+- `relationRowsCache` 本身已是 `useRef`，问题核心是 effect 在新一轮触发前旧轮异步操作写回已过期的 cache。用 AbortController（或局部 `cancelled` ref）在 effect cleanup 里标记取消，异步操作回调前检查 `cancelled` 再决定是否写入，即可杜绝竞态。
 
-**方案对比**
+**影响范围：**
+- `web/src/components/database/DatabaseView.tsx`，L408–452（relation 批量加载 effect）
 
-| | 方案 A：useRef 缓存 | 方案 B：useCallback + 正确依赖 |
-|--|---|---|
-| 思路 | 将 `relationRowsCache` 从 state 改为 `useRef`，通过 `ref.current` 读写，避免闭包捕获过期值 | 将批量加载抽取为 `loadRelationRows(db, rows)` `useCallback`，正确声明所有依赖，引入 `isCurrent` guard 防止过期 effect 写入 state |
-| 优点 | 简单，不需要引入 cancel flag；缓存更新不触发重渲染 | 依赖图清晰，符合 React 官方推荐 |
-| 缺点 | ref 变更不触发重渲染，如果有其他组件需要响应缓存变化则无法感知 | 需要引入 `isCurrent` guard 并在 cleanup 中置 false |
-| **推荐** | ✓ | |
-
-**推荐方案 A 细节**
-
-- 将 `const [relationRowsCache, setRelationRowsCache] = useState(new Map())` 改为 `const relationRowsCache = useRef<Map<string, Map<string, DBRow | null>>>(new Map())`
-- effect 内部直接读写 `relationRowsCache.current`，写完后调用 `setRows(r => [...r])` 强制触发一次渲染（或通过独立计数 state 触发）
-- 依赖数组正确声明为 `[db, rows]`，移除 `eslint-disable`
-
-**影响文件**
-
-- `web/src/components/database/DatabaseView.tsx`（L368、L408–454）
-
-**复杂度**：S
+**注意事项：**
+1. `rows` 在依赖数组中，每次 `setRows(r => [...r])` 都会重新触发此 effect，形成循环。修复后应在 effect 内用 stable 的 `databaseId` 驱动，rows 仅作只读读取而非依赖触发源；或将 relation 加载逻辑抽入 `useRelationCache(databaseId, db, rows)` 自定义 hook，在 hook 内用 `useEffect` + `useRef(rows)` 避免循环。
+2. `changed` flag 触发 `setRows(r => [...r])` 是强制重渲的粗暴方式，修复后改为仅在真正有新数据时触发，减少不必要渲染。
 
 ---
 
-### I-002 · API 错误处理缺失
+### I-002 — API 错误处理缺失（P0）
 
-**问题**：`api/client.ts` 的 `req<T>` 正确抛出非 2xx 异常，但所有调用方均使用 `void` 前缀静默丢弃 rejection。用户遭遇网络错误或后端 500 时，UI 停留在旧状态且无任何提示。
+**方案选择：在 api/client.ts 的 req 函数内保持 toast 集成，消除调用方 void 吞弃**
 
-**方案对比**
+`client.ts` 已有 `import toast from "react-hot-toast"`（L1）且在 catch 块中调用了 `toast.error()`（L20），该层已具备能力。问题是调用方用 `void` 前缀吞掉了 rejection，导致 toast 在某些路径仍不可靠。
 
-| | 方案 A：api/client 层全局 toast | 方案 B：React ErrorBoundary | 方案 C：onError Context 回调 |
-|--|---|---|---|
-| 思路 | 在 `req` 函数 catch 块中调用 `toast.error(err.message)` 后重新 throw；引入 `react-hot-toast` | 在组件树根部放置 ErrorBoundary，捕获未处理的 rejection（需搭配 window.onunhandledrejection） | 提供 `ErrorContext`，各组件调用 `const { onError } = useError()`，在 catch 中显式调用 |
-| 优点 | 一处修改覆盖全部调用点；无需修改各 callsite | 能捕获同步渲染异常 | 灵活，各组件可自定义错误处理逻辑 |
-| 缺点 | 某些操作（如删除）报错后 toast 样式可能不够准确；所有错误统一展示 | Promise rejection 捕获不完整；需要额外 polyfill | 需要修改所有 callsite，改动量大 |
-| **推荐** | ✓ | | |
+修复步骤：
+1. `req` 中的 `toast.error` 已覆盖全部 throw 路径，无需改动。
+2. 在所有调用方将 `void someApiCall()` 改为 `.catch(() => {})` 或改成 `await`（在 async 函数内），核心是不再让调用方静默吞弃 rejection。
+3. 对于确实不需要等待结果的"fire and forget"场景（如 `void reload()`），`reload` 自身需有 catch 路由到 toast。
 
-**推荐方案 A 细节**
+不引入全局 React Context onError，原因：client 层已在非 React 上下文中正常工作，引入 Context 反而增加耦合。
 
-- 安装 `react-hot-toast`（或使用现有 UI 库的 notification）
-- 在 `api/client.ts` 的 `req` 函数中：
-  ```
-  async function req<T>(method, path, body?): Promise<T> {
-    try {
-      // ... fetch 逻辑不变
-    } catch (err) {
-      toast.error((err as Error).message);  // 全局展示
-      throw err;  // 仍然 re-throw，保留调用方 catch 的能力
-    }
-  }
-  ```
-- 在 `main.tsx` / `App.tsx` 的根节点添加 `<Toaster />` 组件
-- 各调用方的 `void` 前缀可保留（不强制要求每处 catch），因为 `req` 层已展示 toast
+**影响范围：**
+- `web/src/api/client.ts` — 确认 catch 覆盖完整（目前已有，基本满足）
+- `web/src/App.tsx` L80–83 — 将 `void api.xxx()` 改为 await/catch
+- `web/src/components/database/DatabaseView.tsx` L397–404 — reload 调用处
+- `web/src/components/sidebar/Sidebar.tsx` L178–181 — 加载调用处
 
-**影响文件**
-
-- `web/src/api/client.ts`（L5–17，新增 toast 调用）
-- `web/src/main.tsx` 或 `web/src/App.tsx`（根节点添加 `<Toaster />`）
-- `package.json`（添加 `react-hot-toast` 依赖）
-
-**复杂度**：S
+**注意事项：**
+1. `req` 内已有 `toast.error` 但也会 re-throw，调用方的 unhandled rejection 在生产 build 中只会出现在 console，不影响 toast 显示。但若调用方在 `useEffect` 内，React 严格模式会捕获并报 uncaught error，导致 error boundary 触发。应在 effect 内统一用 `.catch(() => {})` 终结 rejection 链。
+2. 不要在 `req` 内吃掉 throw（即不要去掉 `throw err`），上层调用方需要知道操作是否成功以决定是否继续（如 `submitNewCol` 里的 catch block）。
 
 ---
 
-### I-003 · toBlockNote 静默丢失数据
+### I-003 — toBlockNote 静默丢失数据（P0）
 
-**问题**：`buildBlock` 在 JSON.parse 失败时直接置空（`content = []`, `props = {}`），无任何警告日志。`toBlockNote` 返回 `any[]`，类型安全链路断裂。`Editor.tsx` L750 的 `catch` 块完全静默。
+**方案选择：在 catch 块添加 console.warn + 明确返回类型**
 
-**方案（唯一解）**
+已读取 `web/src/utils/toBlockNote.ts`：当前版本已经在多处 catch 块中添加了 `console.warn('[toBlockNote] parse failed for block', col.id, e)`（L17、36、66、72、74），并从 `../types/blocknote` 导入了 `BNBlock` 类型，函数返回 `BNBlock[]`。此问题在当前代码中**已部分修复**。
 
-本问题无需对比方案，直接修复三个独立点：
+需要确认的额外项：
+1. `toBlockNote` 函数签名返回 `BNBlock[]`，确保 `BNBlock` 定义完整（有 `id`、`type`、`props`、`content`、`children` 字段），不含 `any`。
+2. `Editor.tsx` L731、L750–751 的 `replaceBlocks` catch 块需要加 `console.error` 日志（不能静默）。
+3. `toBlockNote.ts` 中 block type 字符串（`"database"`, `"subpage"`, `"fileAttach"` 等）以 magic literal 出现，应使用 enum 或 `as const` 对象统一（与 I-019 合并处理）。
 
-1. **`buildBlock` 中 parse 失败时增加 warn 日志**  
-   在所有 `catch { /* empty */ }` 处改为：  
-   `catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, 'field: content/props', b.content, e); }`
+**影响范围：**
+- `web/src/utils/toBlockNote.ts` — 确认 warn 覆盖所有 parse 路径（已有）
+- `web/src/types/blocknote.ts`（或同路径）— 确认 BNBlock 类型定义无 any
+- `web/src/components/editor/Editor.tsx` L731、L750–751 — replaceBlocks catch 块添加日志
 
-2. **`toBlockNote` 返回类型改为 `BNBlock[]`**  
-   利用 `Editor.tsx` L38–39 中已定义的 `BNBlock` 接口：  
-   `export function toBlockNote(blocks: Block[]): BNBlock[]`  
-   同时 `buildBlock` 返回类型改为 `BNBlock`，内部构造对象保持结构化
-
-3. **Editor.tsx L750 catch 块记录日志**  
-   `catch (err) { console.error('[Editor] replaceBlocks failed', err); }`
-
-**影响文件**
-
-- `web/src/utils/toBlockNote.ts`（全文：L4、L17、L66、L72、L74、L80）
-- `web/src/components/editor/Editor.tsx`（L750–751）
-
-**复杂度**：S
+**注意事项：**
+catch 块内的 warn 不应包含原始内容全文（可能含敏感数据），只记录 blockId 和错误类型即可。修复后去掉 `toBlockNote` 签名上的 `any[]` 返回类型注解（如有残留）。
 
 ---
 
-### I-006 · TAG_COLORS / parseOptions 重复
+### I-006 — TAG_COLORS/parseOptions 重复（P1）
 
-**问题**：`TAG_COLORS` 数组、`tagColor` 函数、`parseOptions` 函数在 `DatabaseView.tsx` 和 `KanbanView.tsx` 中各存一份，完全相同或近乎相同。
+**方案选择：提取到 `web/src/components/database/shared.ts`**
 
-**方案（唯一解）**
+`TAG_COLORS` 数组在 `DatabaseView.tsx`（L93–102）和 `KanbanView.tsx`（L16–25）完全相同；`parseOptions` 在两处实现相似（KanbanView 版本对 `raw` 有 `?? "[]"` 保护，DatabaseView 版本没有）。
 
-新建 `web/src/components/database/shared.ts`，内容：
+选择 `shared.ts` 而非 `utils/tagColors.ts`，原因：这两者都是 database 功能域专属，放在 `utils/` 层级过于通用化。
 
-```typescript
-// TAG_COLORS: 8 色方案，顺序固定，按值 hash 选色
-export const TAG_COLORS: ReadonlyArray<{ bg: string; color: string }> = [
-  { bg: "#f3f0ff", color: "#6e5fd6" },
-  { bg: "#e8f4fd", color: "#2383e2" },
-  { bg: "#edfaf3", color: "#0f9b5c" },
-  { bg: "#fff3e0", color: "#d9730d" },
-  { bg: "#fce8e8", color: "#eb5757" },
-  { bg: "#f0f0f0", color: "#6b7280" },
-  { bg: "#fdf4e3", color: "#b07d28" },
-  { bg: "#eef0ff", color: "#4361c2" },
-];
+`shared.ts` 导出：
+- `TAG_COLORS` 常量
+- `tagColor(val: string)` 哈希函数
+- `parseOptions(raw: string): SelectOption[]` — 合并两处实现，保留 `?? "[]"` 保护
+- `serializeOptions(opts: SelectOption[]): string`
+- `SelectOption` 接口
 
-export interface SelectOption { value: string; colorIdx: number }
+**影响范围：**
+- 新建 `web/src/components/database/shared.ts`
+- `web/src/components/database/DatabaseView.tsx` — 删除本地定义，改为 import
+- `web/src/components/database/KanbanView.tsx` — 删除本地定义，改为 import
 
-export function tagColor(val: string): { bg: string; color: string } { ... }
-
-export function parseOptions(raw: string): SelectOption[] { ... }
-
-export function serializeOptions(opts: SelectOption[]): string { ... }
-```
-
-- `DatabaseView.tsx` 和 `KanbanView.tsx` 均改为从 `./shared` 导入，删除各自的本地定义
-
-**影响文件**
-
-- 新增：`web/src/components/database/shared.ts`
-- 修改：`web/src/components/database/DatabaseView.tsx`（删除 L93–146 的本地定义，改为 import）
-- 修改：`web/src/components/database/KanbanView.tsx`（删除 L16–39 的本地定义，改为 import）
-
-**复杂度**：S
+**注意事项：**
+`SelectOption` 接口在 DatabaseView 和 KanbanView 各自定义，迁移时使用同一个定义，注意两处字段完全一致（`value: string; colorIdx: number`）。`serializeOptions` 是纯单行函数（JSON.stringify 包装），一并放入 `shared.ts`。
 
 ---
 
-### I-007 · parseFileAttachments 重复
+### I-007 — parseFileAttachments 重复（P1）
 
-**问题**：`parseFileAttachments` 在 `DatabaseView.tsx`（L25–33）和 `GalleryView.tsx`（L12–19）逐字节相同定义。
+**方案选择：提取到 `web/src/utils/fileAttachments.ts`**
 
-**方案（唯一解）**
+`parseFileAttachments` 在 `DatabaseView.tsx`（L25–33）和 `GalleryView.tsx`（L12–19）逐字节相同。GalleryView 版本缺少 console.warn，合并时保留 warn 版本。
 
-新建 `web/src/utils/fileAttachments.ts`：
+此函数不属于 database 功能域专属（Editor 等将来也可能用到），放 `utils/` 合适。
 
-```typescript
-import type { FileAttachment } from "../types";
+**影响范围：**
+- 新建 `web/src/utils/fileAttachments.ts`
+- `web/src/components/database/DatabaseView.tsx` — 删除本地定义，改为 import
+- `web/src/components/database/GalleryView.tsx` — 删除本地定义，改为 import
 
-export function parseFileAttachments(raw: string): FileAttachment[] {
-  if (!raw || raw === "[]") return [];
-  try {
-    return JSON.parse(raw) as FileAttachment[];
-  } catch (e) {
-    console.warn("[fileAttachments] invalid JSON", raw, e);
-    return [];
-  }
+**注意事项：**
+`FileAttachment` 类型需从 `../../types` 正确引用，确保 `utils/fileAttachments.ts` 的类型路径解析正确。
+
+---
+
+### I-008 — Editor 内硬编码 localhost URL（P1）
+
+**方案选择：从 api/client.ts 导出 API_BASE 常量，Editor.tsx 引用**
+
+`api/client.ts` L4 有 `const BASE = "http://localhost:8080/api"`，Editor.tsx（L267、314、434）直接硬编码相同 URL。从 `api/client.ts` 导出 `API_BASE`（或 `export const API_BASE`）常量，Editor.tsx 的 `FileAttachBlock`、`BookmarkBlock`、`PdfBlock` 使用导入的常量拼接路径。
+
+不必为每个资源抽取独立 `api.xxx()` 方法（那是更大的重构），仅统一常量即可保持修改点单一。
+
+**影响范围：**
+- `web/src/api/client.ts` — 将 `const BASE` 改为 `export const API_BASE`
+- `web/src/components/editor/Editor.tsx` L267、L312–319、L434–438 — 替换硬编码字符串
+
+**注意事项：**
+`api/client.ts` 中 `batchUpdateBeacon` 也硬编码了 `BASE + "/blocks/batch"`（L79），一并修复。后续若需支持自定义后端地址，只需修改 `API_BASE` 一处。
+
+---
+
+### I-009 — column overlay DOM 泄漏（P1）
+
+**方案选择：isConnected 检查 + try/catch 包装 _tiptapEditor 访问**
+
+`hideOverlay` 函数在调用 `columnOverlayRef.current.remove()` 前应先检查：
+```ts
+if (columnOverlayRef.current?.isConnected) {
+  columnOverlayRef.current.remove();
 }
 ```
+私有 API `_tiptapEditor` 访问用 try/catch 包装，catch 块记录 `console.warn`。
 
-注意：当前 `GalleryView.tsx` 的版本无 warn 日志，统一添加。
+不做更大重构（如改用 React Portal 管理 overlay），原因：该 overlay 是 TipTap 内部拖拽交互的配合产物，Portal 方案需要理解 TipTap 内部生命周期，风险高于收益。
 
-- `DatabaseView.tsx` 和 `GalleryView.tsx` 均改为从 `../../utils/fileAttachments` 导入
+**影响范围：**
+- `web/src/components/editor/Editor.tsx` L799–882 — hideOverlay 函数 + _tiptapEditor 调用处
 
-**影响文件**
-
-- 新增：`web/src/utils/fileAttachments.ts`
-- 修改：`web/src/components/database/DatabaseView.tsx`（删除 L25–33，改为 import）
-- 修改：`web/src/components/database/GalleryView.tsx`（删除 L12–19，改为 import）
-
-**复杂度**：XS
+**注意事项：**
+组件卸载时需在 cleanup 函数中调用 `hideOverlay()`，确保不残留 DOM 节点。如果已有 cleanup，确认 cleanup 内有 `isConnected` 检查。
 
 ---
 
-### I-008 · Editor 硬编码 localhost URL
+### I-011 — Tauri sidecar 无崩溃感知（P1）
 
-**问题**：`FileAttachBlock`（L267）、`BookmarkBlock`（L314）、`PdfBlock`（L434）直接硬编码 `"http://localhost:8080/api/uploads"` 和 `"http://localhost:8080/api/meta"`，绕过 `api/client.ts` 的统一层。
+**方案选择：后台线程监听 _rx + on_exit 覆盖异常退出路径**
 
-**方案对比**
+`src-tauri/src/lib.rs` L25 中 `_rx` 被丢弃（`let (_rx, child) = ...`）。修复步骤：
+1. 保留 `_rx` 并在 `spawn` 成功后，另起 `std::thread::spawn` 消费 `_rx`，监听 `TerminatedPayload`；sidecar 异常退出时通过 `app_handle.dialog().message(...)` 提示用户，并提供重启或退出选项（重试上限设为 3 次）。
+2. `on_window_event` 目前只处理 `Destroyed`，需补充对异常退出路径的覆盖，或用 app 级 `on_exit` handler。
 
-| | 方案 A：在 api/client.ts 添加专用方法 | 方案 B：仅提取 BASE_URL 常量 |
-|--|---|---|
-| 思路 | 新增 `api.uploads.upload(file): Promise<{ url: string }>` 和 `api.meta.fetch(url): Promise<BookmarkMeta>` | 在 `api/client.ts` 顶部导出 `export const BASE_URL = "http://localhost:8080"` 常量，各处引用 |
-| 优点 | 完整封装，错误处理一致，后续端口变更只改一处；符合 api 层职责 | 改动最小 |
-| 缺点 | 需要额外定义接口类型 | `uploads` 不走 `req<T>` 的标准化 fetch 路径，错误处理仍需各处自行实现 |
-| **推荐** | ✓ | |
+**影响范围：**
+- `src-tauri/src/lib.rs` L25（_rx 丢弃处）、L49–62（on_window_event）
 
-**推荐方案 A 细节**
+**注意事项：**
+1. 重试逻辑需将重试次数存入 `Mutex<u32>` 状态，超限后不再重启，直接提示退出。
+2. dialog 调用在后台线程必须用 `blocking_show()`，不可用异步版本。
+3. Tauri v2 的 `CommandChild` 有 `on_event` 回调，可替代手动消费 `_rx` channel，但需确认 API 签名稳定性。
 
-在 `api/client.ts` 中添加：
+---
 
-```typescript
-export const uploads = {
-  upload: async (file: File): Promise<{ url: string }> => {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(BASE + "/uploads", { method: "POST", body: form });
-    if (!res.ok) { const e = await res.json().catch(() => ({ error: res.statusText })); throw new Error((e as { error: string }).error); }
-    return res.json() as Promise<{ url: string }>;
-  },
-};
+### I-012 — Block 类型链路 any 泛滥（P1）
 
-export const meta = {
-  fetch: (url: string): Promise<{ title: string; description: string; favicon: string }> =>
-    req("GET", `/meta?url=${encodeURIComponent(url)}`),
-};
+**方案选择：在 types/blocknote.ts 定义 BNBlock 接口，渐进式替换 any**
+
+不求一步到位消除所有 `any`，采用渐进式策略：
+1. 确认 `web/src/types/blocknote.ts` 已有 `BNBlock` 类型，其中 `content` 和 `props` 有明确类型（非 `any`）。
+2. `Block.content` 在 `web/src/types/index.ts` 为 `string` 类型（序列化 JSON），不改，但解析后的中间类型明确为 `BNBlock[]`。
+3. Editor.tsx 内超过 15 处 `eslint-disable @typescript-eslint/no-explicit-any`：优先消除 `replaceBlocks` 调用处的 any（用 `BNBlock[]` cast 替代），其余标注 TODO 供后续轮次逐步消除。
+4. 不将 `Block.content` 改为 `unknown`，原因：变更核心类型会影响后端 API 响应反序列化路径，风险超过收益。
+
+**影响范围：**
+- `web/src/types/index.ts` — 不修改，确认无 any 字段
+- `web/src/types/blocknote.ts`（新建或已有）— BNBlock、BNInlineContent 接口
+- `web/src/components/editor/Editor.tsx` — replaceBlocks 调用处替换 any
+
+**注意事项：**
+`BNBlock.content` 字段在 BlockNote 中区分不同 block 类型有不同结构（InlineContent[] | undefined），定义时使用 union type 而非 `unknown`，以便下游组件有类型推断。
+
+---
+
+### I-013 — PageItem/PageItemWithRename 重复组件（P1）
+
+**方案选择：合并为单一组件 + 用 Zustand 替换全局 CustomEvent**
+
+`Sidebar.tsx` 中 `PageItem`（L68–约195）和 `PageItemWithRename`（L555–约675）几乎完全相同，差异仅为 `renameTrigger` prop 和对应的 useEffect。`RenameAwarePageItem`（L539–553）作为包装层监听全局 CustomEvent。
+
+修复方案：
+1. **合并组件**：将 `PageItemWithRename` 的逻辑合入 `PageItem`，添加可选 prop `renameRequested?: boolean`，由父层传入。当 `renameRequested` 为 true 时触发 `setRenaming(true)`，等效于原 renameTrigger。
+2. **替换 CustomEvent**：引入 Zustand store（`useSidebarStore`），store 中维护 `renamingPageId: string | null`。触发重命名的地方 dispatch `setRenamingPageId(pageId)`，PageItem 通过 selector 订阅 `renamingPageId === page.id` 判断是否进入 rename 模式。
+
+不选择 React Context 方案，原因：Context 会导致 Sidebar 树所有 PageItem 在 rename 状态变化时全部重渲，Zustand 的 selector 可精确订阅，只让目标 PageItem 重渲。
+
+**影响范围：**
+- `web/src/components/sidebar/Sidebar.tsx` — 合并 PageItem/PageItemWithRename/RenameAwarePageItem
+- 新建 `web/src/stores/sidebarStore.ts`（若 Zustand 整体引入在 AR-5 计划内，可同步创建）
+- `package.json` — 添加 `zustand` 依赖（如未有）
+
+**注意事项：**
+1. `findPageFlat`（I-019）也在 Sidebar.tsx，合并时一并删除。
+2. Zustand store 不需要 Provider，直接 import 即可，无需修改 App.tsx 树结构。
+3. 合并组件时需保留 `depth` prop 控制的缩进逻辑，不要遗漏。
+
+---
+
+### I-016 — settingsStore 耦合（P2）
+
+**方案选择：Editor 只 subscribe themeId selector**
+
+Editor.tsx L34 用 `useSettings()` 拿到整个 settings 对象但只用 `themeId`。若 settings store 基于 Zustand，修改为：
+
+```ts
+const themeId = useSettingsStore(s => s.themeId);
 ```
 
-- `Editor.tsx` 中三处硬编码 fetch 改为调用 `api.uploads.upload(file)` 和 `api.meta.fetch(url)`，删除 `import` 中未使用的本地变量
+不拆 `settingsUtils.ts`，原因：纯工具函数拆分代价高于收益，且当前 themeId 用法是 React hook 场景，不属于"纯工具函数"范畴。
 
-**影响文件**
+**影响范围：**
+- `web/src/components/editor/Editor.tsx` L34 — 修改 useSettings 调用为 selector
+- `web/src/settings/settingsStore.ts` — 确认已导出 selector 友好的 store
 
-- `web/src/api/client.ts`（新增 `uploads` 和 `meta` 导出对象）
-- `web/src/components/editor/Editor.tsx`（L267–269、L313–315、L434–436）
-
-**复杂度**：S
-
----
-
-### I-009 · column overlay DOM 泄漏
-
-**问题**：`hideOverlay` 中调用 `columnOverlayRef.current.remove()`，组件在 drag 进行中卸载时，`columnOverlayRef.current` 可能指向已经从 DOM 移除的 detached 节点。此外 L866 通过 `(editor as any)._tiptapEditor?.view?.dom` 访问 BlockNote 私有 API。
-
-**方案（唯一解）**
-
-1. **`hideOverlay` 增加 `isConnected` 检查**
-
-   ```typescript
-   function hideOverlay() {
-     const el = columnOverlayRef.current;
-     if (el && el.isConnected) {
-       el.remove();
-     }
-     columnOverlayRef.current = null;
-   }
-   ```
-
-2. **私有 API 访问封装为 try/catch**
-
-   ```typescript
-   let editorDom: HTMLElement | undefined;
-   try {
-     editorDom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
-   } catch (e) {
-     console.warn('[Editor] _tiptapEditor not accessible, column overlay disabled', e);
-   }
-   if (!editorDom) return;
-   ```
-
-**影响文件**
-
-- `web/src/components/editor/Editor.tsx`（L845–850、L866–867）
-
-**复杂度**：XS
+**注意事项：**
+若 `settingsStore` 尚未基于 Zustand（仍是 Context），此修复需等 AR-5 Zustand 迁移完成后再做，避免两次改动。
 
 ---
 
-### I-011 · Tauri sidecar 无崩溃感知
+### I-017 — useMonthNav 重复（P2）
 
-**问题**：`src-tauri/src/lib.rs` 中 `_rx` 被丢弃（L25），sidecar 崩溃后 Tauri 无感知；`on_window_event` 仅在 `Destroyed` 时 kill child，异常退出可能留孤儿进程。
+**方案选择：提取 useMonthNav() 自定义 hook**
 
-> **注意**：此问题属于 Rust/Tauri 集成层，实现语言非 TypeScript，但属于前端交付物范围（Tauri 客户端）。
+`CalendarView.tsx`（L13–26）和 `TimelineView.tsx`（L15–40）均有 `year`/`month` state + `prevMonth`/`nextMonth` 函数，逻辑等价（TimelineView 的 prevPeriod/nextPeriod 在 granularity=month 时与 CalendarView 完全一样）。
 
-**方案（唯一解）**
-
-需要三处改动，均在 `src-tauri/src/lib.rs`：
-
-1. **后台线程监听 `_rx`**
-
-   ```rust
-   let app_handle = app.app_handle().clone();
-   std::thread::spawn(move || {
-     loop {
-       match rx.recv() {
-         Ok(line) => { /* 可选：log info */ }
-         Err(_) => {
-           // channel closed = sidecar exited
-           let _ = app_handle.emit("sidecar-crashed", ());
-           break;
-         }
-       }
-     }
-   });
-   ```
-
-2. **前端监听 `sidecar-crashed` 事件**
-
-   在 `web/src/App.tsx` 或 `web/src/main.tsx` 中，通过 `@tauri-apps/api/event` 的 `listen("sidecar-crashed", ...)` 展示对话框提示用户重启应用。
-
-3. **覆盖所有异常退出路径**
-
-   使用 Tauri 2.x 的 `app.on_window_event` 中增加 `WindowEvent::CloseRequested` 和 Rust 的 `atexit` / `Drop` 来确保孤儿进程被 kill。
-
-**影响文件**
-
-- `src-tauri/src/lib.rs`（L12–65）
-- `web/src/App.tsx` 或 `web/src/main.tsx`（新增 sidecar-crashed 事件监听）
-
-**复杂度**：M
-
----
-
-### I-012 · Block 类型链路 any 泛滥
-
-**问题**：`Block.content` 和 `Block.props` 为 `string`（JSON 序列化），数据流中途无类型化中间层，导致 `any` 在 `Editor.tsx` 中至少 15 处蔓延。
-
-**方案（唯一解）**
-
-`Editor.tsx` L38–39 已定义了 `BNInline` 和 `BNBlock` 接口，但未被充分利用。方案分两步：
-
-**步骤 1：将 `BNBlock` / `BNInline` 移到公共类型文件**
-
-将 `Editor.tsx` L38–39 中的接口定义移动到 `web/src/types/blocknote.ts`（新建）：
-
-```typescript
-// web/src/types/blocknote.ts
-export interface BNInline {
-  type: string;
-  text?: string;
-  content?: BNInline[];
-  props?: Record<string, string>;
-}
-
-export interface BNBlock {
-  id: string;
-  type: string;
-  props: Record<string, unknown>;
-  content?: BNInline[] | undefined;
-  children?: BNBlock[];
-}
-```
-
-**步骤 2：`toBlockNote` 使用 `BNBlock[]` 返回类型（见 I-003 方案）**
-
-- `buildBlock` 返回 `BNBlock`
-- `Editor.tsx` 中 `bn: any[]` 改为 `bn: BNBlock[]`，消除对应 eslint-disable 注释
-
-**关于 `Block.content` 是否改为 `unknown`**：  
-当前 `Block.content` 是 server 序列化的 JSON 字符串，在类型定义层保持 `string` 是正确的（因为它确实是字符串）。不需要改动 `web/src/types/index.ts` 的 `Block` 定义，只需在解析处增加类型标注。
-
-**影响文件**
-
-- 新增：`web/src/types/blocknote.ts`
-- 修改：`web/src/utils/toBlockNote.ts`（`buildBlock` 和 `toBlockNote` 返回类型）
-- 修改：`web/src/components/editor/Editor.tsx`（L38–39 改为从 `../../types/blocknote` import；L728–733 处类型修正）
-
-**复杂度**：M
-
----
-
-### I-013 · PageItem / PageItemWithRename 重复组件
-
-**问题**：`PageItem`（L68）和 `PageItemWithRename`（L555）几乎完全相同，仅差 `renameTrigger` prop 和对应的 `useEffect`（约 80 行重复代码）。`RenameAwarePageItem` 通过全局 `CustomEvent` 通信，脆弱且绕过 React 数据流。
-
-**方案对比**
-
-| | 方案 A：合并组件 + 保留 CustomEvent | 方案 B：合并组件 + Zustand 替代 CustomEvent |
-|--|---|---|
-| 思路 | 将两者合并为单个 `PageItem`，增加可选 `renameRequested?: boolean` prop；`RenameAwarePageItem` 继续监听 CustomEvent 但只需维护一处 | 同左，同时引入 `pageStore`（Zustand）存储 `renamingPageId`，Sidebar 中的"重命名"菜单项 dispatch 到 store，`PageItem` subscribe `renamingPageId` | 
-| 优点 | 改动量小；不引入新依赖 | 消除全局 CustomEvent 的隐式耦合；符合 AR-5 Zustand 引入方向 |
-| 缺点 | CustomEvent 通信模式仍在 | 需要引入 Zustand 或先规划 AR-5 |
-| **推荐** | | ✓（与 AR-5 一并推进时）；如单独修复则用方案 A |
-
-**方案 A（独立修复）细节**
-
-- 保留 `PageItemWithRename`，删除 `PageItem`（将其所有使用处替换为 `PageItemWithRename` 但 `renameTrigger` 默认 0）
-- 或：删除 `PageItemWithRename`，在 `PageItem` 中增加 `renameTrigger?: number` prop，内部逻辑合并
-
-推荐后者：合并到 `PageItem`，`RenameAwarePageItem` 继续提供 CustomEvent 订阅包装。
-
-**方案 B（与 AR-5 联动）细节**
-
-```typescript
-// web/src/store/pageStore.ts（Zustand）
-interface PageStore {
-  renamingPageId: string | null;
-  requestRename: (id: string) => void;
-  clearRename: () => void;
-}
-```
-
-- Sidebar 上下文菜单"重命名"项改为调用 `pageStore.requestRename(pageId)`，替换 `window.dispatchEvent(new CustomEvent("rename-page", ...))`
-- `PageItem` 中通过 `usePageStore(s => s.renamingPageId)` 判断是否触发重命名，删除 `RenameAwarePageItem` 包装层
-
-**影响文件（方案 A）**
-
-- `web/src/components/sidebar/Sidebar.tsx`（L534–675 合并组件）
-
-**影响文件（方案 B，额外）**
-
-- 新增：`web/src/store/pageStore.ts`
-- 修改：`web/src/components/sidebar/Sidebar.tsx`（L539–552 CustomEvent 调用处）
-
-**复杂度**：M（方案 A）/ L（方案 B，含 AR-5 基础）
-
----
-
-### I-016 · settingsStore 耦合
-
-**问题**：`Editor.tsx` 引用 `useSettings` 仅为 `themeId`，但与整个 `SettingsContextValue`（包含 `setFont`、`setTheme`）耦合。
-
-**方案（唯一解）**
-
-当前 `settingsStore.ts` 的 Context value 包含 `fontId`、`themeId`、`setFont`、`setTheme`。Editor 只需 `themeId`。
-
-最轻量的方案：不拆文件，改用选择性读取。在 `settingsStore.ts` 中额外导出：
-
-```typescript
-export function useThemeId(): string {
-  return useContext(SettingsContext).themeId;
-}
-```
-
-- `Editor.tsx` L34 将 `import { useSettings }` 改为 `import { useThemeId }`，L使用处改为 `const themeId = useThemeId()`
-
-这样 Editor 不感知 `setFont`、`setTheme` 等无关字段，但不需要拆分文件（拆分文件的收益在当前规模不明显）。
-
-**影响文件**
-
-- `web/src/settings/settingsStore.ts`（新增 `useThemeId` 导出，3 行）
-- `web/src/components/editor/Editor.tsx`（L34 import 变更）
-
-**复杂度**：XS
-
----
-
-### I-017 · useMonthNav 重复
-
-**问题**：`CalendarView.tsx`（L12–27）和 `TimelineView.tsx`（L13–39）月份导航逻辑（`year`/`month` state + `prevMonth`/`nextMonth`）几乎逐行相同。
-
-**方案（唯一解）**
-
-新建 `web/src/hooks/useMonthNav.ts`：
-
-```typescript
-import { useState } from "react";
-
-export interface MonthNav {
+`useMonthNav` hook 签名：
+```ts
+function useMonthNav(initialYear?: number, initialMonth?: number): {
   year: number;
   month: number;
   prevMonth: () => void;
   nextMonth: () => void;
 }
-
-export function useMonthNav(initialYear?: number, initialMonth?: number): MonthNav {
-  const today = new Date();
-  const [year, setYear] = useState(initialYear ?? today.getFullYear());
-  const [month, setMonth] = useState(initialMonth ?? today.getMonth());
-
-  const prevMonth = () => {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
-  };
-
-  return { year, month, prevMonth, nextMonth };
-}
 ```
 
-注意：`TimelineView` 的 `prevPeriod`/`nextPeriod` 在 week granularity 下有额外逻辑，不完全等同于 `useMonthNav`。TimelineView 的 month granularity 分支可使用 `useMonthNav`，week 分支保留独立逻辑，或在 `useMonthNav` 中增加可选 `granularity` 参数（建议后者仅在与 TimelineView 改造一并进行时处理，避免过度抽象）。
+TimelineView 的 week 粒度 prevPeriod/nextPeriod 保留在组件内，不纳入 hook，原因：week 粒度逻辑是 TimelineView 特有的，强行放入 hook 会增加 hook 复杂度。
 
-**影响文件**
+**影响范围：**
+- 新建 `web/src/hooks/useMonthNav.ts`
+- `web/src/components/database/CalendarView.tsx` — 替换本地实现
+- `web/src/components/database/TimelineView.tsx` — month 粒度部分替换
 
-- 新增：`web/src/hooks/useMonthNav.ts`
-- 修改：`web/src/components/database/CalendarView.tsx`（L12–27 替换为 `useMonthNav()`）
-- 修改：`web/src/components/database/TimelineView.tsx`（L13–39 中 month 分支替换为 `useMonthNav()`）
-
-**复杂度**：S
+**注意事项：**
+hook 内用 `new Date()` 计算默认值时，注意测试时可能需要 mock `Date`，建议接受 `initialYear/initialMonth` 参数而非在 hook 内硬依赖 `new Date()`。
 
 ---
 
-### I-018 · 封面图 Base64 存 SQLite
+### I-018 — 封面图 Base64 存 SQLite（P2）
 
-**问题**：`App.tsx` `handleChangeCover`（L134–151）将图片 Base64 DataURL（最大 660KB）直接存入 `page.cover` 字段，膨胀 SQLite 体积，影响 `listAll` 接口性能。
+**方案选择：封面图走 /api/uploads，cover 字段只存 URL**
 
-**方案对比**
+`App.tsx` L137–151 的 `handleChangeCover` 将图片读取为 Base64 DataURL 后直接存入 `page.cover`。每张封面图约 50KB–500KB（Base64 膨胀约 33%），大量页面时严重膨胀 SQLite 且影响 `GET /api/pages` 的 JSON 响应体积。
 
-| | 方案 A：走 /api/uploads 存文件 | 方案 B：保留 Base64 但更严格限制 |
-|--|---|---|
-| 思路 | 将 `handleChangeCover` 中的 `FileReader.readAsDataURL` 替换为 `api.uploads.upload(file)`，`cover` 字段存 URL | 将 512KB 的 alert 改为阻止上传（当前仅提示不阻止），并压缩图片至 ≤50KB | 
-| 优点 | 根治数据库膨胀问题；与 I-008 上传逻辑共享同一 api 方法 | 改动量极小 |
-| 缺点 | 需要 I-008 先完成（`api.uploads.upload` 方法已存在）；封面离线访问会失效 | 治标不治本，100 个页面仍有 5MB base64 存量 |
-| **推荐** | ✓ | |
+修复方案：
+1. `handleChangeCover` 读取文件后，调用 `api.uploads.upload(file)` 上传（需添加该 API 方法），返回 URL 后更新 `page.cover = url`。
+2. 若 `uploads` API 尚未存在（需与后端 REQ-065 对齐），本轮方案只规划接口形态，实现时等后端接口就绪。
 
-**推荐方案 A 细节**
+**影响范围：**
+- `web/src/App.tsx` L137–151
+- `web/src/api/client.ts` — 新增 `uploads.upload(file: File): Promise<{ url: string }>`
+- 后端（REQ-065 范围）— `POST /api/uploads` 接口
 
-```typescript
-const handleChangeCover = async () => {
-  if (!selectedPageId) return;
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*";
-  input.onchange = async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert("封面图片不超过 2MB"); return; }
-    const { url } = await api.uploads.upload(file);  // I-008 的 api.uploads.upload
-    setPageMeta(m => m ? { ...m, cover: url } : m);
-    await api.pages.update(selectedPageId, { cover: url });
-  };
-  input.click();
-};
-```
-
-- 此方案依赖 I-008 的 `api.uploads.upload` 先实现
-- 历史已存入的 Base64 DataURL 不做迁移（不在本轮范围）
-
-**影响文件**
-
-- `web/src/App.tsx`（L134–151）
-
-**复杂度**：S（依赖 I-008 完成）
+**注意事项：**
+1. 迁移前已存入的 Base64 封面需做一次性迁移或在前端读取时判断是否为 DataURL（`startsWith("data:")`），旧数据降级展示。
+2. 上传失败时应有错误提示，不要静默回退到 Base64 存储（违反 I-002 修复原则）。
 
 ---
 
-### I-019 · findPageFlat 多余 / magic literal
+### I-019 — findPageFlat 多余 + magic literal（P2）
 
-**问题**：`findPageFlat` 是对 `findPage` 的单行无意义包装；`toBlockNote.ts` 中块类型字符串为 magic literal。
+**方案选择：删除 findPageFlat + 定义 BLOCK_TYPES as const**
 
-**方案（唯一解）**
+`findPageFlat`（Sidebar.tsx L534–536）是单行包装：`return findPage(tree, id)`，无任何额外逻辑，直接删除，调用方改用 `findPage`。
 
-**sub-1：删除 `findPageFlat`**
+`toBlockNote.ts` 中的 block type 字符串定义为 `as const` 对象：
 
-- `Sidebar.tsx` L534–536 删除函数定义
-- 搜索全文中对 `findPageFlat` 的所有调用，替换为 `findPage(tree, id)`
-
-**sub-2：block type 字符串常量化**
-
-在 `web/src/types/blocknote.ts`（I-012 新建的文件）或新建 `web/src/utils/blockTypes.ts` 中定义：
-
-```typescript
+```ts
+// web/src/types/blockTypes.ts
 export const BLOCK_TYPES = {
-  PARAGRAPH: "paragraph",
-  COLUMN_LIST: "columnList",
-  COLUMN: "column",
   DATABASE: "database",
   SUBPAGE: "subpage",
   FILE_ATTACH: "fileAttach",
@@ -581,465 +322,240 @@ export const BLOCK_TYPES = {
   EMBED: "embed",
   PDF: "pdf",
   BUTTON: "button",
-  COLUMNS: "columns",  // legacy
+  COLUMN_LIST: "columnList",
+  COLUMN: "column",
 } as const;
+
+export type BlockType = typeof BLOCK_TYPES[keyof typeof BLOCK_TYPES];
 ```
 
-- `toBlockNote.ts` 中所有字符串字面量（L6、L31、L34、L50 等）改为引用 `BLOCK_TYPES.XX`
+**影响范围：**
+- `web/src/components/sidebar/Sidebar.tsx` L534–536 — 删除 findPageFlat，替换调用方
+- 新建 `web/src/types/blockTypes.ts`
+- `web/src/utils/toBlockNote.ts` — 替换字符串字面量
 
-**影响文件**
-
-- `web/src/components/sidebar/Sidebar.tsx`（删除 L534–536）
-- `web/src/utils/toBlockNote.ts`（magic literal 替换）
-- 新增或修改：`web/src/types/blocknote.ts` 或 `web/src/utils/blockTypes.ts`
-
-**复杂度**：S
+**注意事项：**
+block type 字符串与后端数据库存储的 type 字段一一对应，不可随意改名，`as const` 确保类型精确。
 
 ---
 
-### I-020 · loadAvailableDatabases O(n) 请求
+### I-020 — loadAvailableDatabases O(n) 请求（P2）
 
-**问题**：`loadAvailableDatabases`（DatabaseView.tsx L618–638）三层嵌套请求，O(pages × blocks_per_page)；缓存无失效机制。
+**方案选择：每次打开 addColPopover 时清空缓存（短期）+ 规划后端接口（长期）**
 
-**方案对比**
+当前 `loadAvailableDatabases`（L616–636）三层嵌套请求：listAll pages → 每页 listBlocks → 每个 database block get，O(pages × blocks_per_page) 请求数。缓存无失效机制（判断 `availableDatabases.length > 0` 就跳过）。
 
-| | 方案 A：后端新增 GET /api/databases | 方案 B：前端缓存失效 |
-|--|---|---|
-| 思路 | 后端添加专用接口，一次请求返回所有 database 列表 | 移除 `if (availableDatabases.length > 0) return` 这行缓存 guard，改为每次打开 addColPopover 时重新加载 | 
-| 优点 | 根治性能问题 | 纯前端改动，无需后端协作 |
-| 缺点 | 需要后端工程师实现新接口（与 REQ-065 协同） | 频繁打开 popover 时仍有 O(n) 请求 |
-| **推荐** | ✓（须与后端架构师对齐） | 作为临时 fallback |
+**短期方案**（不依赖后端改动）：
+- 将缓存改为 `useRef<Database[] | null>`（null 表示未加载，[] 表示真实空），每次打开 addColPopover 时重置为 null 触发重新加载。
+- 加 loading state，在加载中显示 spinner，避免 relation 选择器空白误导用户。
 
-**方案 B（临时 fallback）细节**
+**长期方案**（与后端 REQ-065 对齐）：
+- 后端新增 `GET /api/databases` 接口，一次返回所有数据库，O(1) 请求。
+- 前端 `loadAvailableDatabases` 改为单次 API 调用。
 
-- 将 `loadAvailableDatabases` 调用从只在缓存为空时触发，改为在 `setAddColPopover` 打开时每次清空并重新加载：
-  ```typescript
-  const openAddCol = (e: React.MouseEvent) => {
-    // ...
-    setAvailableDatabases([]);  // 清空缓存，下次打开时重新加载
-    setAddColPopover({ x: rect.left, y: getPopoverY(rect, 420) });
-    void loadAvailableDatabases();
-  };
-  ```
+本轮规划短期方案，长期方案在 ARCH-PLAN-BACKEND 中一并提出。
 
-**影响文件**
+**影响范围：**
+- `web/src/components/database/DatabaseView.tsx` L616–636、L366–368
 
-- `web/src/components/database/DatabaseView.tsx`（L618–638；L608–616 的 `openAddCol`）
-- （方案 A 额外）`server/internal/handler/` 和 `server/internal/repository/`（由 REQ-065 处理）
-
-**复杂度**：S（方案 B）/ M（方案 A，需后端联动）
+**注意事项：**
+清空缓存后重新加载会有短暂延迟，需要 loading indicator。用户重复打开/关闭 addColPopover 时不应每次都重新加载，可加 debounce 或仅在 popover 从关闭→打开时触发一次。
 
 ---
 
-### I-022 · commitEdit 乐观更新缺失
+### I-022 — commitEdit 乐观更新缺失（P2）
 
-**问题**：`commitEdit`（L477–482）在 API 调用完成后 `void reload()`，不等待 reload 就清除 `editingCell`，单元格短暂回到旧值后再切换新值，造成视觉闪烁。
+**方案选择：commitEdit 后立即在本地 rows state 更新，后台 reload，失败时回滚**
 
-**方案（唯一解）**
+当前 `commitEdit`（L475–480）流程：setEditingCell(null) → await API 更新 → void reload()。步骤 1 和步骤 3 之间单元格会回到旧值（来自 rows state），出现视觉闪烁。
 
-实现乐观更新：在 API 调用前先本地更新 `rows` state，后台执行 reload，失败时回滚：
-
-```typescript
+修复方案（伪代码）：
+```ts
 const commitEdit = async (rowId: string, colId: string) => {
-  const prevRows = rows;
-  // 乐观更新：立即反映新值
-  setRows(prev => prev.map(r =>
-    r.id === rowId
-      ? { ...r, cells: { ...r.cells, [colId]: cellDraft } }
-      : r
+  const prevRows = rows;  // 保存回滚快照
+  // 乐观更新
+  setRows(rs => rs.map(r =>
+    r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: cellDraft } } : r
   ));
   setEditingCell(null);
   try {
     await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: cellDraft }]);
-    void reload();  // 后台刷新（不阻塞 UI）
-  } catch (err) {
-    // 失败回滚
-    setRows(prevRows);
-    setEditingCell({ rowId, colId });
+    void reload();  // 后台同步，刷新计算列（formula/rollup）
+  } catch {
+    setRows(prevRows);  // 失败时回滚
   }
 };
 ```
 
-**影响文件**
+`useRowEditor` hook（见第4节）可封装此逻辑。
 
-- `web/src/components/database/DatabaseView.tsx`（L477–482）
+**影响范围：**
+- `web/src/components/database/DatabaseView.tsx` L475–480
 
-**复杂度**：S
-
----
-
-## 3. DatabaseView 拆分组件结构图（AR-1）
-
-### 当前状态
-
-`DatabaseView.tsx`（≈1917 行）承载所有视图渲染、状态管理、弹窗逻辑，是全局单一大组件。
-
-### 拆分后组件树
-
-```
-DatabaseView (web/src/components/database/DatabaseView.tsx)
-│  职责：状态协调、数据加载、操作回调定义、视图路由
-│  状态：db, rows, viewMode, editingCell, sortStates, filterStates,
-│        colWidths, rowModal, selectedRowIds, ...所有当前 state
-│
-├── DatabaseToolbar (web/src/components/database/DatabaseToolbar.tsx)
-│     职责：视图切换按钮 + 筛选/排序/隐藏/分组工具栏
-│     Props:
-│       viewMode: ViewMode
-│       onViewModeChange: (mode: ViewMode) => void
-│       sortStates: SortState[]
-│       filterStates: FilterState[]
-│       onSortChange: (states: SortState[]) => void
-│       onFilterChange: (states: FilterState[]) => void
-│       hiddenCount: number
-│       columns: DBColumn[]
-│       onToggleHide: (colId: string) => void
-│       groupByColId: string
-│       onGroupByChange: (colId: string) => void
-│       toolbarPanel: ToolbarPanel
-│       onToolbarPanelChange: (panel: ToolbarPanel) => void
-│
-├── DatabaseTableView (web/src/components/database/DatabaseTableView.tsx)
-│     职责：表格视图（thead + tbody + 列拖拽 + 列宽调整 + 单元格编辑）
-│     Props:
-│       db: Database
-│       rows: DBRow[]         ← displayedRows（已 filter + sort）
-│       columns: DBColumn[]   ← 可见列
-│       editingCell: { rowId, colId } | null
-│       cellDraft: string
-│       colWidths: Record<string, number>
-│       selectedRowIds: Set<string>
-│       relationRowsCache: RelationRowsCache
-│       onStartEdit: (rowId, colId, val) => void
-│       onCommitEdit: (rowId, colId) => void
-│       onCellKeyDown: (e, rowId, colId) => void
-│       onCellDraftChange: (val: string) => void
-│       onToggleCheckbox: (rowId, colId, val) => void
-│       onOpenRow: (row: DBRow) => void
-│       onAddRow: () => void
-│       onDeleteRow: (rowId: string) => void
-│       onDuplicateRow: (row: DBRow) => void
-│       onToggleSelectRow: (id: string) => void
-│       onToggleSelectAll: () => void
-│       onColWidthChange: (colId, width) => void
-│       onOpenColMenu: (e, col) => void
-│       onOpenAddCol: (e) => void
-│       onOpenSelectDropdown: (rowId, colId, opts, pos) => void
-│       onOpenMultiSelectDropdown: (rowId, colId, opts, pos) => void
-│       onOpenRowRelation: (rowId, colId) => void
-│       // refs (通过 callback 传递)
-│       cellInputRef: React.RefObject<HTMLInputElement>
-│
-├── DatabaseColMenu (web/src/components/database/DatabaseColMenu.tsx)
-│     职责：列标题右键/点击弹出菜单（重命名、改类型、删除、隐藏等）
-│     Props:
-│       colMenu: ColMenu | null
-│       menuCol: DBColumn | null
-│       onClose: () => void
-│       onCommitRename: () => void
-│       onChangeType: (type) => void
-│       onDelete: () => void
-│       onToggleHide: () => void
-│       onOpenFormula: (e, col) => void
-│       onOpenSelectOptions: (e, col) => void
-│       onOpenRollupConfig: (e, col) => void
-│       renameInputRef: React.RefObject<HTMLInputElement>
-│       draft: string
-│       onDraftChange: (v: string) => void
-│
-├── DatabaseAddColPopover (web/src/components/database/DatabaseAddColPopover.tsx)
-│     职责：新增列弹窗（列名、列类型、relation 选择、submit）
-│     Props:
-│       popover: AddColPopover | null
-│       columns: DBColumn[]
-│       newColName: string
-│       newColType: DBColumn["type"]
-│       colTypeOpen: boolean
-│       newColRelationDbId: string
-│       availableDatabases: Database[]
-│       error: string | null
-│       onNameChange: (v: string) => void
-│       onTypeChange: (t: DBColumn["type"]) => void
-│       onRelationDbChange: (id: string) => void
-│       onColTypeOpenChange: (v: boolean) => void
-│       onSubmit: () => void
-│       onClose: () => void
-│       onLoadDatabases: () => void
-│       newColInputRef: React.RefObject<HTMLInputElement>
-│
-├── DatabaseRowModal (web/src/components/database/DatabaseRowModal.tsx)
-│     职责：行详情弹窗（所有字段展示 + 编辑 + 内容编辑器）
-│     Props:
-│       rowModal: RowModal | null
-│       db: Database
-│       rowModalDraft: Record<string, string>
-│       onDraftChange: (colId: string, val: string) => void
-│       onSelectOption: (colId: string, val: string) => void
-│       onToggleMultiSelect: (colId: string, val: string) => void
-│       onClose: () => void
-│       onSave: () => void
-│       databaseId: string
-│       rowContentSaveRef: React.MutableRefObject<(() => void) | null>
-│       relationRowsCache: RelationRowsCache
-│
-├── DatabaseBatchBar (web/src/components/database/DatabaseBatchBar.tsx)
-│     职责：批量操作工具栏（选中 N 行 · 批量填充 · 批量删除）
-│     Props:
-│       selectedCount: number
-│       columns: DBColumn[]
-│       batchColId: string
-│       batchVal: string
-│       batchPanel: boolean
-│       onBatchColChange: (id: string) => void
-│       onBatchValChange: (v: string) => void
-│       onBatchPanelToggle: () => void
-│       onBatchUpdate: () => void
-│       onBatchDelete: () => void
-│       onClearSelection: () => void
-│
-└── [已有子组件，不需要移动]
-      KanbanView, GalleryView, CalendarView, TimelineView,
-      FilesCell, FilesModalField, RelationCell, RollupConfigPopover,
-      ColorDotPicker, Chip
-```
-
-### 说明
-
-- `DatabaseView` 保留所有 state 和逻辑函数，通过 props 向下传递；本轮拆分是"提取渲染层"，不做状态下移
-- 新增 `useRowEditor` hook（见第 4 节）负责 `editingCell`、`cellDraft`、`commitEdit`、`startEdit` 逻辑，可将这部分 state 从 `DatabaseView` 中提取，减少主组件的 state 数量
-- `RowContentEditor`（内部子组件）保留在 `DatabaseView.tsx` 或随 `DatabaseRowModal` 一起迁移
+**注意事项：**
+1. 乐观更新后 `void reload()` 会再次设置 rows，如果 reload 比用户下一次编辑更慢，需确保 reload 不会覆盖用户正在编辑中的值（editingCell 非 null 时，reload 后不覆盖该 cell）。
+2. formula 和 rollup 列依赖其他列的值，乐观更新不能预算这些列，因此后台 reload 仍有必要。
 
 ---
 
-## 4. 提取的工具函数 / Hook 清单
+## 3. DatabaseView 拆分结构图
 
-| 名称 | 类型 | 来源文件（当前位置） | 目标文件路径 | 导出接口签名 |
-|------|------|------|------|------|
-| `parseFileAttachments` | 工具函数 | `DatabaseView.tsx` L25、`GalleryView.tsx` L12 | `web/src/utils/fileAttachments.ts` | `export function parseFileAttachments(raw: string): FileAttachment[]` |
-| `TAG_COLORS` | 常量 | `DatabaseView.tsx` L93、`KanbanView.tsx` L16 | `web/src/components/database/shared.ts` | `export const TAG_COLORS: ReadonlyArray<{ bg: string; color: string }>` |
-| `tagColor` | 工具函数 | `DatabaseView.tsx` L104 | `web/src/components/database/shared.ts` | `export function tagColor(val: string): { bg: string; color: string }` |
-| `parseOptions` | 工具函数 | `DatabaseView.tsx` L131、`KanbanView.tsx` L29 | `web/src/components/database/shared.ts` | `export function parseOptions(raw: string): SelectOption[]` |
-| `serializeOptions` | 工具函数 | `DatabaseView.tsx` L148 | `web/src/components/database/shared.ts` | `export function serializeOptions(opts: SelectOption[]): string` |
-| `SelectOption` | 接口 | `DatabaseView.tsx` L128 | `web/src/components/database/shared.ts` | `export interface SelectOption { value: string; colorIdx: number }` |
-| `useMonthNav` | 自定义 Hook | `CalendarView.tsx` L12、`TimelineView.tsx` L13 | `web/src/hooks/useMonthNav.ts` | `export function useMonthNav(initY?: number, initM?: number): MonthNav` |
-| `useRowEditor` | 自定义 Hook | `DatabaseView.tsx` L471–527（editingCell 相关逻辑） | `web/src/hooks/useRowEditor.ts` | `export function useRowEditor(databaseId: string, rows: DBRow[], setRows: React.Dispatch<...>): UseRowEditorReturn` |
-| `useKeyboardShortcuts` | 自定义 Hook | `App.tsx` L161–175 | `web/src/hooks/useKeyboardShortcuts.ts` | `export function useKeyboardShortcuts(handlers: Partial<Record<string, () => void>>): void` |
-| `BNBlock` | 类型接口 | `Editor.tsx` L39 | `web/src/types/blocknote.ts` | `export interface BNBlock { id: string; type: string; props: Record<string, unknown>; content?: BNInline[]; children?: BNBlock[] }` |
-| `BNInline` | 类型接口 | `Editor.tsx` L38 | `web/src/types/blocknote.ts` | `export interface BNInline { type: string; text?: string; content?: BNInline[]; props?: Record<string, string> }` |
-| `BLOCK_TYPES` | 常量（as const） | `toBlockNote.ts`（magic literal 散落） | `web/src/types/blocknote.ts` 或 `web/src/utils/blockTypes.ts` | `export const BLOCK_TYPES = { PARAGRAPH: "paragraph", COLUMN_LIST: "columnList", ... } as const` |
-| `useThemeId` | 自定义 Hook（小） | `settingsStore.ts`（新增） | `web/src/settings/settingsStore.ts` | `export function useThemeId(): string` |
-| `api.uploads` | API 方法对象 | `Editor.tsx`（硬编码 fetch） | `web/src/api/client.ts` | `export const uploads: { upload(file: File): Promise<{ url: string }> }` |
-| `api.meta` | API 方法对象 | `Editor.tsx`（硬编码 fetch） | `web/src/api/client.ts` | `export const meta: { fetch(url: string): Promise<BookmarkMeta> }` |
+当前 `DatabaseView.tsx` 约 1917 行，承担状态管理、视图路由、表格渲染、弹出层管理等全部职责。拆分后结构如下：
+
+```
+DatabaseView（容器，状态协调 + 视图路由）
+├── 状态层（hooks，可选抽取）
+│   ├── useRowEditor         封装 editingCell/cellDraft/commitEdit/startEdit/乐观更新
+│   ├── useColumnManager     封装 colMenu/addColPopover/submitNewCol/deleteCol/changeColType
+│   ├── useToolbar           封装 sortStates/filterStates/toolbarPanel/groupByColId
+│   └── useRelationCache     封装 relationRowsCache + 批量加载 effect（修复 I-001）
+│
+├── 视图层（已有，接收 props）
+│   ├── TableView            从 DatabaseView 内联表格 JSX 中提取（新组件）
+│   │   ├── TableHeader      col 表头行（含 resize handle、ColMenu 触发）
+│   │   └── TableBody        行渲染、单元格 switch、批量选择
+│   ├── KanbanView           已有
+│   ├── GalleryView          已有
+│   ├── CalendarView         已有
+│   ├── TimelineView         已有
+│   └── ListView             从 DatabaseView 内联 list JSX 中提取（新组件，含 ListGroup）
+│
+├── 弹出层（已有或新提取）
+│   ├── ColMenu              已在 JSX 中，可提取为独立组件
+│   ├── AddColPopover        已在 JSX 中，可提取为独立组件
+│   ├── FormulaPopover       已在 JSX 中，可提取为独立组件
+│   ├── SelectOptionsPopover 已在 JSX 中
+│   ├── SelectDropdown       已在 JSX 中
+│   └── RowModal             已在 JSX 中，可提取为独立组件
+│
+└── 子组件（已有）
+    ├── RowContentEditor     已存在（L163–244）
+    ├── SortableOptionRow    已存在（L247–295）
+    ├── ListGroup            已存在（L297–331）
+    ├── FilesCell            独立文件
+    ├── FilesModalField      独立文件
+    ├── RelationCell         独立文件
+    ├── RollupConfigPopover  独立文件
+    ├── ColorDotPicker       独立文件
+    └── Chip                 独立文件
+```
+
+**拆分原则：**
+- `DatabaseView` 保留状态（`db`、`rows`、`viewMode`、弹出层开关）和数据加载逻辑，不渲染任何 DOM。
+- `TableView` 接收 `{ columns, rows, editingCell, ... }` 纯 props，不直接访问全局 state。
+- hook 层可选：若一次性拆分风险过高，先拆出 `TableView` 和 `ListView`，hook 层作为第二轮任务。
+
+---
+
+## 4. 提取工具函数/Hook 清单
+
+| 名称 | 类型 | 目标路径 | 迁移自 | 预计影响组件数 |
+|------|------|----------|--------|--------------|
+| `parseFileAttachments` | 工具函数 | `web/src/utils/fileAttachments.ts` | DatabaseView.tsx L25, GalleryView.tsx L12 | 2 |
+| `TAG_COLORS` | 常量 | `web/src/components/database/shared.ts` | DatabaseView.tsx L93, KanbanView.tsx L16 | 3 |
+| `tagColor` | 工具函数 | `web/src/components/database/shared.ts` | DatabaseView.tsx L104 | 2 |
+| `parseOptions` | 工具函数 | `web/src/components/database/shared.ts` | DatabaseView.tsx L131, KanbanView.tsx L29 | 3 |
+| `serializeOptions` | 工具函数 | `web/src/components/database/shared.ts` | DatabaseView.tsx L148 | 1 |
+| `SelectOption` | 接口 | `web/src/components/database/shared.ts` | DatabaseView.tsx, KanbanView.tsx | 2 |
+| `BLOCK_TYPES` | as const 对象 | `web/src/types/blockTypes.ts` | toBlockNote.ts（magic literals） | 2 |
+| `useMonthNav` | 自定义 Hook | `web/src/hooks/useMonthNav.ts` | CalendarView.tsx L13, TimelineView.tsx L15 | 2 |
+| `useRowEditor` | 自定义 Hook | `web/src/hooks/useRowEditor.ts` | DatabaseView.tsx L471–527 | 1 |
+| `useKeyboardShortcuts` | 自定义 Hook | `web/src/hooks/useKeyboardShortcuts.ts` | App.tsx L161–175 | 1 |
+| `API_BASE` | 导出常量 | `web/src/api/client.ts` | client.ts L4, Editor.tsx L267/314/434 | 2 |
+| `useSidebarStore` | Zustand store | `web/src/stores/sidebarStore.ts` | Sidebar.tsx CustomEvent 通信 | 1 |
 
 ---
 
 ## 5. 实现任务拆分建议
 
-### P0 先行（阻塞用户体验，须优先完成）
+按优先级 P0 → P1 → P2 排列，每个任务建议由单独工程师 commit，符合"一角色一 commit"规范。
 
----
-
-#### T-P0-1：I-001 修复 useEffect 竞态
-
-**做什么**：将 `DatabaseView.tsx` L368 的 `relationRowsCache` state 改为 `useRef`；修正 L408–454 effect 的读写方式；移除 `eslint-disable` 注释。
-
-**不做什么**：不重构 effect 内部的批量加载逻辑；不引入 cancel token 模式（useRef 方案已足够）。
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P0-2：I-002 全局错误 toast
-
-**做什么**：安装 `react-hot-toast`；在 `api/client.ts` 的 `req` 函数 catch 块中调用 `toast.error`；在 `App.tsx` 根节点添加 `<Toaster />`。
-
-**不做什么**：不修改各调用方的 `void` 前缀（保留，因 toast 已处理）；不区分错误级别（统一 error toast）。
-
-**前置条件**：无
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P0-3：I-003 toBlockNote 类型化 + warn 日志
-
-**做什么**：
-1. 新建 `web/src/types/blocknote.ts`，定义 `BNBlock`、`BNInline`（从 Editor.tsx L38–39 迁移并扩展）
-2. `toBlockNote.ts` 修改 `buildBlock` 和 `toBlockNote` 返回类型为 `BNBlock`；所有 `catch` 块加 `console.warn`
-3. `Editor.tsx` L750 catch 块改为 `console.error`
-
-**不做什么**：不做 runtime validation（不引入 zod 等库）；不修改 `Block` 类型定义（`content: string` 保持不变）。
-
-**前置条件**：无（可与 T-P0-2 并行）
-
-**估算工作量**：1 天
-
----
-
-### P1 次之（影响代码质量 / Tauri 稳定性，应在 P0 完成后尽快推进）
-
----
-
-#### T-P1-1：I-006 + I-007 提取共享工具
-
-**做什么**：
-1. 新建 `web/src/components/database/shared.ts`，迁移 `TAG_COLORS`、`tagColor`、`parseOptions`、`serializeOptions`、`SelectOption` 接口
-2. 新建 `web/src/utils/fileAttachments.ts`，迁移 `parseFileAttachments`（含 warn 日志）
-3. `DatabaseView.tsx`、`KanbanView.tsx`、`GalleryView.tsx` 改为从新文件 import，删除各自本地定义
-
-**不做什么**：不修改这些函数的行为逻辑；不迁移 `SortableOptionRow` 等依赖 TAG_COLORS 的组件（它们在同文件内保持引用即可）。
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P1-2：I-008 Editor 硬编码 URL 修复
-
-**做什么**：
-1. 在 `api/client.ts` 中新增 `uploads` 和 `meta` 导出对象（含接口定义）
-2. `Editor.tsx` 三处硬编码 fetch 替换为 `api.uploads.upload` 和 `api.meta.fetch`
-
-**不做什么**：不修改 `FileAttachBlock`、`BookmarkBlock`、`PdfBlock` 的其他逻辑。
-
-**前置条件**：T-P0-2（api/client.ts 已有 toast 集成，上传错误会自动 toast）
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P1-3：I-009 column overlay DOM 泄漏修复
-
-**做什么**：`Editor.tsx` `hideOverlay` 中添加 `el.isConnected` 检查；`_tiptapEditor` 访问封装为 try/catch。
-
-**不做什么**：不重构整个 column overlay 逻辑。
-
-**估算工作量**：0.25 天
-
----
-
-#### T-P1-4：I-011 Tauri sidecar 崩溃感知
-
-**做什么**：
-1. `src-tauri/src/lib.rs` 中 `_rx` 变量重命名为 `rx`，spawn 后台线程监听，channel closed 时 emit `sidecar-crashed` 事件
-2. `web/src/App.tsx` 中使用 `@tauri-apps/api/event` 的 `listen` 订阅该事件，显示 dialog 提示用户重启
-
-**不做什么**：不实现自动重启（上限 N 次重试属于增强功能，不在本修复范围）；不修改 on_window_event 的 Destroyed 逻辑（保留现有行为，仅补充新增监听）。
-
-**估算工作量**：1 天
-
----
-
-#### T-P1-5：I-012 Block 类型链路类型化
-
-**做什么**：利用 T-P0-3 产出的 `web/src/types/blocknote.ts`，将 `Editor.tsx` 中 `bn: any[]` 改为 `bn: BNBlock[]`，逐步消除可消除的 `eslint-disable` 注释（不强求全部消除，以不引入类型断言为目标）。
-
-**不做什么**：不修改 `Block` 类型定义中的 `content: string`；不做 runtime validation。
-
-**前置条件**：T-P0-3
-
-**估算工作量**：1 天
-
----
-
-#### T-P1-6：I-013 PageItem 重复组件合并
-
-**做什么**：将 `PageItem` 和 `PageItemWithRename` 合并为单个 `PageItem`，增加可选 `renameTrigger?: number` prop；保留 `RenameAwarePageItem` 作为 CustomEvent 订阅包装层（不动通信机制）。
-
-**不做什么**：不引入 Zustand（AR-5 另立任务）；不修改 CustomEvent 通信模式。
-
-**估算工作量**：1 天
-
----
-
-### P2 最后（优化项，按优先级酌情推进）
-
----
-
-#### T-P2-1：I-022 commitEdit 乐观更新
-
-**做什么**：`DatabaseView.tsx` `commitEdit` 函数实现乐观更新（本地 state 先更新，失败时回滚），消除视觉闪烁。
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P2-2：I-017 useMonthNav 提取
-
-**做什么**：新建 `web/src/hooks/useMonthNav.ts`；`CalendarView.tsx` 和 `TimelineView.tsx`（month 分支）改为使用此 hook。
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P2-3：I-016 settingsStore 解耦
-
-**做什么**：在 `settingsStore.ts` 中新增 `useThemeId()` 导出；`Editor.tsx` 改为使用 `useThemeId()`。
-
-**估算工作量**：0.25 天
-
----
-
-#### T-P2-4：I-019 findPageFlat 删除 + magic literal
-
-**做什么**：删除 `Sidebar.tsx` L534–536 的 `findPageFlat`；在 `blocknote.ts` 或 `blockTypes.ts` 定义 `BLOCK_TYPES` 常量；`toBlockNote.ts` 替换 magic literal。
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P2-5：I-018 封面图改文件存储
-
-**做什么**：`App.tsx` `handleChangeCover` 改用 `api.uploads.upload`，`cover` 字段存 URL。
-
-**前置条件**：T-P1-2（`api.uploads.upload` 已实现）
-
-**估算工作量**：0.5 天
-
----
-
-#### T-P2-6：I-020 loadAvailableDatabases 缓存失效（临时方案）
-
-**做什么**：修改 `openAddCol` 在每次打开 popover 时清空 `availableDatabases`，触发重新加载；同时为 GET /api/databases 接口预留前端调用占位（待后端 REQ-065 实现后替换）。
-
-**估算工作量**：0.25 天
-
----
-
-#### T-P2-7：AR-1 DatabaseView 组件拆分（大型任务）
-
-**做什么**：按第 3 节结构图，将 `DatabaseView.tsx` 拆分为 `DatabaseToolbar`、`DatabaseTableView`、`DatabaseColMenu`、`DatabaseAddColPopover`、`DatabaseRowModal`、`DatabaseBatchBar` 六个新文件；提取 `useRowEditor` hook。
-
-**不做什么**：不做状态下移（所有 state 保留在 `DatabaseView`）；不改变组件对外的 `Props` 接口（`{ databaseId: string }` 不变）。
-
-**注意**：此任务改动量大（≈1200 行移动），建议在以上所有 P0/P1 bug fix 全部完成且合并主干后再进行，避免 merge conflict。
-
-**估算工作量**：3–4 天（含测试）
-
----
-
-### 任务依赖关系
+### P0 — 必须先行
 
 ```
-T-P0-2 (toast)
-  └── T-P1-2 (api.uploads/meta)
-        └── T-P2-5 (封面图)
+[P0] 修复 I-002：确认 api/client.ts toast 覆盖 + 消除所有 void api.xxx() 静默吞弃
+     — web/src/api/client.ts, web/src/App.tsx,
+       web/src/components/database/DatabaseView.tsx,
+       web/src/components/sidebar/Sidebar.tsx
 
-T-P0-3 (BNBlock 类型)
-  └── T-P1-5 (类型链路消 any)
+[P0] 修复 I-003：Editor.tsx replaceBlocks catch 块添加日志 + 确认 BNBlock 类型无 any
+     — web/src/components/editor/Editor.tsx,
+       web/src/types/blocknote.ts
 
-T-P1-1 (shared.ts)        — 无前置
-T-P1-3 (overlay isConnected) — 无前置
-T-P1-4 (Tauri sidecar)    — 无前置
-T-P1-6 (PageItem 合并)    — 无前置
+[P0] 修复 I-001：relation 批量加载 effect 引入 AbortController 消除竞态，
+     提取为 useRelationCache hook（可选）
+     — web/src/components/database/DatabaseView.tsx (L408–452),
+       可选新建 web/src/hooks/useRelationCache.ts
+```
 
-T-P2-1 (乐观更新)         — 无前置
-T-P2-2 (useMonthNav)      — 无前置
-T-P2-3 (settingsStore)    — 无前置
-T-P2-4 (findPageFlat)     — 无前置
-T-P2-6 (缓存失效)         — 无前置
-T-P2-7 (DatabaseView 拆分) — 建议 P0+P1 全部完成后进行
+### P1 — 重要修复
+
+```
+[P1] 修复 I-008：api/client.ts 导出 API_BASE，Editor.tsx 替换硬编码 URL（含 batchUpdateBeacon）
+     — web/src/api/client.ts,
+       web/src/components/editor/Editor.tsx
+
+[P1] 修复 I-006 + I-007：提取 shared.ts 和 fileAttachments.ts
+     — 新建 web/src/components/database/shared.ts,
+       新建 web/src/utils/fileAttachments.ts,
+       web/src/components/database/DatabaseView.tsx,
+       web/src/components/database/KanbanView.tsx,
+       web/src/components/database/GalleryView.tsx
+
+[P1] 修复 I-013：合并 PageItem/PageItemWithRename，引入 Zustand useSidebarStore 替换 CustomEvent
+     — web/src/components/sidebar/Sidebar.tsx,
+       新建 web/src/stores/sidebarStore.ts,
+       package.json
+
+[P1] 修复 I-009：Editor.tsx column overlay isConnected 检查 + _tiptapEditor try/catch
+     — web/src/components/editor/Editor.tsx (L799–882)
+
+[P1] 修复 I-011：lib.rs 后台线程监听 _rx，sidecar 崩溃弹 dialog，on_exit 覆盖退出路径
+     — src-tauri/src/lib.rs
+
+[P1] 修复 I-012：定义/完善 BNBlock 类型，消除 Editor.tsx replaceBlocks 处 any，标注其余 TODO
+     — web/src/types/blocknote.ts,
+       web/src/components/editor/Editor.tsx
+
+[P1] DatabaseView 拆分（AR-1）：提取 TableView + ListView 组件，DatabaseView 保留状态协调
+     — web/src/components/database/DatabaseView.tsx
+       → 新建 web/src/components/database/TableView.tsx,
+         新建 web/src/components/database/ListView.tsx
+```
+
+### P2 — 建议改进
+
+```
+[P2] 修复 I-022：commitEdit 乐观更新 + 失败回滚，可封装 useRowEditor hook
+     — web/src/components/database/DatabaseView.tsx (L475–480),
+       可选新建 web/src/hooks/useRowEditor.ts
+
+[P2] 修复 I-017：提取 useMonthNav hook
+     — 新建 web/src/hooks/useMonthNav.ts,
+       web/src/components/database/CalendarView.tsx,
+       web/src/components/database/TimelineView.tsx
+
+[P2] 修复 I-019：删除 findPageFlat + 定义 BLOCK_TYPES as const
+     — web/src/components/sidebar/Sidebar.tsx (L534–536),
+       新建 web/src/types/blockTypes.ts,
+       web/src/utils/toBlockNote.ts
+
+[P2] 修复 I-020：loadAvailableDatabases 缓存失效修复 + loading state
+     — web/src/components/database/DatabaseView.tsx (L616–638)
+
+[P2] 修复 I-016：Editor 仅 subscribe themeId selector
+     — web/src/components/editor/Editor.tsx (L34),
+       web/src/settings/settingsStore.ts
+
+[P2] 修复 I-018：handleChangeCover 改走 /api/uploads（需与后端 REQ-065 对齐后实施）
+     — web/src/App.tsx (L137–151),
+       web/src/api/client.ts
+
+[P2] 提取 useKeyboardShortcuts hook（AR-5 预备）
+     — web/src/App.tsx (L161–175),
+       新建 web/src/hooks/useKeyboardShortcuts.ts
 ```
 
 ---
 
-*本方案由前端架构师（arch-frontend）于 2026-05-02 生成，dispatch #39 / REQ-064。本轮只出方案，未修改任何源代码文件。*
+*本文档由前端架构师-REQ064-66 于 2026-05-02 产出，仅包含方案规划，不含实现代码。*
