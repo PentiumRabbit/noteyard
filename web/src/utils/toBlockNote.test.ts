@@ -45,8 +45,8 @@ describe("toBlockNote", () => {
     const result = toBlockNote([block]);
     expect(result[0].type).toBe("columnList");
     expect(result[0].children).toHaveLength(2);
-    expect(result[0].children[0].type).toBe("column");
-    expect(result[0].children[1].type).toBe("column");
+    expect(result[0]!.children![0]!.type).toBe("column");
+    expect(result[0]!.children![1]!.type).toBe("column");
     expect(result[0].content).toBeUndefined();
   });
 
@@ -141,11 +141,11 @@ describe("toBlockNote", () => {
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe("columnList");
     expect(result[0].children).toHaveLength(2);
-    expect(result[0].children[0].type).toBe("column");
-    expect(result[0].children[0].children).toHaveLength(1);
-    expect(result[0].children[0].children[0].type).toBe("paragraph");
-    expect(result[0].children[0].children[0].content).toEqual([{ text: "hello" }]);
-    expect(result[0].children[1].children).toHaveLength(0);
+    expect(result[0].children![0]!.type).toBe("column");
+    expect(result[0].children![0]!.children).toHaveLength(1);
+    expect(result[0].children![0]!.children![0]!.type).toBe("paragraph");
+    expect(result[0].children![0]!.children![0]!.content).toEqual([{ text: "hello" }]);
+    expect(result[0].children![1]!.children).toHaveLength(0);
     expect(result[0].content).toBeUndefined();
   });
 
@@ -155,7 +155,7 @@ describe("toBlockNote", () => {
       makeBlock({ id: "col1", type: "column", content: "{}", props: '{"width":2.5}', parent_block_id: "cl1", order_index: 0 }),
     ];
     const result = toBlockNote(blocks);
-    expect(result[0].children[0].props).toEqual({ width: 2.5 });
+    expect(result[0].children![0]!.props).toEqual({ width: 2.5 });
   });
 
   it("columnList 列内块按 order_index 排序", () => {
@@ -166,9 +166,9 @@ describe("toBlockNote", () => {
       makeBlock({ id: "p1", type: "paragraph", content: '[{"text":"first"}]', props: "{}", parent_block_id: "col1", order_index: 0 }),
     ];
     const result = toBlockNote(blocks);
-    const colChildren = result[0].children[0].children;
-    expect(colChildren[0].id).toBe("p1");
-    expect(colChildren[1].id).toBe("p2");
+    const colChildren = result[0].children![0]!.children;
+    expect(colChildren![0]!.id).toBe("p1");
+    expect(colChildren![1]!.id).toBe("p2");
   });
 
   it("columnList 子块不出现在顶层结果中", () => {
