@@ -38,9 +38,9 @@ jobs:
             go_arch: amd64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -58,7 +58,7 @@ jobs:
           cd server
           go build -o "../src-tauri/binaries/noteyard-server-${{ matrix.target }}${EXT}" ./cmd/main.go
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
