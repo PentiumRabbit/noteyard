@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus } from "lucide-react";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
 import { evalFormula } from "./formulaEngine";
@@ -32,22 +33,27 @@ interface Props { databaseId: string }
 
 const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup"];
 
-const COL_ICONS: Record<DBColumn["type"], string> = {
-  text: "Aa",
-  number: "#",
-  checkbox: "☑",
-  select: "≡",
-  "multi-select": "≡≡",
-  date: "📅",
-  formula: "ƒ",
-  url: "🔗",
-  email: "✉",
-  created_time: "🕐",
-  last_edited_time: "🕑",
-  files: "📎",
-  relation: "🔗",
-  rollup: "Σ",
+const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  text: Type,
+  number: Hash,
+  checkbox: CheckSquare,
+  select: AlignJustify,
+  "multi-select": List,
+  date: Calendar,
+  formula: Sigma,
+  url: Link,
+  email: Mail,
+  created_time: Clock,
+  last_edited_time: Clock4,
+  files: Paperclip,
+  relation: Link2,
+  rollup: Sigma,
 };
+
+function ColIcon({ type, size = 14, className }: { type: string; size?: number; className?: string }) {
+  const Icon = COL_ICONS[type] ?? HelpCircle;
+  return <Icon size={size} className={className} />;
+}
 
 const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time", "rollup"]);
 
@@ -150,7 +156,7 @@ function ListGroup({ label, col, rows, primaryCol, onOpen, onAdd }: {
               <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
             </div>
           ))}
-          <button className="db-list-add-inline" onClick={onAdd}>+ 新建</button>
+          <button className="db-list-add-inline" onClick={onAdd}><Plus size={12} /> 新建</button>
         </>
       )}
     </div>
@@ -710,32 +716,32 @@ export function DatabaseView({ databaseId }: Props) {
 
       {/* view switcher */}
       <div className="db-view-switcher">
-        <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}>表格</button>
-        <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}>看板</button>
-        <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}>库</button>
-        <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}>列表</button>
-        <button className={`db-view-btn${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}>日历</button>
-        <button className={`db-view-btn${viewMode === "timeline" ? " active" : ""}`} onClick={() => setViewMode("timeline")}>时间轴</button>
+        <button className={`db-view-btn${viewMode === "table" ? " active" : ""}`} onClick={() => setViewMode("table")}><Table2 size={14} /> 表格</button>
+        <button className={`db-view-btn${viewMode === "kanban" ? " active" : ""}`} onClick={() => setViewMode("kanban")}><Kanban size={14} /> 看板</button>
+        <button className={`db-view-btn${viewMode === "gallery" ? " active" : ""}`} onClick={() => setViewMode("gallery")}><LayoutGrid size={14} /> 库</button>
+        <button className={`db-view-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}><ListIcon size={14} /> 列表</button>
+        <button className={`db-view-btn${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}><CalendarDays size={14} /> 日历</button>
+        <button className={`db-view-btn${viewMode === "timeline" ? " active" : ""}`} onClick={() => setViewMode("timeline")}><GanttChart size={14} /> 时间轴</button>
       </div>
 
       {/* toolbar */}
       <div className="db-toolbar">
         <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterState ? " has-value" : ""}`}
           onClick={() => setToolbarPanel(p => p === "filter" ? null : "filter")}>
-          筛选{filterState ? " ●" : ""}
+          <Filter size={14} /> 筛选{filterState ? " ●" : ""}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortState ? " has-value" : ""}`}
           onClick={() => setToolbarPanel(p => p === "sort" ? null : "sort")}>
-          排序{sortState ? " ●" : ""}
+          <ArrowUpDown size={14} /> 排序{sortState ? " ●" : ""}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "hide" ? " active" : ""}`}
           onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
-          隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+          <EyeOff size={14} /> 隐藏字段{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
         </button>
         {(viewMode === "table" || viewMode === "list") && (
           <button className={`db-toolbar-btn${toolbarPanel === "group" ? " active" : ""}${groupByColId ? " has-value" : ""}`}
             onClick={() => setToolbarPanel(p => p === "group" ? null : "group")}>
-            分组{groupByColId ? " ●" : ""}
+            <Layers size={14} /> 分组{groupByColId ? " ●" : ""}
           </button>
         )}
       </div>
@@ -833,7 +839,7 @@ export function DatabaseView({ databaseId }: Props) {
                 <label key={col.id} className="db-hide-row">
                   <input type="checkbox" checked={!col.is_hidden}
                     onChange={() => void toggleHideColumn(col)} />
-                  <span className="col-icon">{COL_ICONS[col.type]}</span>
+                  <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
                   {col.name}
                 </label>
               ))}
@@ -917,7 +923,7 @@ export function DatabaseView({ databaseId }: Props) {
                 </div>
               ))}
               <button className="db-add-row-btn db-list-add" onClick={() => void addRow()}>
-                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> 新建
+                <Plus size={14} /> 新建
               </button>
             </div>
           );
@@ -951,14 +957,14 @@ export function DatabaseView({ databaseId }: Props) {
               {cols.map(col => (
                 <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
                   <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
-                    <span className="col-icon">{COL_ICONS[col.type]}</span>
+                    <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
                     <span className="col-name-text">{col.name}</span>
                   </button>
                   <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
                 </th>
               ))}
               <th className="col-add-th">
-                <button className="col-add-th-btn" onClick={openAddCol} title="添加列">+</button>
+                <button className="col-add-th-btn" onClick={openAddCol} title="添加列"><Plus size={16} /></button>
               </th>
             </tr>
           </thead>
@@ -1112,7 +1118,7 @@ export function DatabaseView({ databaseId }: Props) {
             <tr className="db-add-row-tr">
               <td colSpan={cols.length + 2}>
                 <button className="db-add-row-btn" onClick={() => void addRow()}>
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> 新建
+                  <Plus size={14} /> 新建
                 </button>
               </td>
             </tr>
@@ -1140,7 +1146,7 @@ export function DatabaseView({ databaseId }: Props) {
             {COL_TYPES.map(t => (
               <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
                 onClick={() => void changeColType(t)}>
-                <span>{COL_ICONS[t]}</span>{t}
+                <span className="col-icon-wrap"><ColIcon type={t} /></span>{t}
               </button>
             ))}
             {menuCol.type === "formula" && (
@@ -1226,7 +1232,7 @@ export function DatabaseView({ databaseId }: Props) {
                     const next = formulaPopover.draft + ins;
                     updateFormulaPreview(next, []);
                   }}>
-                  {COL_ICONS[c.type]} {c.name}
+                  <ColIcon type={c.type} /> {c.name}
                 </button>
               ))}
             </div>
@@ -1331,7 +1337,7 @@ export function DatabaseView({ databaseId }: Props) {
               setNewColType(t);
               if (t === "relation") void loadAvailableDatabases();
             }}>
-              {COL_TYPES.map(t => <option key={t} value={t}>{COL_ICONS[t]} {t}</option>)}
+              {COL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             {newColType === "relation" && (
               <select
@@ -1434,7 +1440,7 @@ export function DatabaseView({ databaseId }: Props) {
               {cols.map(col => (
                 <div key={col.id} className="row-modal-field">
                   <div className="row-modal-label">
-                    <span className="col-icon">{COL_ICONS[col.type]}</span>
+                    <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
                     {col.name}
                   </div>
                   <div className="row-modal-value">

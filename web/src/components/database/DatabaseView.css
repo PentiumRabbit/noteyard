@@ -94,6 +94,18 @@
 }
 .db-group-label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
 
+/* ── lucide icon alignment ── */
+.db-view-btn svg,
+.db-toolbar-btn svg {
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.col-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+}
+
 /* ── view switcher ── */
 .db-view-switcher {
   display: flex;
@@ -102,6 +114,9 @@
 }
 
 .db-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 10px;
   font-size: 12px;
   border: none;
@@ -1011,6 +1026,9 @@ tr:hover .row-del-btn { visibility: visible; }
 }
 
 .db-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: none;
   cursor: pointer;
