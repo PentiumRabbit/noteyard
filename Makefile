@@ -8,7 +8,7 @@ stop:
 	@for port in 5173 5174 5175 5176 5177; do lsof -ti :$$port | xargs kill -9 2>/dev/null || true; done
 
 dev: stop install sidecar-dev
-	cd web && npx tauri dev
+	./web/node_modules/.bin/tauri dev
 
 sidecar-dev:
 	@echo "Building Go sidecar (dev)..."
