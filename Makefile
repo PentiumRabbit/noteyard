@@ -8,7 +8,7 @@ stop:
 	@for port in 5173 5174 5175 5176 5177; do lsof -ti :$$port | xargs kill -9 2>/dev/null || true; done
 
 dev: stop install
-	$(MAKE) -j2 server-dev web-dev
+	cd web && npx tauri dev
 
 server-dev:
 	cd server && go run ./cmd/main.go
