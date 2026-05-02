@@ -14,13 +14,10 @@ import { FilesCell } from "./FilesCell";
 import { FilesModalField } from "./FilesModalField";
 import { RelationCell } from "./RelationCell";
 import { RollupConfigPopover } from "./RollupConfigPopover";
+import { ColorDotPicker } from "./ColorDotPicker";
+import { Chip } from "./Chip";
+import { getPopoverY } from "../../utils/popover";
 import "./DatabaseView.css";
-
-function getPopoverY(triggerRect: DOMRect, estimatedHeight: number, offset = 4): number {
-  return triggerRect.bottom + estimatedHeight + offset > window.innerHeight
-    ? triggerRect.top - estimatedHeight - offset
-    : triggerRect.bottom + offset;
-}
 
 function parseFileAttachments(raw: string): FileAttachment[] {
   if (!raw || raw === "[]") return [];
@@ -100,8 +97,6 @@ const TAG_COLORS = [
   { bg: "#fdf4e3", color: "#b07d28" },
   { bg: "#eef0ff", color: "#4361c2" },
 ];
-
-const SELECT_COLOR_NAMES = ["紫", "蓝", "绿", "橙", "红", "灰", "黄", "靛"];
 
 function tagColor(val: string) {
   let h = 0;
@@ -187,18 +182,11 @@ function SortableOptionRow({
         onChange={e => onRename(idx, e.target.value)}
         onBlur={e => { if (!e.target.value.trim()) onRename(idx, opt.value); }}
       />
-      <div className="select-opt-colors">
-        {TAG_COLORS.map((tc, ci) => (
-          <button
-            key={ci}
-            type="button"
-            className={`color-dot-notion${opt.colorIdx === ci ? " active" : ""}`}
-            style={{ background: tc.color }}
-            title={SELECT_COLOR_NAMES[ci]}
-            onClick={() => onColorChange(idx, ci)}
-          />
-        ))}
-      </div>
+      <ColorDotPicker
+        colors={TAG_COLORS.map(tc => ({ bg: tc.bg, text: tc.color }))}
+        value={opt.colorIdx}
+        onChange={ci => onColorChange(idx, ci)}
+      />
       <button
         type="button"
         className="select-opt-del-hover"
@@ -1129,7 +1117,7 @@ export function DatabaseView({ databaseId }: Props) {
                       ) : col.type === "select" ? (
                         <div className="cell-select-wrap" onClick={e => openSelectDropdown(e, row, col)}>
                           {val ? (
-                            <span className="cell-tag" style={{ background: tagColor(val).bg, color: tagColor(val).color }}>{val}</span>
+                            <Chip label={val} colors={[{ bg: tagColor(val).bg, text: tagColor(val).color }]} colorIdx={0} />
                           ) : (
                             <span className="cell-empty">　</span>
                           )}
@@ -1137,7 +1125,7 @@ export function DatabaseView({ databaseId }: Props) {
                       ) : col.type === "multi-select" ? (
                         <div className="cell-select-wrap" onClick={e => openMultiSelectDropdown(e, row, col)}>
                           {val ? val.split(",").map(s => s.trim()).filter(Boolean).map((v, i) => (
-                            <span key={i} className="cell-tag" style={{ background: tagColor(v).bg, color: tagColor(v).color }}>{v}</span>
+                            <Chip key={i} label={v} colors={[{ bg: tagColor(v).bg, text: tagColor(v).color }]} colorIdx={0} />
                           )) : <span className="cell-empty">　</span>}
                         </div>
                       ) : col.type === "url" ? (
@@ -1409,7 +1397,7 @@ export function DatabaseView({ databaseId }: Props) {
               return (
                 <button key={idx} className="select-dd-item"
                   onClick={() => void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value)}>
-                  <span className="cell-tag" style={{ background: c.bg, color: c.color }}>{opt.value}</span>
+                  <Chip label={opt.value} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />
                 </button>
               );
             })}
@@ -1531,9 +1519,11 @@ export function DatabaseView({ databaseId }: Props) {
               return (
                 <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
                   onClick={() => void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal)}>
-                  <span className="cell-tag" style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280" }}>
-                    {isSelected ? "✓ " : ""}{opt.value}
-                  </span>
+                  <Chip
+                    label={`${isSelected ? "✓ " : ""}${opt.value}`}
+                    colors={[{ bg: isSelected ? c.bg : "#f0f0f0", text: isSelected ? c.color : "#6b7280" }]}
+                    colorIdx={0}
+                  />
                 </button>
               );
             })}
