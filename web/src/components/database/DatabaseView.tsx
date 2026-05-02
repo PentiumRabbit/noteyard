@@ -4,7 +4,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
+import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions, FilterState, SortState } from "../../types";
 import { evalFormula } from "./formulaEngine";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
@@ -123,8 +123,6 @@ interface SelectOptionsPopover { colId: string; x: number; y: number; options: S
 interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
 interface RowModal { row: DBRow }
 interface SelectOption { value: string; colorIdx: number }
-interface SortState { colId: string; order: "asc" | "desc" }
-interface FilterState { colId: string; op: string; val: string }
 type ToolbarPanel = "sort" | "filter" | "hide" | "group" | null
 
 function parseOptions(raw: string): SelectOption[] {
@@ -146,6 +144,100 @@ function parseOptions(raw: string): SelectOption[] {
 
 function serializeOptions(opts: SelectOption[]): string {
   return JSON.stringify(opts);
+}
+
+// ── Row content editor schema (basic block types only, no database nesting) ──
+const rowContentSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    paragraph: defaultBlockSpecs.paragraph,
+    heading: defaultBlockSpecs.heading,
+    bulletListItem: defaultBlockSpecs.bulletListItem,
+    numberedListItem: defaultBlockSpecs.numberedListItem,
+  },
+});
+
+// ── Row content BlockNote editor (isolated from page editor) ──
+function RowContentEditor({
+  databaseId,
+  rowId,
+  initialContent,
+  onSaveRef,
+}: {
+  databaseId: string;
+  rowId: string;
+  initialContent: string;
+  onSaveRef: React.MutableRefObject<(() => void) | null>;
+}) {
+  const editor = useCreateBlockNote({
+    schema: rowContentSchema,
+    dictionary: locales.zh,
+  });
+
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyRef = useRef(false);
+
+  const doSave = useCallback(() => {
+    if (!readyRef.current) return;
+    const content = JSON.stringify(editor.document);
+    void api.databases.updateRowContent(databaseId, rowId, content);
+  }, [databaseId, rowId, editor]);
+
+  // Expose flush function for parent to call on close
+  useEffect(() => {
+    onSaveRef.current = () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      doSave();
+    };
+    return () => { onSaveRef.current = null; };
+  }, [onSaveRef, doSave]);
+
+  // Initialize editor with content
+  useEffect(() => {
+    readyRef.current = false;
+    let cancelled = false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let initialBlocks: any[];
+    if (initialContent && initialContent !== "") {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        initialBlocks = JSON.parse(initialContent) as any[];
+      } catch {
+        initialBlocks = [{ type: "paragraph" }];
+      }
+    } else {
+      initialBlocks = [{ type: "paragraph" }];
+    }
+
+    setTimeout(() => {
+      if (cancelled) return;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        editor.replaceBlocks(editor.document, initialBlocks as any);
+      } catch (err) {
+        console.error("[RowContentEditor] replaceBlocks failed", err);
+      }
+      requestAnimationFrame(() => { readyRef.current = true; });
+    }, 0);
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowId]);
+
+  const handleChange = () => {
+    if (!readyRef.current) return;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => doSave(), 500);
+  };
+
+  return (
+    <div className="row-modal-content-editor">
+      <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
+    </div>
+  );
 }
 
 // ── Sortable option row for select options popover ──
@@ -256,8 +348,8 @@ export function DatabaseView({ databaseId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [newOptionName, setNewOptionName] = useState("");
-  const [sortState, setSortState] = useState<SortState | null>(null);
-  const [filterState, setFilterState] = useState<FilterState | null>(null);
+  const [sortStates, setSortStates] = useState<SortState[]>([]);
+  const [filterStates, setFilterStates] = useState<FilterState[]>([]);
   const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>(null);
   const [viewMode, setViewMode] = useState<"table" | "kanban" | "gallery" | "list" | "calendar" | "timeline">("table");
   const [kanbanGroupColId, setKanbanGroupColId] = useState<string>("");
@@ -283,6 +375,8 @@ export function DatabaseView({ databaseId }: Props) {
   const newColInputRef = useRef<HTMLInputElement>(null);
   const formulaInputRef = useRef<HTMLTextAreaElement>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
+  // ── row content editor flush ref (populated by RowContentEditor) ──
+  const rowContentSaveRef = useRef<(() => void) | null>(null);
 
   // ── relation helpers ──
   const parseRelationOpts = (col: DBColumn): RelationColumnOptions | null => {
@@ -297,22 +391,16 @@ export function DatabaseView({ databaseId }: Props) {
     }
   };
 
-  const reload = useCallback(async (sort?: SortState | null, filter?: FilterState | null) => {
+  const reload = useCallback(async () => {
     const [dbData, rowData] = await Promise.all([
       api.databases.get(databaseId),
-      api.databases.listRows(databaseId, {
-        sortCol: sort?.colId,
-        sortOrder: sort?.order,
-        filterCol: filter?.colId,
-        filterOp: filter?.op,
-        filterVal: filter?.val,
-      }),
+      api.databases.listRows(databaseId, {}),
     ]);
     setDb(dbData);
     setRows(rowData ?? []);
   }, [databaseId]);
 
-  useEffect(() => { void reload(sortState, filterState); }, [reload, sortState, filterState]);
+  useEffect(() => { void reload(); }, [reload]);
 
   // ── batch load relation target rows to avoid N+1 ──
   useEffect(() => {
@@ -546,6 +634,12 @@ export function DatabaseView({ databaseId }: Props) {
     } catch { /* ignore */ }
   };
 
+  const STATUS_PRESETS: SelectOption[] = [
+    { value: "未开始", colorIdx: 5 },
+    { value: "进行中", colorIdx: 1 },
+    { value: "已完成", colorIdx: 2 },
+  ];
+
   const submitNewCol = async () => {
     if (!newColName.trim()) return;
     setError(null);
@@ -555,6 +649,8 @@ export function DatabaseView({ databaseId }: Props) {
         if (!newColRelationDbId) { setError("请选择目标数据库"); return; }
         const opts: RelationColumnOptions = { target_database_id: newColRelationDbId };
         options = JSON.stringify(opts);
+      } else if (newColType === "status") {
+        options = serializeOptions(STATUS_PRESETS);
       }
       const newCol = await api.databases.addColumn(databaseId, {
         name: newColName.trim(), type: newColType,
@@ -695,7 +791,7 @@ export function DatabaseView({ databaseId }: Props) {
   // ── hide column ──
   const toggleHideColumn = async (col: DBColumn) => {
     await api.databases.updateColumn(databaseId, col.id, { ...col, is_hidden: !col.is_hidden });
-    void reload(sortState, filterState);
+    void reload();
   };
 
   // ── multi-select ──
@@ -753,6 +849,8 @@ export function DatabaseView({ databaseId }: Props) {
 
   const saveRowModal = async () => {
     if (!rowModal) return;
+    // Flush any pending content editor save before closing
+    rowContentSaveRef.current?.();
     const skipColIds = new Set(cols.filter(c => c.type === "files" || c.type === "relation" || READONLY_COL_TYPES.has(c.type)).map(c => c.id));
     const cells: DBCell[] = Object.entries(rowModalDraft)
       .filter(([colId]) => !skipColIds.has(colId))
@@ -770,6 +868,42 @@ export function DatabaseView({ databaseId }: Props) {
   const hiddenCount = allCols.filter(c => c.is_hidden).length;
   const selectCols = allCols.filter(c => c.type === "select");
   const activeGroupColId = kanbanGroupColId || selectCols[0]?.id || "";
+
+  // ── client-side filter (AND) ──
+  const applyFilter = (row: DBRow, f: FilterState): boolean => {
+    const val = (row.cells[f.colId] ?? "").toLowerCase();
+    const fval = f.val.toLowerCase();
+    switch (f.op) {
+      case "contains": return val.includes(fval);
+      case "not_contains": return !val.includes(fval);
+      case "equals": return val === fval;
+      case "not_equals": return val !== fval;
+      case "is_empty": return val === "";
+      case "is_not_empty": return val !== "";
+      case "gt": return parseFloat(val) > parseFloat(fval);
+      case "lt": return parseFloat(val) < parseFloat(fval);
+      default: return true;
+    }
+  };
+
+  const activeFilters = filterStates.filter(f => f.colId && (f.op === "is_empty" || f.op === "is_not_empty" || f.val !== ""));
+  let displayedRows = activeFilters.length > 0
+    ? rows.filter(row => activeFilters.every(f => applyFilter(row, f)))
+    : rows;
+
+  // ── client-side sort ──
+  const activeSorts = sortStates.filter(s => s.colId);
+  if (activeSorts.length > 0) {
+    displayedRows = [...displayedRows].sort((a, b) => {
+      for (const s of activeSorts) {
+        const av = a.cells[s.colId] ?? "";
+        const bv = b.cells[s.colId] ?? "";
+        const cmp = av.localeCompare(bv, undefined, { numeric: true });
+        if (cmp !== 0) return s.order === "asc" ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
 
   return (
     <div className="db-wrap" contentEditable={false}>
@@ -803,13 +937,13 @@ export function DatabaseView({ databaseId }: Props) {
 
       {/* toolbar */}
       <div className="db-toolbar">
-        <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterState ? " has-value" : ""}`}
+        <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterStates.length > 0 ? " has-value" : ""}`}
           onClick={() => setToolbarPanel(p => p === "filter" ? null : "filter")}>
-          <Filter size={14} /> 筛选{filterState ? " ●" : ""}
+          <Filter size={14} /> {filterStates.length > 0 ? `筛选 ${filterStates.length}` : "筛选"}
         </button>
-        <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortState ? " has-value" : ""}`}
+        <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortStates.length > 0 ? " has-value" : ""}`}
           onClick={() => setToolbarPanel(p => p === "sort" ? null : "sort")}>
-          <ArrowUpDown size={14} /> 排序{sortState ? " ●" : ""}
+          <ArrowUpDown size={14} /> {sortStates.length > 0 ? `排序 ${sortStates.length}` : "排序"}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "hide" ? " active" : ""}`}
           onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
@@ -854,39 +988,57 @@ export function DatabaseView({ databaseId }: Props) {
       {toolbarPanel && (
         <div className="db-panel">
           {toolbarPanel === "sort" && (
-            <div className="db-panel-content">
+            <div className="db-panel-list-content">
               <div className="db-panel-title">排序</div>
-              <select value={sortState?.colId ?? ""}
-                onChange={e => setSortState(e.target.value ? { colId: e.target.value, order: sortState?.order ?? "asc" } : null)}>
-                <option value="">无排序</option>
-                {allCols.filter(c => c.type !== "formula").map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              {sortState && (
-                <select value={sortState.order}
-                  onChange={e => setSortState(s => s ? { ...s, order: e.target.value as "asc" | "desc" } : null)}>
-                  <option value="asc">升序 ↑</option>
-                  <option value="desc">降序 ↓</option>
-                </select>
-              )}
-              {sortState && <button className="db-panel-clear" onClick={() => setSortState(null)}>清除</button>}
+              {sortStates.map((s) => (
+                <div key={s.id} className="db-panel-list-row">
+                  <select
+                    className="db-panel-list-select"
+                    value={s.colId}
+                    onChange={e => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, colId: e.target.value } : x))}>
+                    <option value="">选择列</option>
+                    {allCols.filter(c => c.type !== "formula").map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="db-panel-order-btn"
+                    onClick={() => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, order: x.order === "asc" ? "desc" : "asc" } : x))}>
+                    {s.order === "asc" ? "升序 ↑" : "降序 ↓"}
+                  </button>
+                  <button
+                    className="db-panel-row-del"
+                    onClick={() => setSortStates(prev => prev.filter(x => x.id !== s.id))}
+                    title="删除">
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+              <button
+                className="db-panel-add-btn"
+                onClick={() => setSortStates(prev => [...prev, { id: crypto.randomUUID(), colId: "", order: "asc" }])}>
+                <Plus size={13} /> 添加排序
+              </button>
             </div>
           )}
           {toolbarPanel === "filter" && (
-            <div className="db-panel-content">
+            <div className="db-panel-list-content">
               <div className="db-panel-title">筛选</div>
-              <select value={filterState?.colId ?? ""}
-                onChange={e => setFilterState(e.target.value ? { colId: e.target.value, op: filterState?.op ?? "contains", val: filterState?.val ?? "" } : null)}>
-                <option value="">选择列</option>
-                {allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              {filterState && (
-                <>
-                  <select value={filterState.op}
-                    onChange={e => setFilterState(s => s ? { ...s, op: e.target.value } : null)}>
+              {filterStates.map((f) => (
+                <div key={f.id} className="db-panel-list-row">
+                  <select
+                    className="db-panel-list-select"
+                    value={f.colId}
+                    onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, colId: e.target.value } : x))}>
+                    <option value="">选择列</option>
+                    {allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="db-panel-list-select"
+                    value={f.op}
+                    onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, op: e.target.value } : x))}>
                     <option value="contains">包含</option>
                     <option value="not_contains">不包含</option>
                     <option value="equals">等于</option>
@@ -896,17 +1048,27 @@ export function DatabaseView({ databaseId }: Props) {
                     <option value="gt">大于</option>
                     <option value="lt">小于</option>
                   </select>
-                  {filterState.op !== "is_empty" && filterState.op !== "is_not_empty" && (
+                  {f.op !== "is_empty" && f.op !== "is_not_empty" && (
                     <input
-                      className="db-panel-input"
+                      className="db-panel-list-input"
                       placeholder="值"
-                      value={filterState.val}
-                      onChange={e => setFilterState(s => s ? { ...s, val: e.target.value } : null)}
+                      value={f.val}
+                      onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, val: e.target.value } : x))}
                     />
                   )}
-                  <button className="db-panel-clear" onClick={() => setFilterState(null)}>清除</button>
-                </>
-              )}
+                  <button
+                    className="db-panel-row-del"
+                    onClick={() => setFilterStates(prev => prev.filter(x => x.id !== f.id))}
+                    title="删除">
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+              <button
+                className="db-panel-add-btn"
+                onClick={() => setFilterStates(prev => [...prev, { id: crypto.randomUUID(), colId: "", op: "contains", val: "" }])}>
+                <Plus size={13} /> 添加筛选条件
+              </button>
             </div>
           )}
           {toolbarPanel === "hide" && (
@@ -923,16 +1085,24 @@ export function DatabaseView({ databaseId }: Props) {
             </div>
           )}
           {toolbarPanel === "group" && (
-            <div className="db-panel-content">
+            <div className="db-panel-list-content">
               <div className="db-panel-title">分组</div>
-              <select value={groupByColId}
-                onChange={e => setGroupByColId(e.target.value)}>
-                <option value="">无分组</option>
-                {allCols.filter(c => c.type === "select" || c.type === "checkbox").map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              {groupByColId && <button className="db-panel-clear" onClick={() => setGroupByColId("")}>清除</button>}
+              <button
+                className={`db-group-radio-row${groupByColId === "" ? " selected" : ""}`}
+                onClick={() => setGroupByColId("")}>
+                <span className="db-group-radio-dot" />
+                <span className="db-group-radio-label">无分组</span>
+              </button>
+              {allCols.filter(c => c.type === "select" || c.type === "checkbox").map(c => (
+                <button
+                  key={c.id}
+                  className={`db-group-radio-row${groupByColId === c.id ? " selected" : ""}`}
+                  onClick={() => setGroupByColId(c.id)}>
+                  <span className="col-icon col-icon-wrap db-group-radio-icon"><ColIcon type={c.type} size={13} /></span>
+                  <span className="db-group-radio-label">{c.name}</span>
+                  <span className="db-group-radio-dot" />
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -951,12 +1121,12 @@ export function DatabaseView({ databaseId }: Props) {
             </div>
             <KanbanView
               columns={allCols}
-              rows={rows}
+              rows={displayedRows}
               groupColId={activeGroupColId}
               onMoveRow={async (rowId, newGroupVal) => {
                 const cell: DBCell = { column_id: activeGroupColId, value: newGroupVal };
                 await api.databases.updateCells(databaseId, rowId, [cell]);
-                void reload(sortState, filterState);
+                void reload();
               }}
             />
           </>
@@ -966,7 +1136,7 @@ export function DatabaseView({ databaseId }: Props) {
       {viewMode === "gallery" && (
         <GalleryView
           columns={allCols}
-          rows={rows}
+          rows={displayedRows}
           onOpenRow={openRowModal}
         />
       )}
@@ -974,7 +1144,7 @@ export function DatabaseView({ databaseId }: Props) {
       {viewMode === "calendar" && (
         <CalendarView
           columns={allCols}
-          rows={rows}
+          rows={displayedRows}
           onOpenRow={openRowModal}
         />
       )}
@@ -982,7 +1152,7 @@ export function DatabaseView({ databaseId }: Props) {
       {viewMode === "timeline" && (
         <TimelineView
           columns={allCols}
-          rows={rows}
+          rows={displayedRows}
           onOpenRow={openRowModal}
         />
       )}
@@ -993,7 +1163,7 @@ export function DatabaseView({ databaseId }: Props) {
         if (!groupCol) {
           return (
             <div className="db-list-view">
-              {rows.map(row => (
+              {displayedRows.map(row => (
                 <div key={row.id} className="db-list-row" onClick={() => openRowModal(row)}>
                   <span className="db-list-icon">📄</span>
                   <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
@@ -1006,7 +1176,7 @@ export function DatabaseView({ databaseId }: Props) {
           );
         }
         const groups = new Map<string, DBRow[]>();
-        for (const row of rows) {
+        for (const row of displayedRows) {
           const val = row.cells[groupCol.id] || "";
           if (!groups.has(val)) groups.set(val, []);
           groups.get(val)!.push(row);
@@ -1028,7 +1198,7 @@ export function DatabaseView({ databaseId }: Props) {
             <tr>
               <th className="th-row-actions">
                 <input type="checkbox" className="db-row-check"
-                  checked={rows.length > 0 && selectedRowIds.size === rows.length}
+                  checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
                   onChange={toggleSelectAll} title="全选" />
               </th>
               {cols.map(col => (
@@ -1046,14 +1216,14 @@ export function DatabaseView({ databaseId }: Props) {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && cols.length === 0 && (
+            {displayedRows.length === 0 && cols.length === 0 && (
               <tr><td colSpan={3} className="db-empty-td">点击右上角 + 添加第一列</td></tr>
             )}
             {(() => {
               const groupCol = groupByColId ? allCols.find(c => c.id === groupByColId) : null;
-              if (!groupCol) return rows.map(row => ({ row, groupLabel: null as string | null }));
+              if (!groupCol) return displayedRows.map(row => ({ row, groupLabel: null as string | null }));
               const groups = new Map<string, DBRow[]>();
-              for (const row of rows) {
+              for (const row of displayedRows) {
                 const val = row.cells[groupCol.id] || "";
                 if (!groups.has(val)) groups.set(val, []);
                 groups.get(val)!.push(row);
@@ -1128,6 +1298,39 @@ export function DatabaseView({ databaseId }: Props) {
                             <Chip key={i} label={v} colors={[{ bg: tagColor(v).bg, text: tagColor(v).color }]} colorIdx={0} />
                           )) : <span className="cell-empty">　</span>}
                         </div>
+                      ) : col.type === "status" ? (
+                        <div className="cell-select-wrap" onClick={e => openSelectDropdown(e, row, col)}>
+                          {val ? (() => {
+                            const opts = parseOptions(col.options);
+                            const opt = opts.find(o => o.value === val);
+                            const c = opt ? TAG_COLORS[opt.colorIdx % TAG_COLORS.length] : tagColor(val);
+                            return <Chip label={val} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />;
+                          })() : <span className="cell-empty">　</span>}
+                        </div>
+                      ) : col.type === "phone" ? (
+                        isEditing ? (
+                          <input ref={cellInputRef} className="cell-input" type="tel" value={cellDraft}
+                            onChange={e => setCellDraft(e.target.value)}
+                            onBlur={() => void commitEdit(row.id, col.id)}
+                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
+                        ) : (
+                          <div className="cell-select-wrap" onClick={() => startEdit(row.id, col.id, val)}>
+                            {val ? <Chip label={val} href={`tel:${val}`} /> : <span className="cell-empty">　</span>}
+                          </div>
+                        )
+                      ) : col.type === "people" ? (
+                        isEditing ? (
+                          <input ref={cellInputRef} className="cell-input" type="text" value={cellDraft}
+                            onChange={e => setCellDraft(e.target.value)}
+                            onBlur={() => void commitEdit(row.id, col.id)}
+                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
+                        ) : (
+                          <div className="cell-select-wrap" onClick={() => startEdit(row.id, col.id, val)}>
+                            {val ? val.split(",").map(s => s.trim()).filter(Boolean).map((name, i) => (
+                              <Chip key={i} label={name} />
+                            )) : <span className="cell-empty">　</span>}
+                          </div>
+                        )
                       ) : col.type === "url" ? (
                         isEditing ? (
                           <input ref={cellInputRef} className="cell-input" type="url" value={cellDraft}
@@ -1154,7 +1357,7 @@ export function DatabaseView({ databaseId }: Props) {
                         <FilesCell
                           attachments={parseFileAttachments(row.cells[col.id])}
                           onUpdate={(newAttachments) => {
-                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: JSON.stringify(newAttachments) }]).then(() => void reload(sortState, filterState));
+                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: JSON.stringify(newAttachments) }]).then(() => void reload());
                           }}
                         />
                       ) : col.type === "relation" ? (
@@ -1163,7 +1366,7 @@ export function DatabaseView({ databaseId }: Props) {
                           value={val}
                           onChange={(newVal) => {
                             void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: newVal }])
-                              .then(() => void reload(sortState, filterState));
+                              .then(() => void reload());
                           }}
                           targetRowsCache={(() => {
                             const opts = parseRelationOpts(col);
@@ -1238,7 +1441,7 @@ export function DatabaseView({ databaseId }: Props) {
                 <button className="col-menu-formula-btn" onClick={e => openRollupPopover(e, menuCol)}>Σ 编辑汇总</button>
               </>
             )}
-            {(menuCol.type === "select" || menuCol.type === "multi-select") && (
+            {(menuCol.type === "select" || menuCol.type === "multi-select" || menuCol.type === "status") && (
               <>
                 <div className="col-menu-divider" />
                 <button className="col-menu-formula-btn" onClick={e => openSelectOptions(e, menuCol)}>≡ 管理选项</button>
@@ -1532,7 +1735,7 @@ export function DatabaseView({ databaseId }: Props) {
               onClick={async () => {
                 await api.databases.updateCells(databaseId, multiSelectDropdown.rowId, [{ column_id: multiSelectDropdown.colId, value: "" }]);
                 setMultiSelectDropdown(null);
-                void reload(sortState, filterState);
+                void reload();
               }}>
               清除选择
             </button>
@@ -1550,6 +1753,13 @@ export function DatabaseView({ databaseId }: Props) {
               <button className="row-modal-close" onClick={() => void saveRowModal()}>×</button>
             </div>
             <div className="row-modal-body">
+              <RowContentEditor
+                databaseId={databaseId}
+                rowId={rowModal.row.id}
+                initialContent={rowModal.row.content ?? ""}
+                onSaveRef={rowContentSaveRef}
+              />
+              <div className="row-modal-content-divider" />
               {cols.map(col => (
                 <div key={col.id} className="row-modal-field">
                   <div className="row-modal-label">
@@ -1618,6 +1828,38 @@ export function DatabaseView({ databaseId }: Props) {
                           );
                         })}
                       </div>
+                    ) : col.type === "status" ? (
+                      <div className="row-modal-multiselect">
+                        {parseOptions(col.options).map((opt, idx) => {
+                          const currentVal = rowModalDraft[col.id] ?? "";
+                          const isSelected = currentVal === opt.value;
+                          const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                          return (
+                            <button key={idx}
+                              className={`cell-tag${isSelected ? " selected" : ""}`}
+                              style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280", border: isSelected ? `1.5px solid ${c.color}` : "1.5px solid transparent" }}
+                              onClick={() => setRowModalDraft(d => ({ ...d, [col.id]: isSelected ? "" : opt.value }))}>
+                              {opt.value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : col.type === "phone" ? (
+                      <div className="row-modal-url-wrap">
+                        <input className="row-modal-input" type="tel" value={rowModalDraft[col.id] ?? ""}
+                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="+86 138 0000 0000" />
+                        {rowModalDraft[col.id] && (
+                          <a href={`tel:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open" onClick={e => e.stopPropagation()}>☎</a>
+                        )}
+                      </div>
+                    ) : col.type === "people" ? (
+                      <input
+                        className="row-modal-input"
+                        type="text"
+                        value={rowModalDraft[col.id] ?? ""}
+                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
+                        placeholder="张三,李四（逗号分隔）"
+                      />
                     ) : col.type === "files" ? (
                       <FilesModalField
                         attachments={parseFileAttachments(rowModal.row.cells[col.id])}
@@ -1626,7 +1868,7 @@ export function DatabaseView({ databaseId }: Props) {
                             .then(() => {
                               // 同步更新 rowModal.row 的 cells，不走 rowModalDraft
                               setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: JSON.stringify(newAtts) } } } : null);
-                              void reload(sortState, filterState);
+                              void reload();
                             });
                         }}
                       />
@@ -1639,7 +1881,7 @@ export function DatabaseView({ databaseId }: Props) {
                           void api.databases.updateCells(databaseId, rowModal.row.id, [{ column_id: col.id, value: newVal }])
                             .then(() => {
                               setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: newVal } } } : null);
-                              void reload(sortState, filterState);
+                              void reload();
                             });
                         }}
                         targetRowsCache={(() => {
