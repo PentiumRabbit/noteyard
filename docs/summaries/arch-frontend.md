@@ -101,4 +101,18 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 
 ---
 
-*由前端架构师（arch-frontend）生成，dispatch #56 / REQ-066。*
+---
+
+## ISS-011 修复摘要（2026-05-02，dispatch #58/#72/#73）
+
+**问题**：`Editor.tsx` TypeScript 编译错误阻塞 CI（共 11 处）。
+
+**根因与修复**：
+- **TS2540 readonly**：`block.props` 在 `ReactCustomBlockRenderProps` 中是 readonly，不可直接赋值。改用 `editor.updateBlock(block, { props: {...} })`。
+- **TS2339 updateBlock 不存在**：BlockNote 0.26 已从 `ReactCustomBlockRenderProps` 移除 `updateBlock` 便捷函数，需从 `editor` 访问。render 解构从 `{ block, updateBlock }` 改为 `{ block, editor }`。
+- **TS2719/TS2322 BlockNoteEditor 类型不兼容**：`useCreateBlockNote` 返回含完整泛型的 editor，传给 `DatabaseSlashItem`/`MentionMenu` 时类型不兼容。在调用处加 `as any` 类型断言。
+- **TS6133 未使用变量**：`MentionMenu` 函数参数中声明的 `onSelectPage` 未使用，删除该参数。
+- **TS2322 mention 类型**：`insertInlineContent` 的 mention 对象加 `as any` 类型断言。
+- **TS2345 parseInt**：`blockToMd` 中 `b.props?.level` 类型为 `unknown`，包装 `String()` 再传给 `parseInt`。
+
+*由前端架构师（arch-frontend）生成，dispatch #56 / REQ-066。ISS-011 补充于 dispatch #72。*
