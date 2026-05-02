@@ -2,7 +2,7 @@
 
 本地优先的 Notion 替代品 — 块编辑器、数据库多视图、公式引擎，所有数据存储在你自己的机器上。
 
-[English](README.md)
+[English](README.md) · Gitee（国内）：[PentiumRabbit/noteyard](https://gitee.com/PentiumRabbit/noteyard) · GitHub（境外）：[PentiumRabbit/noteyard](https://github.com/PentiumRabbit/noteyard)
 
 ![CI](https://github.com/PentiumRabbit/noteyard/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -29,6 +29,12 @@
 
 ## 安装
 
+### Homebrew（macOS）
+
+```bash
+brew install --cask PentiumRabbit/tap/noteyard
+```
+
 ### 桌面客户端
 
 从 [Releases](../../releases) 页下载对应平台安装包：
@@ -47,7 +53,7 @@
 **前置条件：** Go 1.21+、Node.js 18+
 
 ```bash
-git clone https://github.com/PentiumRabbit/noteyard.git
+git clone https://gitee.com/PentiumRabbit/noteyard.git
 cd noteyard
 
 # 启动开发服务器（后端 :8080，前端 :5173）

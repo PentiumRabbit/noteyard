@@ -2,7 +2,7 @@
 
 A local-first Notion alternative — block editor, database views, formula engine, all running on your machine.
 
-[中文](README_CN.md)
+[中文](README_CN.md) · GitHub: [PentiumRabbit/noteyard](https://github.com/PentiumRabbit/noteyard) · Gitee mirror (China): [PentiumRabbit/noteyard](https://gitee.com/PentiumRabbit/noteyard)
 
 ![CI](https://github.com/PentiumRabbit/noteyard/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -28,6 +28,12 @@ A local-first Notion alternative — block editor, database views, formula engin
 ---
 
 ## Installation
+
+### Homebrew (macOS)
+
+```bash
+brew install --cask PentiumRabbit/tap/noteyard
+```
 
 ### Desktop App
 
