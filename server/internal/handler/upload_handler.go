@@ -25,11 +25,11 @@ var mimeToExt = map[string]string{
 	"image/gif":  ".gif",
 	"image/webp": ".webp",
 	// documents — extension-whitelist primary path
-	"application/pdf": ".pdf",
-	"application/msword":                                                 ".doc",
+	"application/pdf":    ".pdf",
+	"application/msword": ".doc",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-	"text/plain":    ".txt",
-	"text/markdown": ".md",
+	"text/plain":      ".txt",
+	"text/markdown":   ".md",
 	"application/zip": ".zip",
 }
 

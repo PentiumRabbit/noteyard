@@ -32,10 +32,10 @@ func TestBlockRepo_CreateAndGetByID(t *testing.T) {
 	page := seedPage(t, pr, "Test Page")
 
 	block := &model.Block{
-		PageID:   page.ID,
-		Type:     "paragraph",
-		Content:  `[{"text":"hello"}]`,
-		Props:    `{}`,
+		PageID:  page.ID,
+		Type:    "paragraph",
+		Content: `[{"text":"hello"}]`,
+		Props:   `{}`,
 	}
 	if err := br.Create(ctx, block); err != nil {
 		t.Fatalf("Create: %v", err)

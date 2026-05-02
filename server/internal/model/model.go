@@ -25,12 +25,12 @@ type Block struct {
 }
 
 type Database struct {
-	ID        string          `json:"id"`
-	PageID    string          `json:"page_id"`
-	Title     string          `json:"title"`
-	Columns   []*DBColumn     `json:"columns"`
-	CreatedAt int64           `json:"created_at"`
-	UpdatedAt int64           `json:"updated_at"`
+	ID        string      `json:"id"`
+	PageID    string      `json:"page_id"`
+	Title     string      `json:"title"`
+	Columns   []*DBColumn `json:"columns"`
+	CreatedAt int64       `json:"created_at"`
+	UpdatedAt int64       `json:"updated_at"`
 }
 
 type DBColumn struct {

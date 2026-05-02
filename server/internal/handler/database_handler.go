@@ -148,7 +148,7 @@ func (h *DatabaseHandler) ListRows(w http.ResponseWriter, r *http.Request) {
 	sortCol := q.Get("sort_col")
 	sortOrder := q.Get("sort_order") // "asc" | "desc"
 	filterCol := q.Get("filter_col")
-	filterOp := q.Get("filter_op")   // "contains" | "equals" | "not_equals" | "is_empty" | "is_not_empty" | "gt" | "lt"
+	filterOp := q.Get("filter_op") // "contains" | "equals" | "not_equals" | "is_empty" | "is_not_empty" | "gt" | "lt"
 	filterVal := q.Get("filter_val")
 
 	if filterCol != "" {

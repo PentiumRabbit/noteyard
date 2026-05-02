@@ -18,7 +18,7 @@ func TestComputeRollup_Count(t *testing.T) {
 	ids := []string{"r1", "r2", "r3"}
 	cells := map[string]string{
 		"r1": "hello",
-		"r2": "",   // empty value row
+		"r2": "", // empty value row
 		"r3": "42",
 	}
 	got := computeRollup("count", ids, cells)
@@ -40,7 +40,7 @@ func TestComputeRollup_CountNotEmpty(t *testing.T) {
 	ids := []string{"r1", "r2", "r3", "r4"}
 	cells := map[string]string{
 		"r1": "hello",
-		"r2": "",      // empty — should not count
+		"r2": "", // empty — should not count
 		"r3": "world",
 		// r4 not in cells — should not count
 	}
@@ -181,17 +181,18 @@ func newTestDatabaseRepo(t *testing.T) *DatabaseRepo {
 }
 
 // seedDatabaseWithFixtures sets up:
-//   page → block (type=database) → database + columns + rows + cells
+//
+//	page → block (type=database) → database + columns + rows + cells
 //
 // It returns the DatabaseRepo, the database ID, the relation column ID, and
 // the target column ID so callers can build rollup columns.
 type fixtureDB struct {
-	repo         *DatabaseRepo
-	dbID         string
-	relColID     string
-	targetColID  string
-	row1ID       string
-	row2ID       string
+	repo        *DatabaseRepo
+	dbID        string
+	relColID    string
+	targetColID string
+	row1ID      string
+	row2ID      string
 	// target rows (in the "related" database, simulated via same DB for simplicity)
 	targetRow1ID string
 	targetRow2ID string
@@ -201,11 +202,12 @@ type fixtureDB struct {
 // It returns a fixtureDB. The caller may add rollup columns and rows as needed.
 //
 // Schema constraints:
-//   databases.id → blocks(id) → pages(id)
-//   database_columns.database_id → databases(id)
-//   database_rows.database_id    → databases(id)
-//   database_cells.row_id        → database_rows(id)
-//   database_cells.column_id     → database_columns(id)
+//
+//	databases.id → blocks(id) → pages(id)
+//	database_columns.database_id → databases(id)
+//	database_rows.database_id    → databases(id)
+//	database_cells.row_id        → database_rows(id)
+//	database_cells.column_id     → database_columns(id)
 func seedMinimalDB(t *testing.T) *fixtureDB {
 	t.Helper()
 	repo := newTestDatabaseRepo(t)
