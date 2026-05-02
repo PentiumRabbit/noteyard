@@ -54,7 +54,7 @@ function blockToMd(b: BNBlock): string {
   const text = inlinesToText(b.content);
   switch (b.type) {
     case "heading": {
-      const lvl = parseInt(b.props?.level ?? "1", 10);
+      const lvl = parseInt(String(b.props?.level ?? "1"), 10);
       return "#".repeat(lvl) + " " + text;
     }
     case "bulletListItem": return "- " + text;
@@ -175,7 +175,7 @@ const CalloutBlock = createReactBlockSpec(
     content: "inline",
   },
   {
-    render: ({ block, contentRef }) => {
+    render: ({ block, editor, contentRef }) => {
       const [pickerOpen, setPickerOpen] = React.useState(false);
       return (
         <div className="callout-block">
@@ -187,7 +187,7 @@ const CalloutBlock = createReactBlockSpec(
               <div className="callout-emoji-picker">
                 {CALLOUT_EMOJIS.map(e => (
                   <button key={e} className="callout-emoji-opt"
-                    onMouseDown={ev => { ev.preventDefault(); block.props.icon = e; setPickerOpen(false); }}>
+                    onMouseDown={ev => { ev.preventDefault(); editor.updateBlock(block, { props: { icon: e } }); setPickerOpen(false); }}>
                     {e}
                   </button>
                 ))}
@@ -209,14 +209,14 @@ const ToggleBlock = createReactBlockSpec(
     content: "inline",
   },
   {
-    render: ({ block, contentRef }) => {
+    render: ({ block, editor, contentRef }) => {
       const isOpen = block.props.open !== "false";
       return (
         <div className="toggle-block">
           <div className="toggle-header">
             <button
               className={`toggle-arrow${isOpen ? " open" : ""}`}
-              onMouseDown={ev => { ev.preventDefault(); block.props.open = isOpen ? "false" : "true"; }}
+              onMouseDown={ev => { ev.preventDefault(); editor.updateBlock(block, { props: { open: isOpen ? "false" : "true" } }); }}
             >▶</button>
             <span className="toggle-summary" ref={contentRef} />
           </div>
@@ -254,7 +254,7 @@ const FileAttachBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       const hasFile = !!block.props.url;
       const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -266,7 +266,7 @@ const FileAttachBlock = createReactBlockSpec(
         if (!res.ok) { alert("上传失败"); return; }
         const data = await res.json() as { url: string };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { url: data.url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
+        editor.updateBlock(block, { props: { url: data.url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
       };
       if (!hasFile) {
         return (
@@ -301,7 +301,7 @@ const BookmarkBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
       const [loading, setLoading] = React.useState(false);
 
@@ -312,7 +312,7 @@ const BookmarkBlock = createReactBlockSpec(
           const res = await fetch(`http://localhost:8080/api/meta?url=${encodeURIComponent(url)}`);
           const data = await res.json() as BookmarkMeta;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          updateBlock({ props: { url, title: data.title || url, description: data.description, favicon: data.favicon } } as any);
+          editor.updateBlock(block, { props: { url, title: data.title || url, description: data.description, favicon: data.favicon } } as any);
         } catch { /* ignore */ } finally { setLoading(false); }
       };
 
@@ -357,7 +357,7 @@ const EmbedBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
       const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
 
@@ -369,7 +369,7 @@ const EmbedBlock = createReactBlockSpec(
           if (!resizeRef.current) return;
           const newH = Math.max(100, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          updateBlock({ props: { ...block.props, height: String(newH) } } as any);
+          editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
         };
         const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
         document.addEventListener("mousemove", onMove);
@@ -388,7 +388,7 @@ const EmbedBlock = createReactBlockSpec(
               onKeyDown={e => {
                 if (e.key === "Enter" && urlDraft.startsWith("http")) {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  updateBlock({ props: { url: urlDraft, height: "400" } } as any);
+                  editor.updateBlock(block, { props: { url: urlDraft, height: "400" } } as any);
                 }
               }}
             />
@@ -420,7 +420,7 @@ const PdfBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
 
       const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -433,7 +433,7 @@ const PdfBlock = createReactBlockSpec(
         if (!res.ok) { alert("上传失败"); return; }
         const data = await res.json() as { url: string };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { url: data.url, name: file.name, height: "500" } } as any);
+        editor.updateBlock(block, { props: { url: data.url, name: file.name, height: "500" } } as any);
       };
 
       const startResize = (e: React.MouseEvent) => {
@@ -444,7 +444,7 @@ const PdfBlock = createReactBlockSpec(
           if (!resizeRef.current) return;
           const newH = Math.max(200, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          updateBlock({ props: { ...block.props, height: String(newH) } } as any);
+          editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
         };
         const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
         document.addEventListener("mousemove", onMove);
@@ -501,7 +501,7 @@ const ButtonBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: ({ block, updateBlock }) => {
+    render: ({ block, editor }) => {
       // Defensive: normalise props so corrupted data never throws
       let label  = "点击";
       let color: ButtonColor  = "blue";
@@ -524,7 +524,7 @@ const ButtonBlock = createReactBlockSpec(
 
       const commitPanel = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateBlock({ props: { label: labelDraft, color: colorDraft, action: actionDraft, url: urlDraft } } as any);
+        editor.updateBlock(block, { props: { label: labelDraft, color: colorDraft, action: actionDraft, url: urlDraft } } as any);
         setPanelOpen(false);
       };
 
@@ -901,8 +901,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
             </FormattingToolbar>
           )}
         />
-        <DatabaseSlashItem editor={editor} pageId={pageId} />
-        <MentionMenu editor={editor} onSelectPage={onSelectPage} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <DatabaseSlashItem editor={editor as any} pageId={pageId} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <MentionMenu editor={editor as any} />
       </BlockNoteView>
     </div>
   );
@@ -913,7 +915,8 @@ function DatabaseSlashItem({
   editor,
   pageId,
 }: {
-  editor: BlockNoteEditor<typeof schema.blockSchema>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: BlockNoteEditor<any>;
   pageId: string;
 }) {
   return (
@@ -1070,11 +1073,9 @@ function DatabaseSlashItem({
 // @mention 菜单
 function MentionMenu({
   editor,
-  onSelectPage,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editor: BlockNoteEditor<any>;
-  onSelectPage?: (id: string) => void;
 }) {
   return (
     <SuggestionMenuController
@@ -1085,10 +1086,11 @@ function MentionMenu({
           title: page.title || "Untitled",
           onItemClick: () => {
             editor.insertInlineContent([
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               {
                 type: "mention",
                 props: { pageId: page.id, title: page.title || "Untitled", icon: page.icon ?? "📄" },
-              },
+              } as any,
               " ",
             ]);
           },
