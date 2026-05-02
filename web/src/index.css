@@ -37,6 +37,28 @@
   /* 文字选中 */
   --color-selection-bg: rgba(35, 131, 226, 0.22);
   --color-selection-text: inherit;
+
+  /* 阴影 */
+  --shadow-sm: rgba(0, 0, 0, 0.1) 0 1px 3px, rgba(0, 0, 0, 0.06) 0 1px 2px;
+  --shadow-md: rgba(0, 0, 0, 0.1) 0 0 0 1px, rgba(0, 0, 0, 0.2) 0 3px 6px;
+  --shadow-lg: rgba(0, 0, 0, 0.1) 0 0 0 1px, rgba(0, 0, 0, 0.2) 0 8px 24px, rgba(0, 0, 0, 0.4) 0 16px 56px;
+
+  /* 标签颜色 */
+  --color-tag-default: rgba(55, 53, 47, 0.08);
+  --color-tag-gray: #e3e2e0;
+  --color-tag-brown: #eee0da;
+  --color-tag-orange: #fdefd4;
+  --color-tag-yellow: #fef3b5;
+  --color-tag-green: #d3f1df;
+  --color-tag-blue: #d3e5ef;
+  --color-tag-purple: #e8deee;
+  --color-tag-pink: #f5d8e8;
+  --color-tag-red: #ffe2dd;
+
+  /* 圆角 */
+  --border-radius-sm: 3px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
 }
 
 [data-theme="dark"] {
@@ -98,4 +120,26 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
+}
+
+/* ── database small button base ── */
+.db-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+.db-btn-sm:hover {
+  background: var(--color-hover-bg-medium);
+  color: var(--color-text-primary);
 }
