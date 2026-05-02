@@ -155,11 +155,12 @@
 
 /* ── wrapper ── */
 .db-wrap {
-  margin: 4px -96px 16px;
-  width: calc(100% + 192px);
+  margin: 4px 0 16px;
+  width: 100%;
   font-size: 14px;
   font-family: inherit;
   color: var(--color-text-primary);
+  overflow-x: auto;
 }
 
 .db-loading {

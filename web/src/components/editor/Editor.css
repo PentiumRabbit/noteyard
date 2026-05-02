@@ -199,10 +199,13 @@
   padding-inline: 0;
 }
 
-/* Database block: allow content to expand beyond the editor text column */
+/* Database block: remove blue focus outline/border from BlockNote */
 .editor-wrap .bn-block-content[data-content-type="database"] {
-  width: 100%;
-  overflow: visible;
+  outline: none;
+}
+.editor-wrap [data-node-type="blockContainer"]:has([data-content-type="database"]) .bn-block-content {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Override BlockNote's hardcoded background colors */
