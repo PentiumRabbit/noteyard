@@ -70,6 +70,11 @@ function blockToMd(b: BNBlock): string {
     case "bookmark": return `🔖 [${b.props?.title || b.props?.url}](${b.props?.url})`;
     case "embed": return `🌐 <${b.props?.url}>`;
     case "fileAttach": return `📎 [${b.props?.name}](${b.props?.url})`;
+    case "button": {
+      const btnLabel = b.props?.label || "点击";
+      const btnUrl   = b.props?.url;
+      return btnUrl ? `[${btnLabel}](${btnUrl})` : `[${btnLabel}]`;
+    }
     case "image": return `![image](${b.props?.url ?? ""})`;
     case "paragraph": return text;
     case "codeBlock": return "```\n" + text + "\n```";
@@ -476,6 +481,131 @@ const PdfBlock = createReactBlockSpec(
   },
 );
 
+// REQ-054 — Button 块
+type ButtonColor = "blue" | "green" | "red" | "gray";
+type ButtonAction = "none" | "open_url";
+
+function isSafeUrl(url: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+}
+
+const ButtonBlock = createReactBlockSpec(
+  {
+    type: "button" as const,
+    propSchema: {
+      label:  { default: "点击" },
+      color:  { default: "blue" },
+      action: { default: "none" },
+      url:    { default: "" },
+    },
+    content: "none",
+  },
+  {
+    render: ({ block, updateBlock }) => {
+      // Defensive: normalise props so corrupted data never throws
+      let label  = "点击";
+      let color: ButtonColor  = "blue";
+      let action: ButtonAction = "none";
+      let url = "";
+      try {
+        label  = block.props.label  ?? "点击";
+        const c = block.props.color as ButtonColor;
+        color  = (["blue","green","red","gray"] as ButtonColor[]).includes(c) ? c : "blue";
+        const a = block.props.action as ButtonAction;
+        action = (["none","open_url"] as ButtonAction[]).includes(a) ? a : "none";
+        url    = block.props.url ?? "";
+      } catch { /* fallback to defaults */ }
+
+      const [panelOpen, setPanelOpen] = React.useState(false);
+      const [labelDraft,  setLabelDraft]  = React.useState(label);
+      const [colorDraft,  setColorDraft]  = React.useState<ButtonColor>(color);
+      const [actionDraft, setActionDraft] = React.useState<ButtonAction>(action);
+      const [urlDraft,    setUrlDraft]    = React.useState(url);
+
+      const commitPanel = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updateBlock({ props: { label: labelDraft, color: colorDraft, action: actionDraft, url: urlDraft } } as any);
+        setPanelOpen(false);
+      };
+
+      const handleClick = () => {
+        if (action === "open_url") {
+          if (!isSafeUrl(url)) {
+            alert("URL 不合法：必须以 http:// 或 https:// 开头");
+            return;
+          }
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      };
+
+      return (
+        <div className="button-block">
+          <button
+            className={`button-block-btn color-${color}`}
+            onClick={handleClick}
+            title={action === "open_url" ? url : undefined}
+          >
+            {label}
+          </button>
+          <button
+            className="button-block-settings-btn"
+            title="设置"
+            onMouseDown={ev => { ev.preventDefault(); setPanelOpen(v => !v); }}
+          >
+            ⚙
+          </button>
+          {panelOpen && (
+            <div className="button-block-panel">
+              <label>
+                标签文案
+                <input
+                  value={labelDraft}
+                  onChange={e => setLabelDraft(e.target.value)}
+                  placeholder="按钮文案"
+                />
+              </label>
+              <label>
+                颜色
+                <select value={colorDraft} onChange={e => setColorDraft(e.target.value as ButtonColor)}>
+                  <option value="blue">蓝色</option>
+                  <option value="green">绿色</option>
+                  <option value="red">红色</option>
+                  <option value="gray">灰色</option>
+                </select>
+              </label>
+              <label>
+                点击动作
+                <select value={actionDraft} onChange={e => setActionDraft(e.target.value as ButtonAction)}>
+                  <option value="none">无动作</option>
+                  <option value="open_url">打开链接</option>
+                </select>
+              </label>
+              {actionDraft === "open_url" && (
+                <label>
+                  URL
+                  <input
+                    value={urlDraft}
+                    onChange={e => setUrlDraft(e.target.value)}
+                    placeholder="https://..."
+                  />
+                </label>
+              )}
+              <button
+                style={{ alignSelf: "flex-end", padding: "4px 10px", fontSize: 12, cursor: "pointer", borderRadius: 4, border: "1px solid var(--color-border)", background: "var(--color-accent)", color: "#fff" }}
+                onMouseDown={ev => { ev.preventDefault(); commitPanel(); }}
+              >
+                确认
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    },
+  },
+);
+
 // T06 — schema 注册（块 + 内联）：使用 withMultiColumn 添加 columnList / column 节点
 const schema = withMultiColumn(
   BlockNoteSchema.create({
@@ -491,6 +621,7 @@ const schema = withMultiColumn(
       bookmark: BookmarkBlock,
       embed: EmbedBlock,
       pdf: PdfBlock,
+      button: ButtonBlock,
     },
     inlineContentSpecs: {
       ...defaultInlineContentSpecs,
@@ -559,7 +690,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
         if (!dbId) return [];
         return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      if (b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf") {
+      if (b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf" || b.type === "button") {
         return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
       return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
@@ -904,9 +1035,18 @@ function DatabaseSlashItem({
           icon: <span>📄</span>,
           hint: "上传并预览 PDF 文件",
         };
+        const buttonItem = {
+          title: "Button",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onItemClick: () => insertOrUpdateBlock(editor, { type: "button", props: { label: "点击", color: "blue", action: "none", url: "" } } as any),
+          aliases: ["button", "按钮"],
+          group: "基础块",
+          icon: <span>🔘</span>,
+          hint: "插入可点击按钮",
+        };
         // 若光标在 column 内，过滤掉 columnList 相关的多列菜单项
         const filteredMultiColItems = isInsideColumn ? [] : multiColItems;
-        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, ...filteredMultiColItems, subpageItem, fileItem, bookmarkItem, embedItem, pdfItem];
+        const all = [...defaults, dbItem, dividerItem, quoteItem, calloutItem, toggleItem, buttonItem, ...filteredMultiColItems, subpageItem, fileItem, bookmarkItem, embedItem, pdfItem];
         return all.filter(
           (item) =>
             pinyinMatch(item.title, query) ||
