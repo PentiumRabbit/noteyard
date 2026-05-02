@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Noteyard 文档
+    url: https://github.com/PentiumRabbit/noteyard#readme
+    about: 在提交 Issue 之前，请先查阅文档，确认问题未被记录。
