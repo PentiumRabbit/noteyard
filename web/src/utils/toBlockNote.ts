@@ -71,6 +71,17 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
   // ── standard content blocks ──
   let content: unknown[] = [];
   try { content = JSON.parse(b.content) as unknown[]; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
+  // Migrate legacy "strikethrough" style key to BlockNote's canonical "strike"
+  content = content.map((node) => {
+    if (node && typeof node === "object" && "styles" in node) {
+      const s = (node as Record<string, unknown>).styles as Record<string, unknown>;
+      if (s && "strikethrough" in s) {
+        const { strikethrough, ...rest } = s;
+        return { ...node as object, styles: { ...rest, strike: strikethrough } };
+      }
+    }
+    return node;
+  });
   let props: Record<string, unknown> = {};
   try { if (b.props && b.props !== "null") props = JSON.parse(b.props) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
   if (props === null || typeof props !== "object") props = {};

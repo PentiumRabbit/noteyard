@@ -177,7 +177,7 @@ func WelcomeSeedMigration(tx *sql.Tx) error {
 		{
 			id:         "00000000-0000-0000-0001-000000000019",
 			blockType:  "bulletListItem",
-			content:    `[{"type":"text","text":"选中文字后会弹出格式工具栏，支持 ","styles":{}},{"type":"text","text":"加粗","styles":{"bold":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"斜体","styles":{"italic":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"下划线","styles":{"underline":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"删除线","styles":{"strikethrough":true}},{"type":"text","text":"、设置文字颜色与背景色。","styles":{}}]`,
+			content:    `[{"type":"text","text":"选中文字后会弹出格式工具栏，支持 ","styles":{}},{"type":"text","text":"加粗","styles":{"bold":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"斜体","styles":{"italic":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"下划线","styles":{"underline":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"删除线","styles":{"strike":true}},{"type":"text","text":"、设置文字颜色与背景色。","styles":{}}]`,
 			props:      p,
 			orderIndex: 19,
 		},
@@ -352,7 +352,7 @@ func cleanWelcomeBlocks(tx *sql.Tx) error {
 		{"00000000-0000-0000-0001-000000000016", "bulletListItem", `[{"type":"text","text":"块类型包括：标题（H1/H2/H3）、段落、有序列表、无序列表、引用、标注、分割线、代码块、数据库、子页面等。","styles":{}}]`, p, 16},
 		{"00000000-0000-0000-0001-000000000017", "bulletListItem", `[{"type":"text","text":"每个块左侧有 ","styles":{}},{"type":"text","text":"⠿ 拖拽手柄","styles":{"bold":true}},{"type":"text","text":"，鼠标悬停后可拖动调整顺序，点击可以进行删除、复制、转换块类型等操作。","styles":{}}]`, p, 17},
 		{"00000000-0000-0000-0001-000000000018", "heading", `[{"type":"text","text":"文字格式化","styles":{}}]`, h3, 18},
-		{"00000000-0000-0000-0001-000000000019", "bulletListItem", `[{"type":"text","text":"选中文字后会弹出格式工具栏，支持 ","styles":{}},{"type":"text","text":"加粗","styles":{"bold":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"斜体","styles":{"italic":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"下划线","styles":{"underline":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"删除线","styles":{"strikethrough":true}},{"type":"text","text":"、设置文字颜色与背景色。","styles":{}}]`, p, 19},
+		{"00000000-0000-0000-0001-000000000019", "bulletListItem", `[{"type":"text","text":"选中文字后会弹出格式工具栏，支持 ","styles":{}},{"type":"text","text":"加粗","styles":{"bold":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"斜体","styles":{"italic":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"下划线","styles":{"underline":true}},{"type":"text","text":"、","styles":{}},{"type":"text","text":"删除线","styles":{"strike":true}},{"type":"text","text":"、设置文字颜色与背景色。","styles":{}}]`, p, 19},
 		{"00000000-0000-0000-0001-000000000020", "bulletListItem", "[{\"type\":\"text\",\"text\":\"也可以直接用 Markdown 快捷语法：\",\"styles\":{}},{\"type\":\"text\",\"text\":\"**粗体**  *斜体*  ~~删除线~~  `代码`\",\"styles\":{\"code\":true}}]", p, 20},
 		{"00000000-0000-0000-0001-000000000021", "heading", `[{"type":"text","text":"🗃️ 数据库","styles":{}}]`, h2, 21},
 		{"00000000-0000-0000-0001-000000000022", "paragraph", `[{"type":"text","text":"数据库块可以将结构化数据嵌入到任意页面中，适合管理任务、书单、项目等有规律的信息。","styles":{}}]`, p, 22},
