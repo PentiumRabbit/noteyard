@@ -35,13 +35,21 @@ export interface DBColumn {
   id: string;
   database_id: string;
   name: string;
-  type: "text" | "number" | "checkbox" | "select" | "multi-select" | "date" | "formula" | "url" | "email" | "created_time" | "last_edited_time" | "files";
+  type: "text" | "number" | "checkbox" | "select" | "multi-select" | "date" | "formula" | "url" | "email" | "created_time" | "last_edited_time" | "files" | "relation" | "rollup" | "phone" | "people" | "status";
   options: string;
   formula: string;
   is_hidden: boolean;
   order_index: number;
   created_at: number;
   updated_at: number;
+}
+
+export type RollupAggregation = "count" | "count_not_empty" | "sum" | "avg" | "max" | "min" | "show_original";
+
+export interface RollupColumnOptions {
+  relation_column_id: string;
+  target_column_id: string;
+  aggregation: RollupAggregation;
 }
 
 export interface DBRow {
@@ -56,6 +64,11 @@ export interface DBRow {
 export interface DBCell {
   column_id: string;
   value: string;
+}
+
+export interface RelationColumnOptions {
+  target_database_id: string;
+  display_column_id?: string;
 }
 
 export interface FileAttachment {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown } from "lucide-react";
+import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle } from "lucide-react";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
 import { evalFormula } from "./formulaEngine";
@@ -31,7 +31,7 @@ function parseFileAttachments(raw: string): FileAttachment[] {
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup"];
+const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup", "phone", "people", "status"];
 
 const COL_TYPE_LABELS: Record<string, string> = {
   text: "纯文本内容",
@@ -48,6 +48,9 @@ const COL_TYPE_LABELS: Record<string, string> = {
   files: "文件和附件",
   relation: "关联其他数据库",
   rollup: "汇总关联列数据",
+  phone: "电话",
+  people: "人员",
+  status: "状态",
 };
 
 const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -65,6 +68,9 @@ const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?:
   files: Paperclip,
   relation: Link2,
   rollup: Sigma,
+  phone: Phone,
+  people: User,
+  status: Circle,
 };
 
 function ColIcon({ type, size = 14, className }: { type: string; size?: number; className?: string }) {
