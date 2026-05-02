@@ -41,7 +41,9 @@ type DatabaseRepository interface {
 	DeleteColumn(ctx context.Context, colID string) error
 
 	AddRow(ctx context.Context, row *model.DBRow) error
+	UpdateRow(ctx context.Context, row *model.DBRow) error
 	DeleteRow(ctx context.Context, rowID string) error
 	ListRows(ctx context.Context, dbID string) ([]*model.DBRow, error)
+	GetRow(ctx context.Context, databaseID, rowID string) (*model.DBRow, error)
 	BatchUpdateCells(ctx context.Context, rowID string, cells []*model.DBCell) error
 }

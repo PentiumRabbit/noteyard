@@ -3,9 +3,13 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"math"
 	"noteyard/server/internal/model"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,8 +136,16 @@ func (r *DatabaseRepo) AddRow(ctx context.Context, row *model.DBRow) error {
 	row.CreatedAt = now
 	row.UpdatedAt = now
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO database_rows(id,database_id,order_index,created_at,updated_at) VALUES(?,?,?,?,?)`,
-		row.ID, row.DatabaseID, row.OrderIndex, now, now)
+		`INSERT INTO database_rows(id,database_id,content,order_index,created_at,updated_at) VALUES(?,?,?,?,?,?)`,
+		row.ID, row.DatabaseID, row.Content, row.OrderIndex, now, now)
+	return err
+}
+
+func (r *DatabaseRepo) UpdateRow(ctx context.Context, row *model.DBRow) error {
+	row.UpdatedAt = time.Now().Unix()
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE database_rows SET content=?,updated_at=? WHERE id=? AND database_id=?`,
+		row.Content, row.UpdatedAt, row.ID, row.DatabaseID)
 	return err
 }
 
@@ -155,7 +167,7 @@ func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRo
 	}
 
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id,database_id,order_index,created_at,updated_at FROM database_rows
+		`SELECT id,database_id,content,order_index,created_at,updated_at FROM database_rows
 		 WHERE database_id=? ORDER BY order_index`, dbID)
 	if err != nil {
 		return nil, err
@@ -165,7 +177,7 @@ func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRo
 	var result []*model.DBRow
 	for rows.Next() {
 		row := &model.DBRow{}
-		if err := rows.Scan(&row.ID, &row.DatabaseID, &row.OrderIndex,
+		if err := rows.Scan(&row.ID, &row.DatabaseID, &row.Content, &row.OrderIndex,
 			&row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -200,7 +212,234 @@ func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRo
 			row.Cells[col.ID] = evalFormula(col.Formula, row.Cells, colByName)
 		}
 	}
+
+	// 计算 rollup 列
+	for _, col := range cols {
+		if col.Type != "rollup" {
+			continue
+		}
+
+		// 解析 options
+		var opts struct {
+			RelationColumnID string `json:"relation_column_id"`
+			TargetColumnID   string `json:"target_column_id"`
+			Aggregation      string `json:"aggregation"`
+		}
+		if err := json.Unmarshal([]byte(col.Options), &opts); err != nil {
+			// options 损坏，跳过该列
+			continue
+		}
+
+		// 检查关联列是否存在
+		if _, ok := colByID[opts.RelationColumnID]; !ok {
+			// 关联列不存在，结果为空字符串
+			for _, row := range result {
+				row.Cells[col.ID] = ""
+			}
+			continue
+		}
+
+		// 收集所有关联 rowID（去重）
+		allRelatedIDs := make(map[string]struct{})
+		// 记录每行对应的关联 rowID 列表
+		rowRelated := make(map[string][]string, len(result))
+		for _, row := range result {
+			cellVal := row.Cells[opts.RelationColumnID]
+			var ids []string
+			if cellVal != "" {
+				if err := json.Unmarshal([]byte(cellVal), &ids); err != nil {
+					ids = nil
+				}
+			}
+			rowRelated[row.ID] = ids
+			for _, id := range ids {
+				allRelatedIDs[id] = struct{}{}
+			}
+		}
+
+		// 批量查询目标列的 cells
+		targetCells, err := r.batchFetchCells(ctx, allRelatedIDs, opts.TargetColumnID)
+		if err != nil {
+			// 查询失败，置空
+			for _, row := range result {
+				row.Cells[col.ID] = ""
+			}
+			continue
+		}
+
+		// 按 aggregation 计算每行结果
+		for _, row := range result {
+			ids := rowRelated[row.ID]
+			row.Cells[col.ID] = computeRollup(opts.Aggregation, ids, targetCells)
+		}
+	}
+
 	return result, nil
+}
+
+// batchFetchCells 批量查询给定 rowID 集合中指定 columnID 的 cell 值。
+// 返回 map[rowID]value。若 rowID 集合为空或 targetColumnID 为空，返回空 map。
+func (r *DatabaseRepo) batchFetchCells(ctx context.Context, rowIDs map[string]struct{}, targetColumnID string) (map[string]string, error) {
+	result := make(map[string]string)
+	if len(rowIDs) == 0 || targetColumnID == "" {
+		return result, nil
+	}
+
+	// 构建 IN 子句
+	ids := make([]string, 0, len(rowIDs))
+	args := make([]interface{}, 0, len(rowIDs)+1)
+	for id := range rowIDs {
+		ids = append(ids, "?")
+		args = append(args, id)
+	}
+	args = append(args, targetColumnID)
+
+	query := fmt.Sprintf(
+		`SELECT row_id, value FROM database_cells WHERE row_id IN (%s) AND column_id=?`,
+		strings.Join(ids, ","),
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rowID, val string
+		if err := rows.Scan(&rowID, &val); err != nil {
+			return nil, err
+		}
+		result[rowID] = val
+	}
+	return result, rows.Err()
+}
+
+// computeRollup 根据 aggregation 类型，对 relatedIDs 中的行在 targetCells 里取值聚合。
+func computeRollup(aggregation string, relatedIDs []string, targetCells map[string]string) string {
+	switch aggregation {
+	case "count":
+		return strconv.Itoa(len(relatedIDs))
+
+	case "count_not_empty":
+		n := 0
+		for _, id := range relatedIDs {
+			if v, ok := targetCells[id]; ok && v != "" {
+				n++
+			}
+		}
+		return strconv.Itoa(n)
+
+	case "sum":
+		var sum float64
+		for _, id := range relatedIDs {
+			v, _ := strconv.ParseFloat(targetCells[id], 64)
+			sum += v
+		}
+		return formatFloat(sum)
+
+	case "avg":
+		if len(relatedIDs) == 0 {
+			return "0"
+		}
+		var sum float64
+		for _, id := range relatedIDs {
+			v, _ := strconv.ParseFloat(targetCells[id], 64)
+			sum += v
+		}
+		avg := sum / float64(len(relatedIDs))
+		return strconv.FormatFloat(math.Round(avg*100)/100, 'f', 2, 64)
+
+	case "max":
+		if len(relatedIDs) == 0 {
+			return ""
+		}
+		max := math.Inf(-1)
+		for _, id := range relatedIDs {
+			v, _ := strconv.ParseFloat(targetCells[id], 64)
+			if v > max {
+				max = v
+			}
+		}
+		return formatFloat(max)
+
+	case "min":
+		if len(relatedIDs) == 0 {
+			return ""
+		}
+		min := math.Inf(1)
+		for _, id := range relatedIDs {
+			v, _ := strconv.ParseFloat(targetCells[id], 64)
+			if v < min {
+				min = v
+			}
+		}
+		return formatFloat(min)
+
+	case "show_original":
+		vals := make([]string, 0, len(relatedIDs))
+		for _, id := range relatedIDs {
+			vals = append(vals, targetCells[id])
+		}
+		return strings.Join(vals, ",")
+
+	default:
+		return ""
+	}
+}
+
+// formatFloat 将 float64 格式化为字符串：整数去掉小数点，否则保留原始精度。
+func formatFloat(v float64) string {
+	if v == float64(int64(v)) {
+		return strconv.FormatInt(int64(v), 10)
+	}
+	return strconv.FormatFloat(v, 'f', -1, 64)
+}
+
+func (r *DatabaseRepo) GetRow(ctx context.Context, databaseID, rowID string) (*model.DBRow, error) {
+	row := &model.DBRow{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id,database_id,content,order_index,created_at,updated_at FROM database_rows WHERE id=? AND database_id=?`,
+		rowID, databaseID,
+	).Scan(&row.ID, &row.DatabaseID, &row.Content, &row.OrderIndex, &row.CreatedAt, &row.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	cols, err := r.listColumns(ctx, databaseID)
+	if err != nil {
+		return nil, err
+	}
+	colByName := make(map[string]*model.DBColumn, len(cols))
+	for _, c := range cols {
+		colByName[c.Name] = c
+	}
+
+	row.Cells = make(map[string]string)
+	cells, err := r.db.QueryContext(ctx,
+		`SELECT column_id,value FROM database_cells WHERE row_id=?`, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer cells.Close()
+	for cells.Next() {
+		var colID, val string
+		if err := cells.Scan(&colID, &val); err != nil {
+			return nil, err
+		}
+		row.Cells[colID] = val
+	}
+	if err := cells.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, col := range cols {
+		if col.Type != "formula" {
+			continue
+		}
+		row.Cells[col.ID] = evalFormula(col.Formula, row.Cells, colByName)
+	}
+
+	return row, nil
 }
 
 func (r *DatabaseRepo) BatchUpdateCells(ctx context.Context, rowID string, cells []*model.DBCell) error {

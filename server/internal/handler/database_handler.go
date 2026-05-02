@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"noteyard/server/internal/model"
@@ -155,6 +156,50 @@ func (h *DatabaseHandler) ListRows(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, rows)
+}
+
+func (h *DatabaseHandler) GetRow(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	rowID := chi.URLParam(r, "row_id")
+	row, err := h.db.GetRow(r.Context(), id, rowID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "row not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, row)
+}
+
+func (h *DatabaseHandler) PatchRow(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	rowID := chi.URLParam(r, "row_id")
+	var body struct {
+		Content *string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	row, err := h.db.GetRow(r.Context(), id, rowID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "row not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if body.Content != nil {
+		row.Content = *body.Content
+	}
+	if err := h.db.UpdateRow(r.Context(), row); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, row)
 }
 
 func (h *DatabaseHandler) BatchUpdateCells(w http.ResponseWriter, r *http.Request) {

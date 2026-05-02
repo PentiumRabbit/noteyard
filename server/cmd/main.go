@@ -84,6 +84,8 @@ func main() {
 			r.Post("/{id}/rows", dh.AddRow)
 			r.Delete("/{id}/rows/{row_id}", dh.DeleteRow)
 			r.Get("/{id}/rows", dh.ListRows)
+			r.Get("/{id}/rows/{row_id}", dh.GetRow)
+			r.Patch("/{id}/rows/{row_id}", dh.PatchRow)
 			r.Patch("/{id}/rows/{row_id}/cells", dh.BatchUpdateCells)
 		})
 	})

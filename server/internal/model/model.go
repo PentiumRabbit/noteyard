@@ -49,6 +49,7 @@ type DBColumn struct {
 type DBRow struct {
 	ID         string            `json:"id"`
 	DatabaseID string            `json:"database_id"`
+	Content    string            `json:"content"`
 	OrderIndex float64           `json:"order_index"`
 	Cells      map[string]string `json:"cells,omitempty"`
 	CreatedAt  int64             `json:"created_at"`

@@ -1,0 +1,1 @@
+ALTER TABLE database_rows ADD COLUMN content TEXT NOT NULL DEFAULT '';
