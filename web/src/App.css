@@ -161,7 +161,7 @@
 .page-cover:hover .page-cover-actions { display: flex; }
 
 .page-cover-action-btn {
-  background: rgba(255,255,255,0.85);
+  background: var(--color-bg-primary);
   border: none;
   border-radius: var(--border-radius-sm);
   padding: 4px 10px;
