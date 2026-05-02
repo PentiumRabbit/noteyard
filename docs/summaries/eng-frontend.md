@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-02 |
-| 对应需求 | REQ-064 / T-P0-2 / ISS-011 |
+| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 |
 
 ---
 
@@ -38,7 +38,15 @@
 
 ---
 
-## 上次变更摘要（ISS-011）
+## 上次变更摘要（ISS-013）
+
+- `web/src/utils/toBlockNote.test.ts`：修复 11 处 TS2532/TS18048 类型错误
+  - 根因：`BNBlock.children` 类型为 `BNBlock[] | undefined`（可选字段），直接用 `children[n]` 访问触发 TS2532
+  - 修复方式：对所有 `.children[n]` 访问改为 `.children![n]!`（先断言 children 非 undefined，再断言元素非 undefined）
+  - 涉及行：48, 49, 144, 145, 146, 147, 148, 158, 169, 170, 171
+  - commit: `fix(utils)[eng#74]: ISS-013 修复 toBlockNote.test.ts TS 类型错误`
+
+## 历史变更摘要（ISS-011）
 
 - `web/src/components/editor/Editor.tsx`：修复全部 TS 编译错误
   - TS2540：callout/toggle block 中 `block.props.icon` / `block.props.open` 直接赋值改为 `editor.updateBlock(block, { props: {...} })`
