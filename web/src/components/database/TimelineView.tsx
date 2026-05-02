@@ -124,7 +124,6 @@ export function TimelineView({ columns, rows, onOpenRow }: Props) {
             <div className="tl-empty">该时间段内无数据</div>
           ) : rowsWithDate.map(row => {
             const val = row.cells[dateColId];
-            const d = new Date(val);
             const idx = days.findIndex(dd => dateKey(dd) === val.slice(0, 10));
             if (idx < 0) return null;
             const title = primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名";

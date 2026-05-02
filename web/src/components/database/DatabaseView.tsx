@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle, GripVertical, X } from "lucide-react";
+import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle, GripVertical, X, FileText } from "lucide-react";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -319,7 +319,7 @@ function ListGroup({ label, col, rows, primaryCol, onOpen, onAdd }: {
         <>
           {rows.map(row => (
             <div key={row.id} className="db-list-row db-list-row-grouped" onClick={() => onOpen(row)}>
-              <span className="db-list-icon">📄</span>
+              <span className="db-list-icon"><FileText size={14} /></span>
               <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
             </div>
           ))}
@@ -1096,7 +1096,7 @@ export function DatabaseView({ databaseId }: Props) {
                 <span className="db-group-radio-dot" />
                 <span className="db-group-radio-label">无分组</span>
               </button>
-              {allCols.filter(c => c.type === "select" || c.type === "checkbox").map(c => (
+              {allCols.filter(c => c.type === "select" || c.type === "checkbox" || c.type === "status").map(c => (
                 <button
                   key={c.id}
                   className={`db-group-radio-row${groupByColId === c.id ? " selected" : ""}`}
@@ -1168,7 +1168,7 @@ export function DatabaseView({ databaseId }: Props) {
             <div className="db-list-view">
               {displayedRows.map(row => (
                 <div key={row.id} className="db-list-row" onClick={() => openRowModal(row)}>
-                  <span className="db-list-icon">📄</span>
+                  <span className="db-list-icon"><FileText size={14} /></span>
                   <span className="db-list-title">{primaryCol ? (row.cells[primaryCol.id] || "未命名") : "未命名"}</span>
                 </div>
               ))}
