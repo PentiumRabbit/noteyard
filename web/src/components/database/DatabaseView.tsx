@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle } from "lucide-react";
+import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown, Phone, User, Circle, GripVertical, X } from "lucide-react";
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
 import { evalFormula } from "./formulaEngine";
@@ -127,7 +130,7 @@ interface RowModal { row: DBRow }
 interface SelectOption { value: string; colorIdx: number }
 interface SortState { colId: string; order: "asc" | "desc" }
 interface FilterState { colId: string; op: string; val: string }
-type ToolbarPanel = "sort" | "filter" | "hide" | null
+type ToolbarPanel = "sort" | "filter" | "hide" | "group" | null
 
 function parseOptions(raw: string): SelectOption[] {
   try {
@@ -148,6 +151,64 @@ function parseOptions(raw: string): SelectOption[] {
 
 function serializeOptions(opts: SelectOption[]): string {
   return JSON.stringify(opts);
+}
+
+// ── Sortable option row for select options popover ──
+function SortableOptionRow({
+  opt,
+  idx,
+  onRename,
+  onColorChange,
+  onDelete,
+}: {
+  opt: SelectOption;
+  idx: number;
+  onRename: (idx: number, value: string) => void;
+  onColorChange: (idx: number, colorIdx: number) => void;
+  onDelete: (idx: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(idx) });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+
+  return (
+    <div ref={setNodeRef} style={style} className="select-opt-row">
+      <button className="select-opt-drag" {...attributes} {...listeners} type="button" tabIndex={-1}>
+        <GripVertical size={14} />
+      </button>
+      <input
+        className="select-opt-input"
+        style={{ background: c.bg, color: c.color }}
+        value={opt.value}
+        onChange={e => onRename(idx, e.target.value)}
+        onBlur={e => { if (!e.target.value.trim()) onRename(idx, opt.value); }}
+      />
+      <div className="select-opt-colors">
+        {TAG_COLORS.map((tc, ci) => (
+          <button
+            key={ci}
+            type="button"
+            className={`color-dot-notion${opt.colorIdx === ci ? " active" : ""}`}
+            style={{ background: tc.color }}
+            title={SELECT_COLOR_NAMES[ci]}
+            onClick={() => onColorChange(idx, ci)}
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        className="select-opt-del-hover"
+        onClick={() => onDelete(idx)}
+        tabIndex={-1}
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
 }
 
 function ListGroup({ label, col, rows, primaryCol, onOpen, onAdd }: {
@@ -224,6 +285,9 @@ export function DatabaseView({ databaseId }: Props) {
   const [relationRowsCache, setRelationRowsCache] = useState<Map<string, Map<string, DBRow | null>>>(new Map());
   // rollup new-column pending config popover (shown after column is created)
   const [pendingRollupColId, setPendingRollupColId] = useState<string | null>(null);
+
+  // ── dnd sensors for select options sortable ──
+  const selectOptSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -902,7 +966,7 @@ export function DatabaseView({ databaseId }: Props) {
               rows={rows}
               groupColId={activeGroupColId}
               onMoveRow={async (rowId, newGroupVal) => {
-                const cell: DBCell = { row_id: rowId, column_id: activeGroupColId, value: newGroupVal };
+                const cell: DBCell = { column_id: activeGroupColId, value: newGroupVal };
                 await api.databases.updateCells(databaseId, rowId, [cell]);
                 void reload(sortState, filterState);
               }}
@@ -1283,32 +1347,45 @@ export function DatabaseView({ databaseId }: Props) {
           <div className="formula-overlay" onClick={() => setSelectOptionsPopover(null)} />
           <div className="select-opts-popover" style={{ top: selectOptionsPopover.y, left: selectOptionsPopover.x }}>
             <div className="formula-popover-title">管理选项</div>
-            <div className="select-opts-list">
-              {selectOptionsPopover.options.map((opt, idx) => {
-                const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-                return (
-                  <div key={idx} className="select-opt-row">
-                    <span className="cell-tag" style={{ background: c.bg, color: c.color }}>{opt.value}</span>
-                    <div className="select-opt-colors">
-                      {TAG_COLORS.map((tc, ci) => (
-                        <button
-                          key={ci}
-                          className={`color-dot${opt.colorIdx === ci ? " active" : ""}`}
-                          style={{ background: tc.color }}
-                          title={SELECT_COLOR_NAMES[ci]}
-                          onClick={async () => {
-                            const updated = selectOptionsPopover.options.map((o, i) => i === idx ? { ...o, colorIdx: ci } : o);
-                            setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
-                            await saveSelectOptions(selectOptionsPopover.colId, updated);
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <button className="select-opt-del" onClick={() => void removeSelectOption(idx)}>×</button>
-                  </div>
-                );
-              })}
-            </div>
+            <DndContext
+              sensors={selectOptSensors}
+              onDragEnd={async (event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id || !selectOptionsPopover) return;
+                const oldIdx = selectOptionsPopover.options.findIndex((_, i) => String(i) === active.id);
+                const newIdx = selectOptionsPopover.options.findIndex((_, i) => String(i) === over.id);
+                if (oldIdx < 0 || newIdx < 0) return;
+                const updated = arrayMove(selectOptionsPopover.options, oldIdx, newIdx);
+                setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+                await saveSelectOptions(selectOptionsPopover.colId, updated);
+              }}
+            >
+              <SortableContext
+                items={selectOptionsPopover.options.map((_, i) => String(i))}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="select-opts-list">
+                  {selectOptionsPopover.options.map((opt, idx) => (
+                    <SortableOptionRow
+                      key={idx}
+                      opt={opt}
+                      idx={idx}
+                      onRename={async (i, value) => {
+                        const updated = selectOptionsPopover.options.map((o, oi) => oi === i ? { ...o, value } : o);
+                        setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+                        await saveSelectOptions(selectOptionsPopover.colId, updated);
+                      }}
+                      onColorChange={async (i, colorIdx) => {
+                        const updated = selectOptionsPopover.options.map((o, oi) => oi === i ? { ...o, colorIdx } : o);
+                        setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
+                        await saveSelectOptions(selectOptionsPopover.colId, updated);
+                      }}
+                      onDelete={removeSelectOption}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
             <div className="select-opt-add">
               <input
                 placeholder="新选项名称"

@@ -757,21 +757,107 @@ tr:hover .row-del-btn { visibility: visible; }
 .select-opts-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
+/* Notion-style option row */
 .select-opt-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 2px 0;
+  border-radius: 4px;
+  position: relative;
+}
+.select-opt-row:hover .select-opt-del-hover { opacity: 1; }
+
+/* drag handle */
+.select-opt-drag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: grab;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 3px;
+  touch-action: none;
+}
+.select-opt-drag:active { cursor: grabbing; }
+.select-opt-drag:hover { color: var(--color-text-secondary); background: var(--color-hover-bg); }
+
+/* inline editable input for option name */
+.select-opt-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: text;
+  height: 24px;
+  box-sizing: border-box;
+}
+.select-opt-input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
+/* Notion-style color dot grid (8px dots) */
 .select-opt-colors {
   display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
+.color-dot-notion {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+  transition: transform 0.1s;
+}
+.color-dot-notion:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12);
+}
+.color-dot-notion.active {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* delete button — visible only on row hover */
+.select-opt-del-hover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  border-radius: 3px;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.select-opt-del-hover:hover { color: var(--color-danger); background: rgba(235, 87, 87, 0.08); opacity: 1; }
+
+/* keep old color-dot class for backward compatibility (not used in new UI) */
 .color-dot {
   width: 14px;
   height: 14px;
@@ -1581,6 +1667,28 @@ tr:hover .row-del-btn { visibility: visible; }
   font-size: 13px;
   font-style: italic;
 }
+
+/* ── Chip component ── */
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 3px;
+  color: inherit;
+  opacity: 0.6;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.chip-remove:hover { opacity: 1; }
+
+.chip-href {
+  color: inherit;
+  text-decoration: none;
+}
+.chip-href:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ── focus-visible: keyboard accessibility for small buttons ── */
 .db-btn-sm:focus-visible,
