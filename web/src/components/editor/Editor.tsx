@@ -745,7 +745,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
         }
         try {
           editor.replaceBlocks(editor.document, bn);
-        } catch (err) { console.error('[Editor] replaceBlocks failed', err); }
+        } catch (err) { console.error('[Editor] replaceBlocks failed:', err, 'pageId:', currentPageId); }
         requestAnimationFrame(() => { readyRef.current = true; });
       };
       setTimeout(() => tryReplace(40), 0);

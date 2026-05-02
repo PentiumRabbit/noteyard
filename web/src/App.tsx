@@ -73,7 +73,7 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedPageId) { setPageMeta(null); return; }
-    void loadPageMeta(selectedPageId);
+    void loadPageMeta(selectedPageId).catch(() => {});
   }, [selectedPageId, loadPageMeta]);
 
   useEffect(() => {

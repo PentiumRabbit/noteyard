@@ -180,7 +180,7 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
     setTree(buildTree(pages ?? []));
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh().catch(() => {}); }, []);
 
   const handleSelect = (id: string) => {
     const page = findPageFlat(id, tree);

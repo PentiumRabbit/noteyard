@@ -403,25 +403,36 @@ export function DatabaseView({ databaseId }: Props) {
     setRows(rowData ?? []);
   }, [databaseId]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void reload().catch(() => {}); }, [reload]);
 
   // ── batch load relation target rows to avoid N+1 ──
+  // Use a ref to read the latest rows without making rows a reactive dependency,
+  // preventing the setRows(r => [...r]) call from retriggering this effect.
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
   useEffect(() => {
-    if (!db || rows.length === 0) return;
+    if (!db) return;
     const relationCols = (db.columns ?? []).filter(c => c.type === "relation");
     if (relationCols.length === 0) return;
 
+    let cancelled = false;
+
     void (async () => {
+      const currentRows = rowsRef.current;
+      if (currentRows.length === 0) return;
+
       let changed = false;
 
       for (const col of relationCols) {
+        if (cancelled) return;
         const opts = parseRelationOpts(col);
         if (!opts?.target_database_id) continue;
         const targetDbId = opts.target_database_id;
 
         // collect all referenced IDs in this column across all rows
         const allIds = new Set<string>();
-        for (const row of rows) {
+        for (const row of currentRows) {
           const raw = row.cells[col.id] ?? "";
           if (!raw || raw === "[]") continue;
           try {
@@ -438,18 +449,21 @@ export function DatabaseView({ databaseId }: Props) {
         await Promise.all(missing.map(async id => {
           try {
             const row = await api.databases.getRow(targetDbId, id);
-            colCache.set(id, row);
+            if (!cancelled) colCache.set(id, row);
           } catch {
-            colCache.set(id, null);
+            if (!cancelled) colCache.set(id, null);
           }
         }));
+        if (cancelled) return;
         relationRowsCache.current.set(targetDbId, colCache);
         changed = true;
       }
 
-      if (changed) setRows(r => [...r]);
+      if (!cancelled && changed) setRows(r => [...r]);
     })();
-  }, [db, rows]);
+
+    return () => { cancelled = true; };
+  }, [db]);
 
   useEffect(() => { if (editingCell) cellInputRef.current?.focus(); }, [editingCell]);
   useEffect(() => { if (titleEditing) titleInputRef.current?.select(); }, [titleEditing]);

@@ -12,7 +12,7 @@ export function Breadcrumb({ pageId, onSelect }: Props) {
   const [ancestors, setAncestors] = useState<Page[]>([]);
 
   useEffect(() => {
-    void api.pages.getAncestors(pageId).then(setAncestors);
+    void api.pages.getAncestors(pageId).then(setAncestors).catch(() => {});
   }, [pageId]);
 
   if (ancestors.length === 0) return null;
