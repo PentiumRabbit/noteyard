@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-02 |
-| 对应需求 | REQ-064 / T-P0-2 |
+| 对应需求 | REQ-064 / T-P0-2 / ISS-011 |
 
 ---
 
@@ -38,12 +38,16 @@
 
 ---
 
-## 上次变更摘要（T-P0-2）
+## 上次变更摘要（ISS-011）
 
-- 安装 `react-hot-toast` 依赖
-- `web/src/api/client.ts`：将 `req` 函数原始 fetch 逻辑包入 try/catch，catch 中 `toast.error((err as Error).message)` 后 re-throw
-- `web/src/App.tsx`：import `Toaster`，在 return 根节点添加 `<Toaster position="bottom-center" />`
-- commit: `fix(api)[eng]: 添加全局错误 toast，api/client.ts req 函数统一处理错误`
+- `web/src/components/editor/Editor.tsx`：修复全部 TS 编译错误
+  - TS2540：callout/toggle block 中 `block.props.icon` / `block.props.open` 直接赋值改为 `editor.updateBlock(block, { props: {...} })`
+  - TS2339：fileAttach/bookmark/embed/pdf/button 5 个 block 的 `render` 解构从 `updateBlock` 改为 `editor`，调用改为 `editor.updateBlock(block, ...)`
+  - TS2719/TS2322：`<DatabaseSlashItem editor={editor}>` 与 `<MentionMenu editor={editor}>` 调用处加 `as any` 类型断言
+  - TS6133：删除 `MentionMenu` 未使用的 `onSelectPage` 参数
+  - TS2322：`editor.insertInlineContent` 内 mention 对象加 `as any` 类型断言
+  - TS2345：`blockToMd` 中 `parseInt(b.props?.level ?? "1")` 改为 `parseInt(String(b.props?.level ?? "1"))`
+- commit: `fix(editor)[eng#73]: ISS-011 修复 Editor.tsx 全部 TS 编译错误`
 
 ---
 
