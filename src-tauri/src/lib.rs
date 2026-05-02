@@ -15,19 +15,21 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
-            // In dev mode the Go server is provided by `make dev`; skip sidecar.
-            if !tauri::is_dev() {
-                let handle = app.handle().clone();
-                match app
-                    .shell()
-                    .sidecar("noteyard-server")
-                    .expect("sidecar binary not configured")
-                    .spawn()
-                {
-                    Ok((_rx, child)) => {
-                        *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
-                    }
-                    Err(e) => {
+            let handle = app.handle().clone();
+            match app
+                .shell()
+                .sidecar("noteyard-server")
+                .expect("sidecar binary not configured")
+                .spawn()
+            {
+                Ok((_rx, child)) => {
+                    *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
+                }
+                Err(e) => {
+                    // In dev mode the binary may not exist yet; warn but continue.
+                    if tauri::is_dev() {
+                        eprintln!("[dev] sidecar not found, skipping: {e}");
+                    } else {
                         handle
                             .dialog()
                             .message(format!(
