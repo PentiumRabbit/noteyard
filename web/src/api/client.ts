@@ -41,8 +41,12 @@ export const api = {
       const qs = params.toString();
       return req<DBRow[]>("GET", `/databases/${dbId}/rows${qs ? "?" + qs : ""}`);
     },
+    getRow: (dbId: string, rowId: string) =>
+      req<DBRow>("GET", `/databases/${dbId}/rows/${rowId}`),
     updateCells: (dbId: string, rowId: string, cells: DBCell[]) =>
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}/cells`, cells),
+    updateRowContent: (dbId: string, rowId: string, content: string): Promise<void> =>
+      req<void>("PATCH", `/databases/${dbId}/rows/${rowId}`, { content }),
   },
   pages: {
     listAll: () => req<Page[]>("GET", "/pages"),

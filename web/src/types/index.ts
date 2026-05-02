@@ -77,3 +77,16 @@ export interface FileAttachment {
   size: number;
   mime: string;
 }
+
+export interface FilterState {
+  id: string;
+  colId: string;
+  op: string;
+  val: string;
+}
+
+export interface SortState {
+  id: string;
+  colId: string;
+  order: 'asc' | 'desc';
+}
