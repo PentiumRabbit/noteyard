@@ -205,10 +205,17 @@ func scanPageRows(rows *sql.Rows) ([]pageRow, error) {
 
 // buildPagePath walks up the parent chain and returns titles root-first,
 // not including the current page itself.
+// A visited set guards against circular parent_id references in corrupt data.
 func (h *SearchHandler) buildPagePath(ctx context.Context, parentID *string) ([]string, error) {
 	var path []string
+	visited := make(map[string]struct{})
 	cur := parentID
 	for cur != nil {
+		if _, seen := visited[*cur]; seen {
+			// Circular reference detected; stop to avoid infinite loop.
+			break
+		}
+		visited[*cur] = struct{}{}
 		var title string
 		var nextParent *string
 		err := h.db.QueryRowContext(ctx,
