@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database, FileAttachment } from "../../types";
+import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
 import { evalFormula } from "./formulaEngine";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
@@ -8,7 +8,15 @@ import { CalendarView } from "./CalendarView";
 import { TimelineView } from "./TimelineView";
 import { FilesCell } from "./FilesCell";
 import { FilesModalField } from "./FilesModalField";
+import { RelationCell } from "./RelationCell";
+import { RollupConfigPopover } from "./RollupConfigPopover";
 import "./DatabaseView.css";
+
+function getPopoverY(triggerRect: DOMRect, estimatedHeight: number, offset = 4): number {
+  return triggerRect.bottom + estimatedHeight + offset > window.innerHeight
+    ? triggerRect.top - estimatedHeight - offset
+    : triggerRect.bottom + offset;
+}
 
 function parseFileAttachments(raw: string): FileAttachment[] {
   if (!raw || raw === "[]") return [];
@@ -22,7 +30,7 @@ function parseFileAttachments(raw: string): FileAttachment[] {
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files"];
+const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup"];
 
 const COL_ICONS: Record<DBColumn["type"], string> = {
   text: "Aa",
@@ -37,9 +45,11 @@ const COL_ICONS: Record<DBColumn["type"], string> = {
   created_time: "🕐",
   last_edited_time: "🕑",
   files: "📎",
+  relation: "🔗",
+  rollup: "Σ",
 };
 
-const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time"]);
+const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time", "rollup"]);
 
 function fmtTimestamp(ts: number | undefined): string {
   if (!ts) return "—";
@@ -81,6 +91,7 @@ interface AddColPopover { x: number; y: number }
 const FORMULA_FUNCTIONS = ["IF", "CONCAT", "ROUND", "ABS", "NOT"];
 
 interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string; acItems: string[]; acIndex: number }
+interface RollupPopover { colId: string; x: number; y: number }
 interface SelectOptionsPopover { colId: string; x: number; y: number; options: SelectOption[] }
 interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
 interface RowModal { row: DBRow }
@@ -154,6 +165,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [colMenu, setColMenu] = useState<ColMenu | null>(null);
   const [addColPopover, setAddColPopover] = useState<AddColPopover | null>(null);
   const [formulaPopover, setFormulaPopover] = useState<FormulaPopover | null>(null);
+  const [rollupPopover, setRollupPopover] = useState<RollupPopover | null>(null);
   const [selectOptionsPopover, setSelectOptionsPopover] = useState<SelectOptionsPopover | null>(null);
   const [selectDropdown, setSelectDropdown] = useState<SelectDropdown | null>(null);
   const [rowModal, setRowModal] = useState<RowModal | null>(null);
@@ -176,6 +188,12 @@ export function DatabaseView({ databaseId }: Props) {
   const [batchPanel, setBatchPanel] = useState(false);
   const [batchColId, setBatchColId] = useState("");
   const [batchVal, setBatchVal] = useState("");
+  // relation column
+  const [newColRelationDbId, setNewColRelationDbId] = useState("");
+  const [availableDatabases, setAvailableDatabases] = useState<Database[]>([]);
+  const [relationRowsCache, setRelationRowsCache] = useState<Map<string, Map<string, DBRow | null>>>(new Map());
+  // rollup new-column pending config popover (shown after column is created)
+  const [pendingRollupColId, setPendingRollupColId] = useState<string | null>(null);
 
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -183,6 +201,19 @@ export function DatabaseView({ databaseId }: Props) {
   const newColInputRef = useRef<HTMLInputElement>(null);
   const formulaInputRef = useRef<HTMLTextAreaElement>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
+
+  // ── relation helpers ──
+  const parseRelationOpts = (col: DBColumn): RelationColumnOptions | null => {
+    try {
+      const opts = JSON.parse(col.options);
+      if (opts && typeof opts === "object" && "target_database_id" in opts) {
+        return opts as RelationColumnOptions;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
   const reload = useCallback(async (sort?: SortState | null, filter?: FilterState | null) => {
     const [dbData, rowData] = await Promise.all([
@@ -200,6 +231,54 @@ export function DatabaseView({ databaseId }: Props) {
   }, [databaseId]);
 
   useEffect(() => { void reload(sortState, filterState); }, [reload, sortState, filterState]);
+
+  // ── batch load relation target rows to avoid N+1 ──
+  useEffect(() => {
+    if (!db || rows.length === 0) return;
+    const relationCols = (db.columns ?? []).filter(c => c.type === "relation");
+    if (relationCols.length === 0) return;
+
+    void (async () => {
+      const updates = new Map<string, Map<string, DBRow | null>>(relationRowsCache);
+      let changed = false;
+
+      for (const col of relationCols) {
+        const opts = parseRelationOpts(col);
+        if (!opts?.target_database_id) continue;
+        const targetDbId = opts.target_database_id;
+
+        // collect all referenced IDs in this column across all rows
+        const allIds = new Set<string>();
+        for (const row of rows) {
+          const raw = row.cells[col.id] ?? "";
+          if (!raw || raw === "[]") continue;
+          try {
+            const ids = JSON.parse(raw);
+            if (Array.isArray(ids)) ids.forEach((id: unknown) => { if (typeof id === "string") allIds.add(id); });
+          } catch { /* skip */ }
+        }
+        if (allIds.size === 0) continue;
+
+        const colCache = updates.get(targetDbId) ?? new Map<string, DBRow | null>();
+        const missing = [...allIds].filter(id => !colCache.has(id));
+        if (missing.length === 0) continue;
+
+        await Promise.all(missing.map(async id => {
+          try {
+            const row = await api.databases.getRow(targetDbId, id);
+            colCache.set(id, row);
+          } catch {
+            colCache.set(id, null);
+          }
+        }));
+        updates.set(targetDbId, colCache);
+        changed = true;
+      }
+
+      if (changed) setRelationRowsCache(new Map(updates));
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, rows]);
 
   useEffect(() => { if (editingCell) cellInputRef.current?.focus(); }, [editingCell]);
   useEffect(() => { if (titleEditing) titleInputRef.current?.select(); }, [titleEditing]);
@@ -320,7 +399,7 @@ export function DatabaseView({ databaseId }: Props) {
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setColMenu({ colId: col.id, x: rect.left, y: rect.bottom + 4, renaming: false, draft: col.name, changingType: false });
+    setColMenu({ colId: col.id, x: rect.left, y: getPopoverY(rect, 200), renaming: false, draft: col.name, changingType: false });
   };
   const closeColMenu = () => setColMenu(null);
 
@@ -356,21 +435,54 @@ export function DatabaseView({ databaseId }: Props) {
   const openAddCol = (e: React.MouseEvent) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setAddColPopover({ x: rect.left, y: rect.bottom + 4 });
+    setAddColPopover({ x: rect.left, y: getPopoverY(rect, 420) });
     setNewColName("");
     setNewColType("text");
+    setNewColRelationDbId("");
+  };
+
+  const loadAvailableDatabases = async () => {
+    if (availableDatabases.length > 0) return;
+    try {
+      // fetch all pages, then for each page get its blocks to find database blocks
+      const pages = await api.pages.listAll();
+      const dbList: Database[] = [];
+      await Promise.all(pages.map(async page => {
+        try {
+          const blocks = await api.blocks.listByPage(page.id);
+          const dbBlocks = blocks.filter(b => b.type === "database");
+          await Promise.all(dbBlocks.map(async b => {
+            try {
+              const dbData = await api.databases.get(b.id);
+              dbList.push(dbData);
+            } catch { /* skip */ }
+          }));
+        } catch { /* skip */ }
+      }));
+      setAvailableDatabases(dbList);
+    } catch { /* ignore */ }
   };
 
   const submitNewCol = async () => {
     if (!newColName.trim()) return;
     setError(null);
     try {
-      await api.databases.addColumn(databaseId, {
+      let options = "[]";
+      if (newColType === "relation") {
+        if (!newColRelationDbId) { setError("请选择目标数据库"); return; }
+        const opts: RelationColumnOptions = { target_database_id: newColRelationDbId };
+        options = JSON.stringify(opts);
+      }
+      const newCol = await api.databases.addColumn(databaseId, {
         name: newColName.trim(), type: newColType,
-        options: "[]", formula: "", order_index: db?.columns.length ?? 0,
+        options, formula: "", order_index: db?.columns.length ?? 0,
       });
       setAddColPopover(null);
-      void reload();
+      await reload();
+      // For rollup columns, open config popover after creation
+      if (newColType === "rollup" && newCol?.id) {
+        setPendingRollupColId(newCol.id);
+      }
     } catch (e) { setError((e as Error).message); }
   };
 
@@ -430,6 +542,14 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
+  // ── rollup popover ──
+  const openRollupPopover = (e: React.MouseEvent, col: DBColumn) => {
+    const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
+    const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setColMenu(null);
+    setRollupPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect, 320) });
+  };
+
   // ── select options management ──
   const openSelectOptions = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
@@ -437,7 +557,7 @@ export function DatabaseView({ databaseId }: Props) {
     const options = parseOptions(col.options);
     setColMenu(null);
     setNewOptionName("");
-    setSelectOptionsPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, options });
+    setSelectOptionsPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect, 280), options });
   };
 
   const saveSelectOptions = async (colId: string, options: SelectOption[]) => {
@@ -474,7 +594,7 @@ export function DatabaseView({ databaseId }: Props) {
       return;
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: rect.bottom + 2, options });
+    setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
   };
 
   const selectOption = async (rowId: string, colId: string, value: string) => {
@@ -504,7 +624,7 @@ export function DatabaseView({ databaseId }: Props) {
       return;
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: rect.bottom + 2, options });
+    setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
   };
 
   const toggleMultiSelectValue = async (rowId: string, colId: string, optValue: string, currentVal: string) => {
@@ -550,9 +670,9 @@ export function DatabaseView({ databaseId }: Props) {
 
   const saveRowModal = async () => {
     if (!rowModal) return;
-    const fileColIds = new Set(cols.filter(c => c.type === "files").map(c => c.id));
+    const skipColIds = new Set(cols.filter(c => c.type === "files" || c.type === "relation" || READONLY_COL_TYPES.has(c.type)).map(c => c.id));
     const cells: DBCell[] = Object.entries(rowModalDraft)
-      .filter(([colId]) => !fileColIds.has(colId))
+      .filter(([colId]) => !skipColIds.has(colId))
       .map(([colId, value]) => ({ column_id: colId, value }));
     await api.databases.updateCells(databaseId, rowModal.row.id, cells);
     setRowModal(null);
@@ -895,7 +1015,11 @@ export function DatabaseView({ databaseId }: Props) {
                   const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
                   return (
                     <td key={col.id}>
-                      {col.type === "formula" ? (
+                      {col.type === "rollup" ? (
+                        <span className="cell-formula-inner">
+                          {val || <span className="cell-empty">—</span>}
+                        </span>
+                      ) : col.type === "formula" ? (
                         <span className="cell-formula-inner">
                           {(() => { const r = evalFormula(col.formula, row, cols); return r || <span className="cell-empty">—</span>; })()}
                         </span>
@@ -949,6 +1073,19 @@ export function DatabaseView({ databaseId }: Props) {
                           onUpdate={(newAttachments) => {
                             void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: JSON.stringify(newAttachments) }]).then(() => void reload(sortState, filterState));
                           }}
+                        />
+                      ) : col.type === "relation" ? (
+                        <RelationCell
+                          column={col}
+                          value={val}
+                          onChange={(newVal) => {
+                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: newVal }])
+                              .then(() => void reload(sortState, filterState));
+                          }}
+                          targetRowsCache={(() => {
+                            const opts = parseRelationOpts(col);
+                            return opts?.target_database_id ? relationRowsCache.get(opts.target_database_id) : undefined;
+                          })()}
                         />
                       ) : isEditing ? (
                         <input
@@ -1010,6 +1147,12 @@ export function DatabaseView({ databaseId }: Props) {
               <>
                 <div className="col-menu-divider" />
                 <button className="col-menu-formula-btn" onClick={e => openFormulaPopover(e, menuCol)}>ƒ 编辑公式</button>
+              </>
+            )}
+            {menuCol.type === "rollup" && (
+              <>
+                <div className="col-menu-divider" />
+                <button className="col-menu-formula-btn" onClick={e => openRollupPopover(e, menuCol)}>Σ 编辑汇总</button>
               </>
             )}
             {(menuCol.type === "select" || menuCol.type === "multi-select") && (
@@ -1183,9 +1326,24 @@ export function DatabaseView({ databaseId }: Props) {
               onChange={e => setNewColName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") void submitNewCol(); if (e.key === "Escape") setAddColPopover(null); }}
             />
-            <select value={newColType} onChange={e => setNewColType(e.target.value as DBColumn["type"])}>
+            <select value={newColType} onChange={e => {
+              const t = e.target.value as DBColumn["type"];
+              setNewColType(t);
+              if (t === "relation") void loadAvailableDatabases();
+            }}>
               {COL_TYPES.map(t => <option key={t} value={t}>{COL_ICONS[t]} {t}</option>)}
             </select>
+            {newColType === "relation" && (
+              <select
+                value={newColRelationDbId}
+                onChange={e => setNewColRelationDbId(e.target.value)}
+              >
+                <option value="">选择目标数据库…</option>
+                {availableDatabases.map(d => (
+                  <option key={d.id} value={d.id}>{d.title || d.id}</option>
+                ))}
+              </select>
+            )}
             <div className="add-col-actions">
               <button onClick={() => void submitNewCol()}>确认</button>
               <button onClick={() => setAddColPopover(null)}>取消</button>
@@ -1193,6 +1351,43 @@ export function DatabaseView({ databaseId }: Props) {
           </div>
         </>
       )}
+
+      {/* rollup config popover (from column header menu) */}
+      {rollupPopover && db && (() => {
+        const rollupCol = db.columns.find(c => c.id === rollupPopover.colId);
+        if (!rollupCol) return null;
+        return (
+          <RollupConfigPopover
+            allColumns={allCols}
+            col={rollupCol}
+            x={rollupPopover.x}
+            y={rollupPopover.y}
+            databaseId={databaseId}
+            onSave={() => { setRollupPopover(null); void reload(); }}
+            onCancel={() => setRollupPopover(null)}
+          />
+        );
+      })()}
+
+      {/* rollup config popover (after new rollup column creation) */}
+      {pendingRollupColId && db && (() => {
+        const rollupCol = db.columns.find(c => c.id === pendingRollupColId);
+        if (!rollupCol) return null;
+        // Position near center of screen
+        const cx = Math.max(0, window.innerWidth / 2 - 160);
+        const cy = Math.max(60, window.innerHeight / 3);
+        return (
+          <RollupConfigPopover
+            allColumns={allCols}
+            col={rollupCol}
+            x={cx}
+            y={cy}
+            databaseId={databaseId}
+            onSave={() => { setPendingRollupColId(null); void reload(); }}
+            onCancel={() => setPendingRollupColId(null)}
+          />
+        );
+      })()}
 
       {/* multi-select dropdown */}
       {multiSelectDropdown && (
@@ -1243,7 +1438,9 @@ export function DatabaseView({ databaseId }: Props) {
                     {col.name}
                   </div>
                   <div className="row-modal-value">
-                    {col.type === "formula" ? (
+                    {col.type === "rollup" ? (
+                      <span className="cell-formula-inner">{rowModal.row.cells[col.id] || "—"}</span>
+                    ) : col.type === "formula" ? (
                       <span className="cell-formula-inner">{evalFormula(col.formula, rowModal.row, cols) || "—"}</span>
                     ) : col.type === "created_time" ? (
                       <span className="cell-time-readonly">{fmtTimestamp(rowModal.row.created_at)}</span>
@@ -1313,6 +1510,23 @@ export function DatabaseView({ databaseId }: Props) {
                               void reload(sortState, filterState);
                             });
                         }}
+                      />
+                    ) : col.type === "relation" ? (
+                      <RelationCell
+                        column={col}
+                        value={rowModal.row.cells[col.id] ?? ""}
+                        onChange={(newVal) => {
+                          // 即存即存，不走 rowModalDraft
+                          void api.databases.updateCells(databaseId, rowModal.row.id, [{ column_id: col.id, value: newVal }])
+                            .then(() => {
+                              setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: newVal } } } : null);
+                              void reload(sortState, filterState);
+                            });
+                        }}
+                        targetRowsCache={(() => {
+                          const opts = parseRelationOpts(col);
+                          return opts?.target_database_id ? relationRowsCache.get(opts.target_database_id) : undefined;
+                        })()}
                       />
                     ) : (
                       <input
