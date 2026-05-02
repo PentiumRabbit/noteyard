@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { DBColumn, DBRow, RelationColumnOptions } from "../../types";
 
+function PlusIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 interface RelationCellProps {
   column: DBColumn;
   value: string; // JSON array of row IDs
@@ -55,6 +63,7 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
   const [pickerRows, setPickerRows] = useState<DBRow[]>([]);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Load resolved rows for selected IDs
@@ -147,6 +156,45 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
     onChange(JSON.stringify(next));
   };
 
+  const handleCreateAndLink = async () => {
+    if (!targetDbId || creating) return;
+    setCreating(true);
+    try {
+      const newRow = await api.databases.addRow(targetDbId);
+      if (newRow) {
+        // Find the title column: fetch database schema and use first column id
+        try {
+          const db = await api.databases.get(targetDbId);
+          const titleCol = db.columns.find(c => c.name.toLowerCase() === "title") ?? db.columns[0];
+          if (titleCol) {
+            await api.databases.updateCells(targetDbId, newRow.id, [
+              { column_id: titleCol.id, value: pickerSearch.trim() },
+            ]);
+            // Update the row label in pickerRows so the tag shows correctly
+            const updatedRow: DBRow = {
+              ...newRow,
+              cells: { ...newRow.cells, [titleCol.id]: pickerSearch.trim() },
+            };
+            setPickerRows(prev => [...prev, updatedRow]);
+            setResolvedRows(prev => new Map(prev).set(newRow.id, updatedRow));
+          } else {
+            setPickerRows(prev => [...prev, newRow]);
+            setResolvedRows(prev => new Map(prev).set(newRow.id, newRow));
+          }
+        } catch {
+          setPickerRows(prev => [...prev, newRow]);
+          setResolvedRows(prev => new Map(prev).set(newRow.id, newRow));
+        }
+        toggleId(newRow.id);
+        setPickerSearch("");
+      }
+    } catch {
+      // silently ignore creation errors
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const filteredPickerRows = pickerSearch.trim()
     ? pickerRows.filter(r => {
         const label = rowLabel(r).toLowerCase();
@@ -202,8 +250,19 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
             />
             <div className="relation-picker-list">
               {pickerLoading && <div className="relation-picker-loading">加载中…</div>}
-              {!pickerLoading && filteredPickerRows.length === 0 && (
+              {!pickerLoading && filteredPickerRows.length === 0 && !pickerSearch.trim() && (
                 <div className="relation-picker-empty">暂无数据</div>
+              )}
+              {!pickerLoading && filteredPickerRows.length === 0 && pickerSearch.trim() && (
+                <button
+                  className="relation-picker-item"
+                  style={{ color: "var(--color-accent)", opacity: creating ? 0.6 : 1 }}
+                  onClick={handleCreateAndLink}
+                  disabled={creating}
+                >
+                  <PlusIcon />
+                  <span>新建并关联 '{pickerSearch.trim()}'</span>
+                </button>
               )}
               {!pickerLoading && filteredPickerRows.map(row => {
                 const isSelected = selectedIds.includes(row.id);
