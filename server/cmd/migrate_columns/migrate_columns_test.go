@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // setupTestDB 在内存中创建测试数据库，手动建表（不依赖 sqlite 迁移包）
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite3", ":memory:?_foreign_keys=on")
+	db, err := sql.Open("sqlite", ":memory:?_foreign_keys=on")
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}

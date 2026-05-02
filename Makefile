@@ -1,4 +1,4 @@
-.PHONY: dev build server web install stop
+.PHONY: dev build server web install stop sidecar
 
 install:
 	cd web && npm install
@@ -23,6 +23,9 @@ build-web:
 
 build-server: build-web
 	cd server && go build -o ../bin/noteyard ./cmd/main.go
+
+sidecar:
+	bash scripts/build-sidecar.sh
 
 clean:
 	rm -rf bin/ web/dist/

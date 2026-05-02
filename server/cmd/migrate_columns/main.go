@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // oldBlock 表示从数据库读取的旧 columns 记录
@@ -105,7 +105,7 @@ func main() {
 
 // openDB 打开 SQLite 数据库（不执行 schema 迁移，仅供迁移脚本直连使用）
 func openDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path+"?_foreign_keys=on&_journal_mode=WAL")
+	db, err := sql.Open("sqlite", path+"?_foreign_keys=on&_journal_mode=WAL")
 	if err != nil {
 		return nil, err
 	}
