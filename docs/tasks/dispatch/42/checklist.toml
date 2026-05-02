@@ -1,0 +1,23 @@
+status = "delivered"
+delivered_at = "2026-05-02T00:00:00Z"
+summary = "REQ-059 T8：关联选择器搜索无结果时显示「新建并关联」按钮，点击后自动创建新行并设置 title，自动选中加入 tag 列表。仅改动 RelationCell.tsx。"
+
+[[items]]
+id = "show-create-button"
+description = "query 有值且过滤结果为空时，显示「新建并关联 '{query}'」按钮"
+status = "done"
+
+[[items]]
+id = "create-and-link"
+description = "点击按钮：addRow → get DB schema 找 title 列 → updateCells 设置 title → toggleId 自动选中"
+status = "done"
+
+[[items]]
+id = "button-style"
+description = "按钮左侧 Plus 图标，文字包含搜索词，accent 颜色，禁用状态防重复点击"
+status = "done"
+
+[[items]]
+id = "tag-display"
+description = "新行出现在已选 tag 列表，显示搜索词作为标签文字"
+status = "done"
