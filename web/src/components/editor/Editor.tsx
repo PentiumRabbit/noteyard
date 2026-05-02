@@ -33,10 +33,8 @@ import type { Block } from "../../types";
 import { DatabaseView } from "../database/DatabaseView";
 import { useSettings } from "../../settings/settingsStore";
 import { toBlockNote } from "../../utils/toBlockNote";
+import type { BNInline, BNBlock } from "../../types/blocknote";
 import "./Editor.css";
-
-interface BNInline { type: string; text?: string; content?: BNInline[]; props?: Record<string, string> }
-interface BNBlock { id: string; type: string; props: Record<string, string>; content?: BNInline[]; children?: BNBlock[] }
 
 function inlinesToText(content: BNInline[] | undefined): string {
   if (!content) return "";
@@ -724,21 +722,33 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     void (async () => {
       const blocks = await api.blocks.listByPage(currentPageId);
       if (cancelled) return;
-      // 方案A：延迟到下一个宏任务，确保 BlockNote 编辑器实例完成内部初始化
-      setTimeout(() => {
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bn: any[] = blocks && blocks.length > 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? toBlockNote(blocks) as any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        : [{ type: "paragraph" }] as any;
+
+      // 等待 BlockNote ProseMirror view mount 后再 replaceBlocks（只调用一次）
+      const tryReplace = (attemptsLeft: number) => {
         if (cancelled) return;
-        try {
-          const bn = blocks && blocks.length > 0
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ? toBlockNote(blocks) as any
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            : [{ type: "paragraph" }] as any;
-          editor.replaceBlocks(editor.document, bn);
-        } catch (err) {
-          console.error("[Editor] replaceBlocks failed", err);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pmView = (editor as any)._tiptapEditor?.view;
+        if (!pmView || !pmView.docView) {
+          if (attemptsLeft > 0) {
+            setTimeout(() => tryReplace(attemptsLeft - 1), 50);
+          } else {
+            requestAnimationFrame(() => { readyRef.current = true; });
+          }
+          return;
         }
+        try {
+          editor.replaceBlocks(editor.document, bn);
+        } catch (err) { console.error('[Editor] replaceBlocks failed', err); }
         requestAnimationFrame(() => { readyRef.current = true; });
-      }, 0);
+      };
+      setTimeout(() => tryReplace(40), 0);
     })();
 
     heartbeatTimer.current = setInterval(() => save(currentPageId), 30_000);

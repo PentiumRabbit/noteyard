@@ -1,19 +1,25 @@
+import toast from "react-hot-toast";
 import type { Block, DBCell, DBColumn, DBRow, Database, Page } from "../types";
 
 const BASE = "http://localhost:8080/api";
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error((err as { error: string }).error || res.statusText);
+  try {
+    const res = await fetch(BASE + path, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((err as { error: string }).error || res.statusText);
+    }
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  } catch (err) {
+    toast.error((err as Error).message);
+    throw err;
   }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
 }
 
 export const api = {

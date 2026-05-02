@@ -1,7 +1,7 @@
 import type { Block } from "../types";
+import type { BNBlock } from "../types/blocknote";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildBlock(b: Block, allBlocks: Block[]): any {
+function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
   // ── columnList: build children tree from flat blocks ──
   if (b.type === "columnList") {
     const columnChildren = allBlocks
@@ -14,7 +14,7 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
             const parsed = JSON.parse(col.props) as Record<string, unknown>;
             if (parsed !== null && typeof parsed === "object") colProps = parsed;
           }
-        } catch { /* empty */ }
+        } catch (e) { console.warn('[toBlockNote] parse failed for block', col.id, e); }
 
         const colChildren = allBlocks
           .filter((inner) => inner.parent_block_id === col.id)
@@ -33,7 +33,7 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
   // ── columns (old format): fallback — parse columnsData from content, return empty columnList structure ──
   if (b.type === "columns") {
     let rawProps: Record<string, unknown> = {};
-    try { rawProps = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
+    try { rawProps = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
     // If old columnsData prop exists, degrade to empty columnList (no crash)
     if (rawProps && rawProps.columnsData !== undefined) {
       const cols = typeof rawProps.cols === "string" ? parseInt(rawProps.cols, 10) : 2;
@@ -63,21 +63,20 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
     b.type === "button"
   ) {
     let props: Record<string, unknown> = {};
-    try { props = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
+    try { props = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
     return { id: b.id, type: b.type, props, content: undefined, children: [] };
   }
 
   // ── standard content blocks ──
   let content: unknown[] = [];
-  try { content = JSON.parse(b.content) as unknown[]; } catch { /* empty */ }
+  try { content = JSON.parse(b.content) as unknown[]; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
   let props: Record<string, unknown> = {};
-  try { if (b.props && b.props !== "null") props = JSON.parse(b.props) as Record<string, unknown>; } catch { /* empty */ }
+  try { if (b.props && b.props !== "null") props = JSON.parse(b.props) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
   if (props === null || typeof props !== "object") props = {};
-  return { id: b.id, type: b.type, props, content, children: [] };
+  return { id: b.id, type: b.type, props, content: content as BNBlock["content"], children: [] };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toBlockNote(blocks: Block[]): any[] {
+export function toBlockNote(blocks: Block[]): BNBlock[] {
   // Only process top-level blocks (no parent_block_id, or parent is a page not a block)
   // Top-level = parent_block_id is null or not present in the blocks array
   const blockIds = new Set(blocks.map((b) => b.id));

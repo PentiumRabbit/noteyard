@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Toaster } from "react-hot-toast";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
 import { Breadcrumb } from "./components/breadcrumb/Breadcrumb";
@@ -200,6 +201,7 @@ export default function App() {
 
   return (
     <SettingsContext.Provider value={{ fontId, themeId, setFont, setTheme }}>
+    <Toaster position="bottom-center" />
     <div className="app">
       <Sidebar
         key={sidebarKey}
