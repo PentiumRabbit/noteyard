@@ -21,7 +21,11 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
           .sort((a, z) => a.order_index - z.order_index)
           .map((inner) => buildBlock(inner, allBlocks));
 
-        return { id: col.id, type: "column", props: colProps, content: undefined, children: colChildren };
+        // column must have at least one child — BlockNote rejects empty column nodes
+        const safeChildren = colChildren.length > 0
+          ? colChildren
+          : [{ id: `${col.id}-placeholder`, type: "paragraph", props: {}, content: [], children: [] }];
+        return { id: col.id, type: "column", props: colProps, content: undefined, children: safeChildren };
       });
     return { id: b.id, type: "columnList", props: {}, content: undefined, children: columnChildren };
   }
@@ -34,12 +38,13 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
     if (rawProps && rawProps.columnsData !== undefined) {
       const cols = typeof rawProps.cols === "string" ? parseInt(rawProps.cols, 10) : 2;
       const count = Number.isFinite(cols) && cols > 0 ? cols : 2;
+      // column must have at least one child — BlockNote rejects empty column nodes
       const emptyColumns = Array.from({ length: count }, (_, i) => ({
         id: `${b.id}-col-${i}`,
         type: "column",
         props: {},
         content: undefined,
-        children: [],
+        children: [{ id: `${b.id}-col-${i}-placeholder`, type: "paragraph", props: {}, content: [], children: [] }],
       }));
       return { id: b.id, type: "columnList", props: {}, content: undefined, children: emptyColumns };
     }
@@ -54,7 +59,8 @@ function buildBlock(b: Block, allBlocks: Block[]): any {
     b.type === "fileAttach" ||
     b.type === "bookmark" ||
     b.type === "embed" ||
-    b.type === "pdf"
+    b.type === "pdf" ||
+    b.type === "button"
   ) {
     let props: Record<string, unknown> = {};
     try { props = JSON.parse(b.content) as Record<string, unknown>; } catch { /* empty */ }
