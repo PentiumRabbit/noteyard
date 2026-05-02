@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macOS (Apple Silicon)
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            go_os: darwin
+            go_arch: arm64
+          - platform: macOS (Intel)
+            runner: macos-13
+            target: x86_64-apple-darwin
+            go_os: darwin
+            go_arch: amd64
+          - platform: Windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            go_os: windows
+            go_arch: amd64
+          - platform: Ubuntu
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            go_os: linux
+            go_arch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Go sidecar
+        env:
+          GOOS: ${{ matrix.go_os }}
+          GOARCH: ${{ matrix.go_arch }}
+          CGO_ENABLED: "0"
+        shell: bash
+        run: |
+          EXT=""
+          [ "${{ matrix.go_os }}" = "windows" ] && EXT=".exe"
+          mkdir -p src-tauri/binaries
+          cd server
+          go build -o "../src-tauri/binaries/noteyard-server-${{ matrix.target }}${EXT}" ./cmd/main.go
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Linux system dependencies
+        if: matrix.runner == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          tauriScript: ./web/node_modules/.bin/tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: noteyard ${{ github.ref_name }}
+          releaseBody: |
+            See the full changelog in the commit history.
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
