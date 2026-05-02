@@ -858,7 +858,7 @@ tr:hover .row-del-btn { visibility: visible; }
   border-radius: 6px;
   box-shadow: rgba(0,0,0,.1) 0 0 0 1px, rgba(0,0,0,.2) 0 3px 6px;
   padding: 10px;
-  min-width: 200px;
+  min-width: 220px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -883,6 +883,76 @@ tr:hover .row-del-btn { visibility: visible; }
   color: var(--color-text-primary);
   background: var(--color-bg-secondary);
 }
+/* ── col-type custom dropdown ── */
+.col-type-selector {
+  position: relative;
+}
+
+.col-type-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  background: var(--color-bg-primary);
+  user-select: none;
+  color: var(--color-text-primary);
+}
+.col-type-trigger:hover { background: var(--color-hover-bg); }
+.col-type-trigger svg { color: var(--color-text-secondary); flex-shrink: 0; }
+.col-type-trigger span { flex: 1; }
+
+.col-type-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 10;
+  margin-top: 2px;
+  min-width: 240px;
+}
+
+.col-type-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px 4px;
+}
+.col-type-item:hover { background: var(--color-hover-bg); }
+.col-type-item.selected { background: var(--color-selected-bg); }
+
+.col-type-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-hover-bg);
+  border-radius: 4px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.col-type-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.col-type-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.col-type-desc { font-size: 11px; color: var(--color-text-tertiary); }
+
 .add-col-actions {
   display: flex;
   gap: 6px;

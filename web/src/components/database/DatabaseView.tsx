@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus } from "lucide-react";
+import { Type, Hash, CheckSquare, AlignJustify, List, Calendar, Sigma, Link, Mail, Clock, Clock4, Paperclip, Link2, HelpCircle, Table2, Kanban, LayoutGrid, List as ListIcon, CalendarDays, GanttChart, Filter, ArrowUpDown, EyeOff, Layers, Plus, ChevronDown } from "lucide-react";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, FileAttachment, RelationColumnOptions } from "../../types";
 import { evalFormula } from "./formulaEngine";
@@ -32,6 +32,23 @@ function parseFileAttachments(raw: string): FileAttachment[] {
 interface Props { databaseId: string }
 
 const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup"];
+
+const COL_TYPE_LABELS: Record<string, string> = {
+  text: "纯文本内容",
+  number: "数字、金额、计算",
+  checkbox: "勾选 / 布尔值",
+  select: "单选标签",
+  "multi-select": "多选标签",
+  date: "日期和时间",
+  formula: "自动计算公式",
+  url: "网页链接",
+  email: "邮件地址",
+  created_time: "自动记录创建时间",
+  last_edited_time: "自动记录编辑时间",
+  files: "文件和附件",
+  relation: "关联其他数据库",
+  rollup: "汇总关联列数据",
+};
 
 const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   text: Type,
@@ -178,6 +195,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [rowModalDraft, setRowModalDraft] = useState<Record<string, string>>({});
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState<DBColumn["type"]>("text");
+  const [colTypeOpen, setColTypeOpen] = useState(false);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -445,6 +463,7 @@ export function DatabaseView({ databaseId }: Props) {
     setNewColName("");
     setNewColType("text");
     setNewColRelationDbId("");
+    setColTypeOpen(false);
   };
 
   const loadAvailableDatabases = async () => {
@@ -1332,13 +1351,34 @@ export function DatabaseView({ databaseId }: Props) {
               onChange={e => setNewColName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") void submitNewCol(); if (e.key === "Escape") setAddColPopover(null); }}
             />
-            <select value={newColType} onChange={e => {
-              const t = e.target.value as DBColumn["type"];
-              setNewColType(t);
-              if (t === "relation") void loadAvailableDatabases();
-            }}>
-              {COL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <div className="col-type-selector">
+              <div className="col-type-trigger" onClick={() => setColTypeOpen(v => !v)}>
+                <ColIcon type={newColType} size={14} />
+                <span>{newColType}</span>
+                <ChevronDown size={12} />
+              </div>
+              {colTypeOpen && (
+                <div className="col-type-dropdown">
+                  {COL_TYPES.map(t => (
+                    <div
+                      key={t}
+                      className={`col-type-item${newColType === t ? " selected" : ""}`}
+                      onClick={() => {
+                        setNewColType(t);
+                        setColTypeOpen(false);
+                        if (t === "relation") void loadAvailableDatabases();
+                      }}
+                    >
+                      <span className="col-type-icon"><ColIcon type={t} size={16} /></span>
+                      <span className="col-type-text">
+                        <span className="col-type-name">{t}</span>
+                        <span className="col-type-desc">{COL_TYPE_LABELS[t] ?? ""}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {newColType === "relation" && (
               <select
                 value={newColRelationDbId}
