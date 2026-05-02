@@ -1,0 +1,3 @@
+status = "delivered"
+delivered_at = "2026-05-02T00:00:00Z"
+summary = "REQ-057 T2-T6: DatabaseView 所有图标替换为 lucide-react 统一线条风格。替换 COL_ICONS 为组件映射并新增 ColIcon 辅助组件；视图切换按钮加图标；工具栏加图标；新建按钮 + 替换为 Plus 组件；CSS 新增 svg 对齐样式。tsc 无错误。"
