@@ -831,8 +831,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       overlay.style.width = rect.width + "px";
       overlay.style.height = rect.height + "px";
       overlay.innerHTML = `
-        <div style="flex:${col1W};background:rgba(59,130,246,${position==="left"?0.18:0.08});border:2px solid rgba(59,130,246,${position==="left"?0.7:0.3});border-radius:4px;min-height:100%;box-sizing:border-box;"></div>
-        <div style="flex:${col2W};background:rgba(59,130,246,${position==="right"?0.18:0.08});border:2px solid rgba(59,130,246,${position==="right"?0.7:0.3});border-radius:4px;min-height:100%;box-sizing:border-box;"></div>
+        <div style="pointer-events:none;flex:${col1W};background:rgba(59,130,246,${position==="left"?0.18:0.08});border:2px solid rgba(59,130,246,${position==="left"?0.7:0.3});border-radius:4px;min-height:100%;box-sizing:border-box;"></div>
+        <div style="pointer-events:none;flex:${col2W};background:rgba(59,130,246,${position==="right"?0.18:0.08});border:2px solid rgba(59,130,246,${position==="right"?0.7:0.3});border-radius:4px;min-height:100%;box-sizing:border-box;"></div>
       `;
       // suppress unused var warning
       void parentRect;
