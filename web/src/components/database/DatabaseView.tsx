@@ -365,7 +365,7 @@ export function DatabaseView({ databaseId }: Props) {
   // relation column
   const [newColRelationDbId, setNewColRelationDbId] = useState("");
   const [availableDatabases, setAvailableDatabases] = useState<Database[]>([]);
-  const [relationRowsCache, setRelationRowsCache] = useState<Map<string, Map<string, DBRow | null>>>(new Map());
+  const relationRowsCache = useRef<Map<string, Map<string, DBRow | null>>>(new Map());
   // rollup new-column pending config popover (shown after column is created)
   const [pendingRollupColId, setPendingRollupColId] = useState<string | null>(null);
 
@@ -412,7 +412,6 @@ export function DatabaseView({ databaseId }: Props) {
     if (relationCols.length === 0) return;
 
     void (async () => {
-      const updates = new Map<string, Map<string, DBRow | null>>(relationRowsCache);
       let changed = false;
 
       for (const col of relationCols) {
@@ -432,7 +431,7 @@ export function DatabaseView({ databaseId }: Props) {
         }
         if (allIds.size === 0) continue;
 
-        const colCache = updates.get(targetDbId) ?? new Map<string, DBRow | null>();
+        const colCache = relationRowsCache.current.get(targetDbId) ?? new Map<string, DBRow | null>();
         const missing = [...allIds].filter(id => !colCache.has(id));
         if (missing.length === 0) continue;
 
@@ -444,13 +443,12 @@ export function DatabaseView({ databaseId }: Props) {
             colCache.set(id, null);
           }
         }));
-        updates.set(targetDbId, colCache);
+        relationRowsCache.current.set(targetDbId, colCache);
         changed = true;
       }
 
-      if (changed) setRelationRowsCache(new Map(updates));
+      if (changed) setRows(r => [...r]);
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, rows]);
 
   useEffect(() => { if (editingCell) cellInputRef.current?.focus(); }, [editingCell]);
@@ -1373,7 +1371,7 @@ export function DatabaseView({ databaseId }: Props) {
                           }}
                           targetRowsCache={(() => {
                             const opts = parseRelationOpts(col);
-                            return opts?.target_database_id ? relationRowsCache.get(opts.target_database_id) : undefined;
+                            return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
                           })()}
                         />
                       ) : isEditing ? (
@@ -1889,7 +1887,7 @@ export function DatabaseView({ databaseId }: Props) {
                         }}
                         targetRowsCache={(() => {
                           const opts = parseRelationOpts(col);
-                          return opts?.target_database_id ? relationRowsCache.get(opts.target_database_id) : undefined;
+                          return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
                         })()}
                       />
                     ) : (
