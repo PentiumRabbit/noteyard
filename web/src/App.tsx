@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { Toaster } from "react-hot-toast";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { Editor, type EditorHandle } from "./components/editor/Editor";
@@ -159,21 +160,7 @@ export default function App() {
   };
 
   // Cmd+K 全文搜索 / Cmd+S 阻止浏览器保存对话框（内容已自动保存）/ Esc 关闭设置页
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(v => !v); }
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); editorRef.current?.flush(); }
-      if (e.key === "Escape") {
-        const tag = (document.activeElement as HTMLElement | null)?.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA") {
-          closeSettings();
-        }
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useKeyboardShortcuts({ editorRef, setSearchOpen, closeSettings });
 
   const handleSearchSelect = (pageId: string) => {
     setSearchOpen(false);

@@ -22,8 +22,35 @@ pub fn run() {
                 .expect("sidecar binary not configured")
                 .spawn()
             {
-                Ok((_rx, child)) => {
+                Ok((rx, child)) => {
                     *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
+                    // Monitor sidecar exit events; notify user if it crashes unexpectedly.
+                    let monitor_handle = handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        use tauri_plugin_shell::process::CommandEvent;
+                        let mut rx = rx;
+                        while let Some(event) = rx.recv().await {
+                            if let CommandEvent::Terminated(payload) = event {
+                                // code == None or non-zero means unexpected exit
+                                let crashed = payload.code.map(|c| c != 0).unwrap_or(true);
+                                if crashed {
+                                    eprintln!(
+                                        "[sidecar] noteyard-server terminated unexpectedly: {:?}",
+                                        payload.code
+                                    );
+                                    monitor_handle
+                                        .dialog()
+                                        .message(
+                                            "后端服务（noteyard-server）已意外退出。\n\
+                                             请保存工作后重启应用。",
+                                        )
+                                        .title("后端服务崩溃")
+                                        .blocking_show();
+                                }
+                                break;
+                            }
+                        }
+                    });
                 }
                 Err(e) => {
                     // In dev mode the binary may not exist yet; warn but continue.

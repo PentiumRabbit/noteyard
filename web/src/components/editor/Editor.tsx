@@ -723,12 +723,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       const blocks = await api.blocks.listByPage(currentPageId);
       if (cancelled) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bn: any[] = blocks && blocks.length > 0
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? toBlockNote(blocks) as any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        : [{ type: "paragraph" }] as any;
+      const bn: BNBlock[] = blocks && blocks.length > 0
+        ? toBlockNote(blocks)
+        : [{ id: "initial-paragraph", type: "paragraph", props: {}, content: [], children: [] }];
 
       // 等待 BlockNote ProseMirror view mount 后再 replaceBlocks（只调用一次）
       const tryReplace = (attemptsLeft: number) => {
@@ -744,7 +741,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
           return;
         }
         try {
-          editor.replaceBlocks(editor.document, bn);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BlockNote's Block type differs from BNBlock; cast required
+          editor.replaceBlocks(editor.document, bn as any);
         } catch (err) { console.error('[Editor] replaceBlocks failed:', err, 'pageId:', currentPageId); }
         requestAnimationFrame(() => { readyRef.current = true; });
       };

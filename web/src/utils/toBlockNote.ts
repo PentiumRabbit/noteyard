@@ -1,11 +1,12 @@
 import type { Block } from "../types";
 import type { BNBlock } from "../types/blocknote";
+import { BLOCK_TYPES } from "../types/blockTypes";
 
 function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
   // ── columnList: build children tree from flat blocks ──
-  if (b.type === "columnList") {
+  if (b.type === BLOCK_TYPES.COLUMN_LIST) {
     const columnChildren = allBlocks
-      .filter((c) => c.parent_block_id === b.id && c.type === "column")
+      .filter((c) => c.parent_block_id === b.id && c.type === BLOCK_TYPES.COLUMN)
       .sort((a, z) => a.order_index - z.order_index)
       .map((col) => {
         let colProps: Record<string, unknown> = {};
@@ -24,14 +25,14 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
         // column must have at least one child — BlockNote rejects empty column nodes
         const safeChildren = colChildren.length > 0
           ? colChildren
-          : [{ id: `${col.id}-placeholder`, type: "paragraph", props: {}, content: [], children: [] }];
-        return { id: col.id, type: "column", props: colProps, content: undefined, children: safeChildren };
+          : [{ id: `${col.id}-placeholder`, type: BLOCK_TYPES.PARAGRAPH, props: {}, content: [], children: [] }];
+        return { id: col.id, type: BLOCK_TYPES.COLUMN, props: colProps, content: undefined, children: safeChildren };
       });
-    return { id: b.id, type: "columnList", props: {}, content: undefined, children: columnChildren };
+    return { id: b.id, type: BLOCK_TYPES.COLUMN_LIST, props: {}, content: undefined, children: columnChildren };
   }
 
   // ── columns (old format): fallback — parse columnsData from content, return empty columnList structure ──
-  if (b.type === "columns") {
+  if (b.type === BLOCK_TYPES.COLUMNS) {
     let rawProps: Record<string, unknown> = {};
     try { rawProps = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
     // If old columnsData prop exists, degrade to empty columnList (no crash)
@@ -41,12 +42,12 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
       // column must have at least one child — BlockNote rejects empty column nodes
       const emptyColumns = Array.from({ length: count }, (_, i) => ({
         id: `${b.id}-col-${i}`,
-        type: "column",
+        type: BLOCK_TYPES.COLUMN,
         props: {},
         content: undefined,
-        children: [{ id: `${b.id}-col-${i}-placeholder`, type: "paragraph", props: {}, content: [], children: [] }],
+        children: [{ id: `${b.id}-col-${i}-placeholder`, type: BLOCK_TYPES.PARAGRAPH, props: {}, content: [], children: [] }],
       }));
-      return { id: b.id, type: "columnList", props: {}, content: undefined, children: emptyColumns };
+      return { id: b.id, type: BLOCK_TYPES.COLUMN_LIST, props: {}, content: undefined, children: emptyColumns };
     }
     // No columnsData — treat as generic props-as-content block
     return { id: b.id, type: b.type, props: rawProps, content: undefined, children: [] };
@@ -54,13 +55,13 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
 
   // ── props-as-content block types ──
   if (
-    b.type === "database" ||
-    b.type === "subpage" ||
-    b.type === "fileAttach" ||
-    b.type === "bookmark" ||
-    b.type === "embed" ||
-    b.type === "pdf" ||
-    b.type === "button"
+    b.type === BLOCK_TYPES.DATABASE ||
+    b.type === BLOCK_TYPES.SUBPAGE ||
+    b.type === BLOCK_TYPES.FILE_ATTACH ||
+    b.type === BLOCK_TYPES.BOOKMARK ||
+    b.type === BLOCK_TYPES.EMBED ||
+    b.type === BLOCK_TYPES.PDF ||
+    b.type === BLOCK_TYPES.BUTTON
   ) {
     let props: Record<string, unknown> = {};
     try { props = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }

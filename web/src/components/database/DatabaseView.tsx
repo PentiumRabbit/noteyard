@@ -440,10 +440,19 @@ export function DatabaseView({ databaseId }: Props) {
   };
 
   const commitEdit = async (rowId: string, colId: string) => {
+    const prevRows = rows; // snapshot for rollback
+    // Optimistic update: reflect new value immediately so there is no visual flash (I-022).
+    setRows(rs => rs.map(r =>
+      r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: cellDraft } } : r
+    ));
     setEditingCell(null);
-    const cells: DBCell[] = [{ column_id: colId, value: cellDraft }];
-    await api.databases.updateCells(databaseId, rowId, cells);
-    void reload();
+    try {
+      const cells: DBCell[] = [{ column_id: colId, value: cellDraft }];
+      await api.databases.updateCells(databaseId, rowId, cells);
+      void reload(); // refresh computed columns (formula / rollup) in the background
+    } catch {
+      setRows(prevRows); // rollback on failure
+    }
   };
 
   const toggleCheckbox = async (rowId: string, colId: string, val: string) => {
@@ -578,10 +587,12 @@ export function DatabaseView({ databaseId }: Props) {
     setNewColType("text");
     setNewColRelationDbId("");
     setColTypeOpen(false);
+    // Reset cached databases so relation selector always reflects latest state (I-020).
+    setAvailableDatabases([]);
   };
 
   const loadAvailableDatabases = async () => {
-    if (availableDatabases.length > 0) return;
+    // Cache is cleared on every popover open; no early-return guard needed here.
     try {
       // fetch all pages, then for each page get its blocks to find database blocks
       const pages = await api.pages.listAll();

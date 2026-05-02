@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { DBColumn, DBRow } from "../../types";
+import { useMonthNav } from "../../hooks/useMonthNav";
 import "./TimelineView.css";
 
 interface Props {
@@ -12,30 +13,39 @@ type Granularity = "month" | "week";
 
 export function TimelineView({ columns, rows, onOpenRow }: Props) {
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
+  // useMonthNav handles month-granularity navigation.
+  const { year, month, prevMonth, nextMonth } = useMonthNav();
+  // Week granularity keeps its own year/month state so 7-day offsets are preserved.
+  const [weekYear, setWeekYear] = useState(today.getFullYear());
+  const [weekMonth, setWeekMonth] = useState(today.getMonth());
   const [granularity, setGranularity] = useState<Granularity>("month");
 
   const dateCols = columns.filter(c => c.type === "date");
   const [dateColId, setDateColId] = useState<string>(dateCols[0]?.id ?? "");
   const primaryCol = columns[0];
 
+  // Resolved year/month depending on granularity.
+  const activeYear = granularity === "month" ? year : weekYear;
+  const activeMonth = granularity === "month" ? month : weekMonth;
+
   const prevPeriod = () => {
     if (granularity === "month") {
-      if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1);
+      prevMonth();
     } else {
-      const d = new Date(year, month, 1);
+      const d = new Date(weekYear, weekMonth, 1);
       d.setDate(d.getDate() - 7);
-      setYear(d.getFullYear()); setMonth(d.getMonth());
+      setWeekYear(d.getFullYear());
+      setWeekMonth(d.getMonth());
     }
   };
   const nextPeriod = () => {
     if (granularity === "month") {
-      if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1);
+      nextMonth();
     } else {
-      const d = new Date(year, month, 1);
+      const d = new Date(weekYear, weekMonth, 1);
       d.setDate(d.getDate() + 7);
-      setYear(d.getFullYear()); setMonth(d.getMonth());
+      setWeekYear(d.getFullYear());
+      setWeekMonth(d.getMonth());
     }
   };
 
@@ -44,11 +54,11 @@ export function TimelineView({ columns, rows, onOpenRow }: Props) {
   // Determine visible date range
   let startDate: Date, endDate: Date, days: Date[];
   if (granularity === "month") {
-    startDate = new Date(year, month, 1);
-    endDate = new Date(year, month + 1, 0);
+    startDate = new Date(activeYear, activeMonth, 1);
+    endDate = new Date(activeYear, activeMonth + 1, 0);
   } else {
-    // start from Monday of the current week containing (year, month, 1)
-    const ref = new Date(year, month, 1);
+    // start from Monday of the current week containing (activeYear, activeMonth, 1)
+    const ref = new Date(activeYear, activeMonth, 1);
     const dow = (ref.getDay() + 6) % 7; // Monday=0
     startDate = new Date(ref); startDate.setDate(ref.getDate() - dow);
     endDate = new Date(startDate); endDate.setDate(startDate.getDate() + 6);
@@ -78,7 +88,7 @@ export function TimelineView({ columns, rows, onOpenRow }: Props) {
         <button className="cal-nav-btn" onClick={prevPeriod}>‹</button>
         <span className="cal-title">
           {granularity === "month"
-            ? `${year} 年 ${month + 1} 月`
+            ? `${activeYear} 年 ${activeMonth + 1} 月`
             : `${dateKey(startDate)} — ${dateKey(endDate)}`}
         </span>
         <button className="cal-nav-btn" onClick={nextPeriod}>›</button>
