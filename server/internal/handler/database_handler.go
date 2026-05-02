@@ -118,6 +118,9 @@ func (h *DatabaseHandler) AddRow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if row.Cells == nil {
+		row.Cells = map[string]string{}
+	}
 	writeJSON(w, http.StatusCreated, row)
 }
 

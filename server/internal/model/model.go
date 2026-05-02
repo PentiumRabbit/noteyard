@@ -51,7 +51,7 @@ type DBRow struct {
 	DatabaseID string            `json:"database_id"`
 	Content    string            `json:"content"`
 	OrderIndex float64           `json:"order_index"`
-	Cells      map[string]string `json:"cells,omitempty"`
+	Cells      map[string]string `json:"cells"`
 	CreatedAt  int64             `json:"created_at"`
 	UpdatedAt  int64             `json:"updated_at"`
 }
