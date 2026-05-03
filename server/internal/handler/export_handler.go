@@ -48,6 +48,9 @@ func (h *ExportHandler) ExportPage(w http.ResponseWriter, r *http.Request) {
 
 	switch format {
 	case "json":
+		if allBlocks == nil {
+			allBlocks = []*model.Block{}
+		}
 		data := map[string]interface{}{
 			"page":   page,
 			"blocks": allBlocks,
