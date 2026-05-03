@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync/atomic"
 	"time"
 )
@@ -17,17 +18,19 @@ type Manager struct {
 	dbPath     string        // absolute path to noteyard.db
 	backupsDir func() string // resolved at call time (data dir may change)
 	threshold  func() int    // current ops_threshold from config
+	maxBackups func() int    // current max_backups from config (0 = unlimited)
 	opsCount   atomic.Int64
 	running    atomic.Bool
 }
 
-// NewManager creates a Manager. backupsDirFn and thresholdFn are called
-// each time a backup decision is made so they always reflect the latest config.
-func NewManager(dbPath string, backupsDirFn func() string, thresholdFn func() int) *Manager {
+// NewManager creates a Manager. backupsDirFn, thresholdFn, and maxBackupsFn are
+// called each time a backup decision is made so they always reflect the latest config.
+func NewManager(dbPath string, backupsDirFn func() string, thresholdFn func() int, maxBackupsFn func() int) *Manager {
 	return &Manager{
 		dbPath:     dbPath,
 		backupsDir: backupsDirFn,
 		threshold:  thresholdFn,
+		maxBackups: maxBackupsFn,
 	}
 }
 
@@ -46,8 +49,15 @@ func (m *Manager) RecordWrite() {
 // synchronous backup if any writes have occurred since the last backup.
 func (m *Manager) OnExit() {
 	if m.opsCount.Load() > 0 {
-		if err := Backup(m.dbPath, m.backupsDir()); err != nil {
+		dir := m.backupsDir()
+		if err := Backup(m.dbPath, dir); err != nil {
 			log.Printf("[backup] exit backup failed: %v", err)
+			return
+		}
+		if max := m.maxBackups(); max > 0 {
+			if err := PruneOldBackups(dir, max); err != nil {
+				log.Printf("[backup] prune failed: %v", err)
+			}
 		}
 	}
 }
@@ -57,8 +67,15 @@ func (m *Manager) triggerAsync() {
 		return
 	}
 	defer m.running.Store(false)
-	if err := Backup(m.dbPath, m.backupsDir()); err != nil {
+	dir := m.backupsDir()
+	if err := Backup(m.dbPath, dir); err != nil {
 		log.Printf("[backup] async backup failed: %v", err)
+		return
+	}
+	if max := m.maxBackups(); max > 0 {
+		if err := PruneOldBackups(dir, max); err != nil {
+			log.Printf("[backup] prune failed: %v", err)
+		}
 	}
 }
 
@@ -103,5 +120,62 @@ func Backup(dbPath, backupsDir string) error {
 	}
 
 	log.Printf("[backup] created %s", destPath)
+	return nil
+}
+
+// PruneOldBackups deletes the oldest .db backup files in backupsDir so that
+// at most maxKeep files remain. Files are ordered by modification time;
+// the newest maxKeep are kept and the rest are deleted.
+// It is a no-op when maxKeep <= 0.
+func PruneOldBackups(backupsDir string, maxKeep int) error {
+	if maxKeep <= 0 {
+		return nil
+	}
+
+	entries, err := os.ReadDir(backupsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("backup: prune readdir %s: %w", backupsDir, err)
+	}
+
+	type fileInfo struct {
+		path    string
+		modTime time.Time
+	}
+
+	var files []fileInfo
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".db" {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, fileInfo{
+			path:    filepath.Join(backupsDir, e.Name()),
+			modTime: info.ModTime(),
+		})
+	}
+
+	if len(files) <= maxKeep {
+		return nil
+	}
+
+	// Sort newest first.
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.After(files[j].modTime)
+	})
+
+	// Delete everything beyond maxKeep.
+	for _, f := range files[maxKeep:] {
+		if err := os.Remove(f.path); err != nil && !os.IsNotExist(err) {
+			log.Printf("[backup] prune: failed to delete %s: %v", f.path, err)
+		} else {
+			log.Printf("[backup] prune: deleted %s", f.path)
+		}
+	}
 	return nil
 }

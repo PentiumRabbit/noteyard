@@ -44,6 +44,7 @@ func main() {
 		dbPath,
 		func() string { return filepath.Join(cfg.Data.Dir, "backups") },
 		func() int { return cfg.Backup.OpsThreshold },
+		func() int { return cfg.Backup.MaxBackups },
 	)
 
 	// Register OS signal handler for graceful-exit backup.

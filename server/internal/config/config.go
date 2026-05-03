@@ -24,9 +24,11 @@ type DataConfig struct {
 // BackupConfig holds backup settings.
 type BackupConfig struct {
 	OpsThreshold int `toml:"ops_threshold"`
+	MaxBackups   int `toml:"max_backups"`
 }
 
 const defaultOpsThreshold = 50
+const defaultMaxBackups = 10
 
 // DefaultDataDir returns the platform-appropriate default data directory.
 func DefaultDataDir() string {
@@ -69,7 +71,7 @@ func ConfigFilePath() string {
 func defaults() Config {
 	return Config{
 		Data:   DataConfig{Dir: DefaultDataDir()},
-		Backup: BackupConfig{OpsThreshold: defaultOpsThreshold},
+		Backup: BackupConfig{OpsThreshold: defaultOpsThreshold, MaxBackups: defaultMaxBackups},
 	}
 }
 

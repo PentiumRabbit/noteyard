@@ -26,6 +26,7 @@ func NewConfigHandler(cfg *config.Config, onDirChange func(newDir string) error)
 type configResponse struct {
 	DataDir      string `json:"data_dir"`
 	OpsThreshold int    `json:"ops_threshold"`
+	MaxBackups   int    `json:"max_backups"`
 	BackupCount  int    `json:"backup_count"`
 	LastBackupAt string `json:"last_backup_at"` // RFC3339 or ""
 }
@@ -33,6 +34,7 @@ type configResponse struct {
 type configUpdateRequest struct {
 	DataDir      *string `json:"data_dir"`
 	OpsThreshold *int    `json:"ops_threshold"`
+	MaxBackups   *int    `json:"max_backups"`
 }
 
 // Get handles GET /api/config.
@@ -41,6 +43,7 @@ func (h *ConfigHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, configResponse{
 		DataDir:      h.cfg.Data.Dir,
 		OpsThreshold: h.cfg.Backup.OpsThreshold,
+		MaxBackups:   h.cfg.Backup.MaxBackups,
 		BackupCount:  backupCount,
 		LastBackupAt: lastBackup,
 	})
@@ -63,6 +66,15 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 		h.cfg.Backup.OpsThreshold = *req.OpsThreshold
 	}
 
+	// Update max_backups if provided (0 = unlimited).
+	if req.MaxBackups != nil {
+		if *req.MaxBackups < 0 {
+			writeError(w, http.StatusBadRequest, "max_backups must be >= 0")
+			return
+		}
+		h.cfg.Backup.MaxBackups = *req.MaxBackups
+	}
+
 	// Handle data directory change.
 	if req.DataDir != nil && *req.DataDir != h.cfg.Data.Dir {
 		if err := h.onDirChange(*req.DataDir); err != nil {
@@ -72,7 +84,7 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 		// cfg.Data.Dir already updated inside MigrateDataDir.
 	}
 
-	// Persist updated config (ops_threshold change).
+	// Persist updated config.
 	if err := config.Write(h.cfg); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to write config: "+err.Error())
 		return
@@ -82,6 +94,7 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, configResponse{
 		DataDir:      h.cfg.Data.Dir,
 		OpsThreshold: h.cfg.Backup.OpsThreshold,
+		MaxBackups:   h.cfg.Backup.MaxBackups,
 		BackupCount:  backupCount,
 		LastBackupAt: lastBackup,
 	})

@@ -10,6 +10,7 @@ import "./SettingsPage.css";
 interface AppConfig {
   data_dir: string;
   ops_threshold: number;
+  max_backups: number;
   backup_count: number;
   last_backup_at: string; // RFC3339 or ""
 }
@@ -24,7 +25,7 @@ async function fetchConfig(): Promise<AppConfig | null> {
   }
 }
 
-async function saveConfig(patch: { data_dir?: string; ops_threshold?: number }): Promise<AppConfig> {
+async function saveConfig(patch: { data_dir?: string; ops_threshold?: number; max_backups?: number }): Promise<AppConfig> {
   const res = await fetch("http://localhost:8080/api/config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -197,6 +198,7 @@ function DataSection() {
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [dataDir, setDataDir] = useState("");
   const [opsThreshold, setOpsThreshold] = useState(50);
+  const [maxBackups, setMaxBackups] = useState(10);
   const [configSaving, setConfigSaving] = useState(false);
   const [configStatus, setConfigStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [cleanupRunning, setCleanupRunning] = useState(false);
@@ -208,6 +210,7 @@ function DataSection() {
         setAppConfig(cfg);
         setDataDir(cfg.data_dir);
         setOpsThreshold(cfg.ops_threshold);
+        setMaxBackups(cfg.max_backups);
       }
     });
   }, []);
@@ -232,9 +235,10 @@ function DataSection() {
     setConfigSaving(true);
     setConfigStatus(null);
     try {
-      const patch: { data_dir?: string; ops_threshold?: number } = {};
+      const patch: { data_dir?: string; ops_threshold?: number; max_backups?: number } = {};
       if (appConfig && dataDir !== appConfig.data_dir) patch.data_dir = dataDir;
       if (appConfig && opsThreshold !== appConfig.ops_threshold) patch.ops_threshold = opsThreshold;
+      if (appConfig && maxBackups !== appConfig.max_backups) patch.max_backups = maxBackups;
       if (Object.keys(patch).length === 0) {
         setConfigSaving(false);
         return;
@@ -243,6 +247,7 @@ function DataSection() {
       setAppConfig(updated);
       setDataDir(updated.data_dir);
       setOpsThreshold(updated.ops_threshold);
+      setMaxBackups(updated.max_backups);
       setConfigStatus({ ok: true, msg: "已保存" });
     } catch (err) {
       setConfigStatus({ ok: false, msg: String(err instanceof Error ? err.message : err) });
@@ -281,6 +286,19 @@ function DataSection() {
           max={9999}
           value={opsThreshold}
           onChange={(e) => setOpsThreshold(Math.max(1, Math.min(9999, Number(e.target.value))))}
+        />
+      </div>
+
+      <div className="settings-page-field">
+        <label className="settings-page-field-label">最多保留备份数</label>
+        <input
+          className="settings-page-field-input settings-page-field-input--number"
+          type="number"
+          min={0}
+          max={9999}
+          value={maxBackups}
+          placeholder="0 = 不限制"
+          onChange={(e) => setMaxBackups(Math.max(0, Math.min(9999, Number(e.target.value))))}
         />
       </div>
 
