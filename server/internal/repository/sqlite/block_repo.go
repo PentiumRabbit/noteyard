@@ -125,6 +125,9 @@ func (r *BlockRepo) BatchUpdate(ctx context.Context, blocks []*model.Block) erro
 		return err
 	}
 	defer stmt.Close()
+
+	// Collect all IDs present in this batch, grouped by page_id.
+	pageIDs := make(map[string][]string)
 	for _, b := range blocks {
 		props := b.Props
 		if props == "" {
@@ -136,6 +139,37 @@ func (r *BlockRepo) BatchUpdate(ctx context.Context, blocks []*model.Block) erro
 			b.OrderIndex, now, now); err != nil {
 			return err
 		}
+		pageIDs[b.PageID] = append(pageIDs[b.PageID], b.ID)
 	}
+
+	// Delete orphan blocks: rows that belong to a page in this batch but whose
+	// IDs are not present in the batch. ON DELETE CASCADE handles child blocks.
+	for pageID, ids := range pageIDs {
+		if len(ids) == 0 {
+			// All blocks removed from page — delete everything.
+			if _, err := tx.ExecContext(ctx,
+				`DELETE FROM blocks WHERE page_id = ?`, pageID); err != nil {
+				return err
+			}
+			continue
+		}
+		// Build a parameterised IN clause. SQLite supports up to ~999 parameters;
+		// for typical page sizes this is never an issue.
+		args := make([]interface{}, 0, len(ids)+1)
+		args = append(args, pageID)
+		placeholders := make([]byte, 0, len(ids)*2)
+		for i, id := range ids {
+			if i > 0 {
+				placeholders = append(placeholders, ',')
+			}
+			placeholders = append(placeholders, '?')
+			args = append(args, id)
+		}
+		query := "DELETE FROM blocks WHERE page_id = ? AND id NOT IN (" + string(placeholders) + ")"
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
