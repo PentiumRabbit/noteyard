@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { exportAll } from "../../api/client";
 import { FONTS } from "../../settings/fontConfig";
 import { THEMES } from "../../settings/themeConfig";
 import { useSettings } from "../../settings/settingsStore";
@@ -351,6 +352,30 @@ function DataSection() {
           {cleanupStatus.msg}
         </div>
       )}
+
+      <div className="settings-page-divider" />
+
+      <div className="settings-page-field">
+        <span className="settings-page-field-label">导出全库</span>
+        <span className="settings-page-field-value settings-page-field-value--hint">
+          将所有页面打包为 ZIP 文件下载
+        </span>
+      </div>
+
+      <div className="settings-page-options">
+        <button
+          className="settings-page-save-btn"
+          onClick={() => exportAll('markdown')}
+        >
+          全部导出为 Markdown
+        </button>
+        <button
+          className="settings-page-save-btn"
+          onClick={() => exportAll('json')}
+        >
+          全部导出为 JSON
+        </button>
+      </div>
     </section>
   );
 }

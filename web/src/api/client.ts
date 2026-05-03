@@ -23,6 +23,18 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   }
 }
 
+export function exportAll(format: 'markdown' | 'json') {
+  const a = document.createElement('a');
+  a.href = `/api/export?format=${format}`;
+  a.click();
+}
+
+export function exportPage(pageId: string, format: 'markdown' | 'json') {
+  const a = document.createElement('a');
+  a.href = `/api/pages/${pageId}/export?format=${format}`;
+  a.click();
+}
+
 export const api = {
   databases: {
     create: (data: { id: string; page_id: string; title: string }) => req<Database>("POST", "/databases", data),
