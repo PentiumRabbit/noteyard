@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-03 |
-| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 / REQ-074 |
+| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 / REQ-074 / REQ-073 |
 
 ---
 
@@ -40,7 +40,13 @@
 
 ---
 
-## 上次变更摘要（REQ-074）
+## 上次变更摘要（REQ-073）
+
+- `web/src/api/client.ts`：`importMarkdown(file)` 函数，POST multipart/form-data 到 `/api/import/markdown`，使用 `API_BASE` 常量，失败时 `toast.error` + re-throw
+- `web/src/components/sidebar/Sidebar.tsx`：引入 `toast`，侧边栏底部新增"导入 Markdown"按钮（`disabled` 状态 + "导入中…"文字切换），`handleImportChange` 成功后调用 `handleSelect` 跳转，失败改用 `toast.error`
+- commit: `feat(import)[eng-frontend#136]: 实现 Markdown 导入入口及 importMarkdown API`
+
+## 历史变更摘要（REQ-074）
 
 - `web/src/data/quickstart.json`：新增快速入门种子数据，16 块覆盖 5 章节（标题/创建页面/块编辑器/数据库/常用快捷键），纯字符串 content 格式
 - `web/src/components/quickstart/QuickstartCard.tsx`：轻量 JSX 卡片组件，将 seed blocks 渲染为 h1/h2/ul/li/p；底部「导入为页面」按钮调用 `api.pages.create` + `api.blocks.create` 逐块写入，成功后回调 `onImported`，失败调用 `toast.error`
