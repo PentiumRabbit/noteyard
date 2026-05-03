@@ -995,21 +995,40 @@ export function DatabaseView({ databaseId }: Props) {
             ) : (
               selectDropdown.options.map((opt, idx) => {
                 const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                const currentVal = rows.find(r => r.id === selectDropdown.rowId)?.cells[selectDropdown.colId] ?? "";
+                const isSelected = currentVal === opt.value;
                 return (
-                  <button key={idx} className="select-dd-item"
-                    onClick={() => void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value)}>
-                    <Chip label={opt.value} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />
+                  <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isSelected) {
+                        void clearSelectCell(selectDropdown.rowId, selectDropdown.colId);
+                      } else {
+                        void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value);
+                      }
+                    }}>
+                    <Chip label={`${isSelected ? "✓ " : ""}${opt.value}`} colors={[{ bg: isSelected ? c.bg : "#f0f0f0", text: isSelected ? c.color : "#6b7280" }]} colorIdx={0} />
                   </button>
                 );
               })
             )}
-            {selectDropdown.options.length > 0 && <div className="col-menu-divider" />}
+            <div className="col-menu-divider" />
             {selectDropdown.options.length > 0 && (
               <button className="select-dd-item select-dd-clear"
-                onClick={() => void clearSelectCell(selectDropdown.rowId, selectDropdown.colId)}>
+                onClick={(e) => { e.stopPropagation(); void clearSelectCell(selectDropdown.rowId, selectDropdown.colId); }}>
                 清除选择
               </button>
             )}
+            <button
+              className="select-dd-item select-dd-add-option"
+              onClick={(e) => {
+                e.stopPropagation();
+                const col = db!.columns.find(c => c.id === selectDropdown.colId);
+                if (col) openSelectOptions(e, col);
+              }}
+            >
+              + 添加选项
+            </button>
           </div>
         </>
       )}
@@ -1124,7 +1143,7 @@ export function DatabaseView({ databaseId }: Props) {
                 const isSelected = selected.includes(opt.value);
                 return (
                   <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
-                    onClick={() => void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal)}>
+                    onClick={(e) => { e.stopPropagation(); void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal); }}>
                     <Chip
                       label={`${isSelected ? "✓ " : ""}${opt.value}`}
                       colors={[{ bg: isSelected ? c.bg : "#f0f0f0", text: isSelected ? c.color : "#6b7280" }]}
@@ -1137,7 +1156,8 @@ export function DatabaseView({ databaseId }: Props) {
             {multiSelectDropdown.options.length > 0 && <div className="col-menu-divider" />}
             {multiSelectDropdown.options.length > 0 && (
               <button className="select-dd-item select-dd-clear"
-                onClick={async () => {
+                onClick={async (e) => {
+                  e.stopPropagation();
                   await api.databases.updateCells(databaseId, multiSelectDropdown.rowId, [{ column_id: multiSelectDropdown.colId, value: "" }]);
                   setMultiSelectDropdown(null);
                   void reload();
@@ -1145,6 +1165,16 @@ export function DatabaseView({ databaseId }: Props) {
                 清除选择
               </button>
             )}
+            <button
+              className="select-dd-item select-dd-add-option"
+              onClick={(e) => {
+                e.stopPropagation();
+                const col = db!.columns.find(c => c.id === multiSelectDropdown.colId);
+                if (col) openSelectOptions(e, col);
+              }}
+            >
+              + 添加选项
+            </button>
           </div>
         </>
       )}
