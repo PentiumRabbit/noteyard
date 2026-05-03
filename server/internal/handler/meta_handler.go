@@ -43,9 +43,14 @@ func init() {
 	}
 }
 
+// isPrivateHostFn is the SSRF guard; replaced in tests.
+var isPrivateHostFn = defaultIsPrivateHost
+
 // isPrivateHost returns true when host resolves to a loopback, RFC-1918, or
 // link-local address that must not be contacted by the server.
-func isPrivateHost(host string) bool {
+func isPrivateHost(host string) bool { return isPrivateHostFn(host) }
+
+func defaultIsPrivateHost(host string) bool {
 	// Strip port if present.
 	h, _, err := net.SplitHostPort(host)
 	if err != nil {

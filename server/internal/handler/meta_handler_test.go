@@ -60,6 +60,10 @@ func TestMetaHandler_UnreachableHost_ReturnsOK(t *testing.T) {
 }
 
 func TestMetaHandler_LocalServer_OGTags(t *testing.T) {
+	orig := isPrivateHostFn
+	isPrivateHostFn = func(string) bool { return false }
+	t.Cleanup(func() { isPrivateHostFn = orig })
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(`<html>
@@ -89,6 +93,10 @@ func TestMetaHandler_LocalServer_OGTags(t *testing.T) {
 }
 
 func TestMetaHandler_LocalServer_FallbackTitle(t *testing.T) {
+	orig := isPrivateHostFn
+	isPrivateHostFn = func(string) bool { return false }
+	t.Cleanup(func() { isPrivateHostFn = orig })
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(`<html><head><title>Page Title</title></head></html>`))
@@ -107,6 +115,10 @@ func TestMetaHandler_LocalServer_FallbackTitle(t *testing.T) {
 }
 
 func TestMetaHandler_LocalServer_DescriptionTruncated(t *testing.T) {
+	orig := isPrivateHostFn
+	isPrivateHostFn = func(string) bool { return false }
+	t.Cleanup(func() { isPrivateHostFn = orig })
+
 	longDesc := make([]byte, 300)
 	for i := range longDesc {
 		longDesc[i] = 'a'

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -29,7 +30,7 @@ func (m *mockPageRepo) GetByID(_ context.Context, id string) (*model.Page, error
 			return p, nil
 		}
 	}
-	return nil, errors.New("not found")
+	return nil, sql.ErrNoRows
 }
 
 func (m *mockPageRepo) ListChildren(_ context.Context, _ string) ([]*model.Page, error) {
