@@ -10,7 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { api } from "../../api/client";
+import { api, exportPage } from "../../api/client";
 import type { Page } from "../../types";
 import { TEMPLATES } from "../../templates";
 import "./Sidebar.css";
@@ -530,6 +530,9 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
             <button className="ctx-item" onClick={() => { toggleFavorite(ctxMenu.pageId); closeCtxMenu(); }}>
               {favorites.has(ctxMenu.pageId) ? "★ 取消收藏" : "☆ 收藏"}
             </button>
+            <div className="ctx-divider" />
+            <button className="ctx-item" onClick={() => { exportPage(ctxMenu.pageId, 'markdown'); closeCtxMenu(); }}>导出为 Markdown</button>
+            <button className="ctx-item" onClick={() => { exportPage(ctxMenu.pageId, 'json'); closeCtxMenu(); }}>导出为 JSON</button>
             <div className="ctx-divider" />
             <button className="ctx-item ctx-item-danger" onClick={() => void handleCtxDelete()}>删除</button>
           </div>
