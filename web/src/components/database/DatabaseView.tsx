@@ -1,251 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Type, Hash, CheckSquare, ChevronDown, Tags, Calendar, FunctionSquare, Link, Mail, Clock, Clock3, Paperclip, ArrowUpRight, Sigma, HelpCircle, Table, Columns, LayoutGrid, List, CalendarDays, GanttChartSquare, Filter, ArrowUpDown, EyeOff, Rows, Plus, ExternalLink, Copy, Trash2, FileText, Phone, User, Circle, GripVertical, X } from "lucide-react";
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteSchema, defaultBlockSpecs, locales } from "@blocknote/core";
+import { ChevronDown, Table, Columns, LayoutGrid, List, CalendarDays, GanttChartSquare, Filter, ArrowUpDown, EyeOff, Rows, Plus, ExternalLink, Copy, Trash2, FileText } from "lucide-react";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, RollupColumnOptions, FilterState, SortState } from "../../types";
-import { evalFormula } from "./formulaEngine";
+import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, FilterState, SortState } from "../../types";
+import { ToolbarPanelView } from "./ToolbarPanel";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
 import { CalendarView } from "./CalendarView";
 import { TimelineView } from "./TimelineView";
-import { FilesCell } from "./FilesCell";
-import { FilesModalField } from "./FilesModalField";
-import { RelationCell } from "./RelationCell";
 import { RollupConfigPopover } from "./RollupConfigPopover";
-import { ColorDotPicker } from "./ColorDotPicker";
 import { Chip } from "./Chip";
 import { getPopoverY } from "../../utils/popover";
-import { parseFileAttachments } from "../../utils/fileAttachments";
 import { TAG_COLORS, tagColor, parseOptions, serializeOptions } from "./shared";
 import type { SelectOption } from "./shared";
+import { ColIcon } from "./ColIcon";
+import { COL_TYPES, COL_TYPE_LABELS, READONLY_COL_TYPES, FORMULA_FUNCTIONS, fmtTimestamp } from "./databaseConstants";
+import { ColumnHeaderMenu, FormulaPopoverPanel, SelectOptionsPopoverPanel } from "./ColumnHeader";
+import type { ColMenu, FormulaPopover, SelectOptionsPopover } from "./ColumnHeader";
+import { RowModal } from "./RowModal";
+import { CellRenderer } from "./CellRenderer";
+import { evalFormula } from "./formulaEngine";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
 
-const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup", "phone", "people", "status"];
-
-const COL_TYPE_LABELS: Record<string, string> = {
-  text: "纯文本内容",
-  number: "数字、金额、计算",
-  checkbox: "勾选 / 布尔值",
-  select: "单选标签",
-  "multi-select": "多选标签",
-  date: "日期和时间",
-  formula: "自动计算公式",
-  url: "网页链接",
-  email: "邮件地址",
-  created_time: "自动记录创建时间",
-  last_edited_time: "自动记录编辑时间",
-  files: "文件和附件",
-  relation: "关联其他数据库",
-  rollup: "汇总关联列数据",
-  phone: "电话",
-  people: "人员",
-  status: "状态",
-};
-
-const COL_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  text: Type,
-  number: Hash,
-  checkbox: CheckSquare,
-  select: ChevronDown,
-  "multi-select": Tags,
-  date: Calendar,
-  formula: FunctionSquare,
-  url: Link,
-  email: Mail,
-  created_time: Clock,
-  last_edited_time: Clock3,
-  files: Paperclip,
-  relation: ArrowUpRight,
-  rollup: Sigma,
-  phone: Phone,
-  people: User,
-  status: Circle,
-};
-
-function ColIcon({ type, size = 14, className }: { type: string; size?: number; className?: string }) {
-  const Icon = COL_ICONS[type] ?? HelpCircle;
-  return <Icon size={size} className={className} />;
-}
-
-const READONLY_COL_TYPES = new Set(["formula", "created_time", "last_edited_time", "rollup"]);
-
-function fmtTimestamp(ts: number | undefined): string {
-  if (!ts) return "—";
-  const d = new Date(ts * 1000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-interface ColMenu {
-  colId: string;
-  x: number;
-  y: number;
-  renaming: boolean;
-  draft: string;
-  changingType: boolean;
-}
-
 interface AddColPopover { x: number; y: number }
-const FORMULA_FUNCTIONS = ["IF", "CONCAT", "ROUND", "ABS", "NOT"];
-
-interface FormulaPopover { colId: string; x: number; y: number; draft: string; preview: string; acItems: string[]; acIndex: number }
 interface RollupPopover { colId: string; x: number; y: number }
-interface SelectOptionsPopover { colId: string; x: number; y: number; options: SelectOption[] }
 interface SelectDropdown { rowId: string; colId: string; x: number; y: number; options: SelectOption[] }
-interface RowModal { row: DBRow }
+interface RowModalState { row: DBRow }
 type ToolbarPanel = "sort" | "filter" | "hide" | "group" | null
-
-// ── Row content editor schema (basic block types only, no database nesting) ──
-const rowContentSchema = BlockNoteSchema.create({
-  blockSpecs: {
-    paragraph: defaultBlockSpecs.paragraph,
-    heading: defaultBlockSpecs.heading,
-    bulletListItem: defaultBlockSpecs.bulletListItem,
-    numberedListItem: defaultBlockSpecs.numberedListItem,
-  },
-});
-
-// ── Row content BlockNote editor (isolated from page editor) ──
-function RowContentEditor({
-  databaseId,
-  rowId,
-  initialContent,
-  onSaveRef,
-}: {
-  databaseId: string;
-  rowId: string;
-  initialContent: string;
-  onSaveRef: React.MutableRefObject<(() => void) | null>;
-}) {
-  const editor = useCreateBlockNote({
-    schema: rowContentSchema,
-    dictionary: locales.zh,
-  });
-
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const readyRef = useRef(false);
-
-  const doSave = useCallback(() => {
-    if (!readyRef.current) return;
-    const content = JSON.stringify(editor.document);
-    void api.databases.updateRowContent(databaseId, rowId, content);
-  }, [databaseId, rowId, editor]);
-
-  // Expose flush function for parent to call on close
-  useEffect(() => {
-    onSaveRef.current = () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-        debounceTimer.current = null;
-      }
-      doSave();
-    };
-    return () => { onSaveRef.current = null; };
-  }, [onSaveRef, doSave]);
-
-  // Initialize editor with content
-  useEffect(() => {
-    readyRef.current = false;
-    let cancelled = false;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let initialBlocks: any[];
-    if (initialContent && initialContent !== "") {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        initialBlocks = JSON.parse(initialContent) as any[];
-      } catch {
-        initialBlocks = [{ type: "paragraph" }];
-      }
-    } else {
-      initialBlocks = [{ type: "paragraph" }];
-    }
-
-    setTimeout(() => {
-      if (cancelled) return;
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.replaceBlocks(editor.document, initialBlocks as any);
-      } catch (err) {
-        console.error("[RowContentEditor] replaceBlocks failed", err);
-      }
-      requestAnimationFrame(() => { readyRef.current = true; });
-    }, 0);
-
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowId]);
-
-  const handleChange = () => {
-    if (!readyRef.current) return;
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => doSave(), 500);
-  };
-
-  return (
-    <div className="row-modal-content-editor">
-      <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
-    </div>
-  );
-}
-
-// ── Sortable option row for select options popover ──
-function SortableOptionRow({
-  opt,
-  idx,
-  onRename,
-  onColorChange,
-  onDelete,
-}: {
-  opt: SelectOption;
-  idx: number;
-  onRename: (idx: number, value: string) => void;
-  onColorChange: (idx: number, colorIdx: number) => void;
-  onDelete: (idx: number) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(idx) });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-  const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-
-  return (
-    <div ref={setNodeRef} style={style} className="select-opt-row">
-      <button className="select-opt-drag" {...attributes} {...listeners} type="button" tabIndex={-1}>
-        <GripVertical size={14} />
-      </button>
-      <input
-        className="select-opt-input"
-        style={{ background: c.bg, color: c.color }}
-        value={opt.value}
-        onChange={e => onRename(idx, e.target.value)}
-        onBlur={e => { if (!e.target.value.trim()) onRename(idx, opt.value); }}
-      />
-      <ColorDotPicker
-        colors={TAG_COLORS.map(tc => ({ bg: tc.bg, text: tc.color }))}
-        value={opt.colorIdx}
-        onChange={ci => onColorChange(idx, ci)}
-      />
-      <button
-        type="button"
-        className="select-opt-del-hover"
-        onClick={() => onDelete(idx)}
-        tabIndex={-1}
-      >
-        <X size={13} />
-      </button>
-    </div>
-  );
-}
 
 function ListGroup({ label, col, rows, primaryCol, onOpen, onAdd }: {
   label: string;
@@ -294,7 +76,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [rollupPopover, setRollupPopover] = useState<RollupPopover | null>(null);
   const [selectOptionsPopover, setSelectOptionsPopover] = useState<SelectOptionsPopover | null>(null);
   const [selectDropdown, setSelectDropdown] = useState<SelectDropdown | null>(null);
-  const [rowModal, setRowModal] = useState<RowModal | null>(null);
+  const [rowModal, setRowModal] = useState<RowModalState | null>(null);
   const [rowModalDraft, setRowModalDraft] = useState<Record<string, string>>({});
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState<DBColumn["type"]>("text");
@@ -315,16 +97,10 @@ export function DatabaseView({ databaseId }: Props) {
   const [batchPanel, setBatchPanel] = useState(false);
   const [batchColId, setBatchColId] = useState("");
   const [batchVal, setBatchVal] = useState("");
-  // relation column
   const [newColRelationDbId, setNewColRelationDbId] = useState("");
   const [availableDatabases, setAvailableDatabases] = useState<Database[]>([]);
   const relationRowsCache = useRef<Map<string, Map<string, DBRow | null>>>(new Map());
-  const [deletedTargetDbIds, setDeletedTargetDbIds] = useState<Set<string>>(new Set());
-  // rollup new-column pending config popover (shown after column is created)
   const [pendingRollupColId, setPendingRollupColId] = useState<string | null>(null);
-
-  // ── dnd sensors for select options sortable ──
-  const selectOptSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const cellInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -332,10 +108,8 @@ export function DatabaseView({ databaseId }: Props) {
   const newColInputRef = useRef<HTMLInputElement>(null);
   const formulaInputRef = useRef<HTMLTextAreaElement>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
-  // ── row content editor flush ref (populated by RowContentEditor) ──
   const rowContentSaveRef = useRef<(() => void) | null>(null);
 
-  // ── relation helpers ──
   const parseRelationOpts = (col: DBColumn): RelationColumnOptions | null => {
     try {
       const opts = JSON.parse(col.options);
@@ -346,32 +120,6 @@ export function DatabaseView({ databaseId }: Props) {
     } catch {
       return null;
     }
-  };
-
-  // ── rollup helpers ──
-  const parseRollupOpts = (col: DBColumn): RollupColumnOptions | null => {
-    try {
-      const opts = JSON.parse(col.options);
-      if (
-        opts &&
-        typeof opts === "object" &&
-        "relation_column_id" in opts &&
-        "target_column_id" in opts &&
-        "aggregation" in opts
-      ) {
-        return opts as RollupColumnOptions;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  /** Check if a rollup column's relation_column_id is missing from the given columns list. */
-  const rollupRelationMissing = (col: DBColumn, columns: DBColumn[]): boolean => {
-    const opts = parseRollupOpts(col);
-    if (!opts || !opts.relation_column_id) return false;
-    return !columns.find(c => c.id === opts.relation_column_id);
   };
 
   const reload = useCallback(async () => {
@@ -385,9 +133,6 @@ export function DatabaseView({ databaseId }: Props) {
 
   useEffect(() => { void reload().catch(() => {}); }, [reload]);
 
-  // ── batch load relation target rows to avoid N+1 ──
-  // Use a ref to read the latest rows without making rows a reactive dependency,
-  // preventing the setRows(r => [...r]) call from retriggering this effect.
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -410,7 +155,6 @@ export function DatabaseView({ databaseId }: Props) {
         if (!opts?.target_database_id) continue;
         const targetDbId = opts.target_database_id;
 
-        // collect all referenced IDs in this column across all rows
         const allIds = new Set<string>();
         for (const row of currentRows) {
           const raw = row.cells[col.id] ?? "";
@@ -451,7 +195,6 @@ export function DatabaseView({ databaseId }: Props) {
   useEffect(() => { if (addColPopover) newColInputRef.current?.focus(); }, [addColPopover]);
   useEffect(() => { if (formulaPopover) formulaInputRef.current?.focus(); }, [formulaPopover]);
 
-  // ── title ──
   const startTitleEdit = () => { setTitleDraft(db?.title ?? ""); setTitleEditing(true); };
   const commitTitle = async () => {
     setTitleEditing(false);
@@ -460,15 +203,13 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── cell edit ──
   const startEdit = (rowId: string, colId: string, val: string) => {
     setEditingCell({ rowId, colId });
     setCellDraft(val);
   };
 
   const commitEdit = async (rowId: string, colId: string) => {
-    const prevRows = rows; // snapshot for rollback
-    // Optimistic update: reflect new value immediately so there is no visual flash (I-022).
+    const prevRows = rows;
     setRows(rs => rs.map(r =>
       r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: cellDraft } } : r
     ));
@@ -476,9 +217,9 @@ export function DatabaseView({ databaseId }: Props) {
     try {
       const cells: DBCell[] = [{ column_id: colId, value: cellDraft }];
       await api.databases.updateCells(databaseId, rowId, cells);
-      void reload(); // refresh computed columns (formula / rollup) in the background
+      void reload();
     } catch {
-      setRows(prevRows); // rollback on failure
+      setRows(prevRows);
     }
   };
 
@@ -487,7 +228,6 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── keyboard navigation ──
   const handleCellKeyDown = (e: React.KeyboardEvent, rowId: string, colId: string) => {
     if (!db) return;
     const cols = db.columns.slice().sort((a, b) => a.order_index - b.order_index).filter(c => !READONLY_COL_TYPES.has(c.type) && c.type !== "checkbox");
@@ -527,7 +267,6 @@ export function DatabaseView({ databaseId }: Props) {
     }
   };
 
-  // ── rows ──
   const addRow = async () => { await api.databases.addRow(databaseId); void reload(); };
   const deleteRow = async (rowId: string) => { await api.databases.deleteRow(databaseId, rowId); void reload(); };
   const batchDelete = async () => {
@@ -569,7 +308,6 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── column menu ──
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -605,7 +343,6 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── add column ──
   const openAddCol = (e: React.MouseEvent) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -614,14 +351,11 @@ export function DatabaseView({ databaseId }: Props) {
     setNewColType("text");
     setNewColRelationDbId("");
     setColTypeOpen(false);
-    // Reset cached databases so relation selector always reflects latest state (I-020).
     setAvailableDatabases([]);
   };
 
   const loadAvailableDatabases = async () => {
-    // Cache is cleared on every popover open; no early-return guard needed here.
     try {
-      // fetch all pages, then for each page get its blocks to find database blocks
       const pages = await api.pages.listAll();
       const dbList: Database[] = [];
       await Promise.all(pages.map(async page => {
@@ -664,14 +398,12 @@ export function DatabaseView({ databaseId }: Props) {
       });
       setAddColPopover(null);
       await reload();
-      // For rollup columns, open config popover after creation
       if (newColType === "rollup" && newCol?.id) {
         setPendingRollupColId(newCol.id);
       }
     } catch (e) { setError((e as Error).message); }
   };
 
-  // ── formula autocomplete helpers ──
   const getAcItems = (draft: string, cursorPos: number): string[] => {
     const before = draft.slice(0, cursorPos);
     const match = before.match(/([A-Za-z_][A-Za-z0-9_]*)$/);
@@ -698,7 +430,6 @@ export function DatabaseView({ databaseId }: Props) {
     });
   };
 
-  // ── formula popover ──
   const openFormulaPopover = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
     const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -727,7 +458,6 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── rollup popover ──
   const openRollupPopover = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
     const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -735,7 +465,6 @@ export function DatabaseView({ databaseId }: Props) {
     setRollupPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect, 320) });
   };
 
-  // ── select options management ──
   const openSelectOptions = (e: React.MouseEvent, col: DBColumn) => {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
     const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -769,12 +498,10 @@ export function DatabaseView({ databaseId }: Props) {
     await saveSelectOptions(selectOptionsPopover.colId, updated);
   };
 
-  // ── select dropdown ──
   const openSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
     e.stopPropagation();
     const options = parseOptions(col.options);
     if (options.length === 0) {
-      // fallback to free input if no options defined
       startEdit(row.id, col.id, row.cells[col.id] ?? "");
       return;
     }
@@ -794,13 +521,11 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  // ── hide column ──
   const toggleHideColumn = async (col: DBColumn) => {
     await api.databases.updateColumn(databaseId, col.id, { ...col, is_hidden: !col.is_hidden });
     void reload();
   };
 
-  // ── multi-select ──
   const openMultiSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
     e.stopPropagation();
     const options = parseOptions(col.options);
@@ -817,14 +542,12 @@ export function DatabaseView({ databaseId }: Props) {
     const idx = selected.indexOf(optValue);
     const next = idx >= 0 ? selected.filter(v => v !== optValue) : [...selected, optValue];
     await api.databases.updateCells(databaseId, rowId, [{ column_id: colId, value: next.join(",") }]);
-    // update local state immediately for responsiveness
     setRows(rs => rs.map(r => r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: next.join(",") } } : r));
     if (multiSelectDropdown) {
       setMultiSelectDropdown(d => d ? { ...d } : null);
     }
   };
 
-  // ── column resize ──
   const startResize = (e: React.MouseEvent, colId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -847,7 +570,6 @@ export function DatabaseView({ databaseId }: Props) {
     document.addEventListener("mouseup", onUp);
   };
 
-  // ── row detail modal ──
   const openRowModal = (row: DBRow) => {
     setRowModal({ row });
     setRowModalDraft({ ...row.cells });
@@ -855,7 +577,6 @@ export function DatabaseView({ databaseId }: Props) {
 
   const saveRowModal = async () => {
     if (!rowModal) return;
-    // Flush any pending content editor save before closing
     rowContentSaveRef.current?.();
     const skipColIds = new Set(cols.filter(c => c.type === "files" || c.type === "relation" || READONLY_COL_TYPES.has(c.type)).map(c => c.id));
     const cells: DBCell[] = Object.entries(rowModalDraft)
@@ -875,7 +596,6 @@ export function DatabaseView({ databaseId }: Props) {
   const selectCols = allCols.filter(c => c.type === "select");
   const activeGroupColId = kanbanGroupColId || selectCols[0]?.id || "";
 
-  // ── client-side filter (AND) ──
   const applyFilter = (row: DBRow, f: FilterState): boolean => {
     const val = (row.cells[f.colId] ?? "").toLowerCase();
     const fval = f.val.toLowerCase();
@@ -897,7 +617,6 @@ export function DatabaseView({ databaseId }: Props) {
     ? rows.filter(row => activeFilters.every(f => applyFilter(row, f)))
     : rows;
 
-  // ── client-side sort ──
   const activeSorts = sortStates.filter(s => s.colId);
   if (activeSorts.length > 0) {
     displayedRows = [...displayedRows].sort((a, b) => {
@@ -992,126 +711,17 @@ export function DatabaseView({ databaseId }: Props) {
       )}
 
       {toolbarPanel && (
-        <div className="db-panel">
-          {toolbarPanel === "sort" && (
-            <div className="db-panel-list-content">
-              <div className="db-panel-title">排序</div>
-              {sortStates.map((s) => (
-                <div key={s.id} className="db-panel-list-row">
-                  <select
-                    className="db-panel-list-select"
-                    value={s.colId}
-                    onChange={e => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, colId: e.target.value } : x))}>
-                    <option value="">选择列</option>
-                    {allCols.filter(c => c.type !== "formula").map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    className="db-panel-order-btn"
-                    onClick={() => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, order: x.order === "asc" ? "desc" : "asc" } : x))}>
-                    {s.order === "asc" ? "升序 ↑" : "降序 ↓"}
-                  </button>
-                  <button
-                    className="db-panel-row-del"
-                    onClick={() => setSortStates(prev => prev.filter(x => x.id !== s.id))}
-                    title="删除">
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-              <button
-                className="db-panel-add-btn"
-                onClick={() => setSortStates(prev => [...prev, { id: crypto.randomUUID(), colId: "", order: "asc" }])}>
-                <Plus size={13} /> 添加排序
-              </button>
-            </div>
-          )}
-          {toolbarPanel === "filter" && (
-            <div className="db-panel-list-content">
-              <div className="db-panel-title">筛选</div>
-              {filterStates.map((f) => (
-                <div key={f.id} className="db-panel-list-row">
-                  <select
-                    className="db-panel-list-select"
-                    value={f.colId}
-                    onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, colId: e.target.value } : x))}>
-                    <option value="">选择列</option>
-                    {allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    className="db-panel-list-select"
-                    value={f.op}
-                    onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, op: e.target.value } : x))}>
-                    <option value="contains">包含</option>
-                    <option value="not_contains">不包含</option>
-                    <option value="equals">等于</option>
-                    <option value="not_equals">不等于</option>
-                    <option value="is_empty">为空</option>
-                    <option value="is_not_empty">不为空</option>
-                    <option value="gt">大于</option>
-                    <option value="lt">小于</option>
-                  </select>
-                  {f.op !== "is_empty" && f.op !== "is_not_empty" && (
-                    <input
-                      className="db-panel-list-input"
-                      placeholder="值"
-                      value={f.val}
-                      onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, val: e.target.value } : x))}
-                    />
-                  )}
-                  <button
-                    className="db-panel-row-del"
-                    onClick={() => setFilterStates(prev => prev.filter(x => x.id !== f.id))}
-                    title="删除">
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-              <button
-                className="db-panel-add-btn"
-                onClick={() => setFilterStates(prev => [...prev, { id: crypto.randomUUID(), colId: "", op: "contains", val: "" }])}>
-                <Plus size={13} /> 添加筛选条件
-              </button>
-            </div>
-          )}
-          {toolbarPanel === "hide" && (
-            <div className="db-panel-content">
-              <div className="db-panel-title">隐藏字段</div>
-              {allCols.map(col => (
-                <label key={col.id} className="db-hide-row">
-                  <input type="checkbox" checked={!col.is_hidden}
-                    onChange={() => void toggleHideColumn(col)} />
-                  <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
-                  {col.name}
-                </label>
-              ))}
-            </div>
-          )}
-          {toolbarPanel === "group" && (
-            <div className="db-panel-list-content">
-              <div className="db-panel-title">分组</div>
-              <button
-                className={`db-group-radio-row${groupByColId === "" ? " selected" : ""}`}
-                onClick={() => setGroupByColId("")}>
-                <span className="db-group-radio-dot" />
-                <span className="db-group-radio-label">无分组</span>
-              </button>
-              {allCols.filter(c => c.type === "select" || c.type === "checkbox" || c.type === "status").map(c => (
-                <button
-                  key={c.id}
-                  className={`db-group-radio-row${groupByColId === c.id ? " selected" : ""}`}
-                  onClick={() => setGroupByColId(c.id)}>
-                  <span className="col-icon col-icon-wrap db-group-radio-icon"><ColIcon type={c.type} size={13} /></span>
-                  <span className="db-group-radio-label">{c.name}</span>
-                  <span className="db-group-radio-dot" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ToolbarPanelView
+          toolbarPanel={toolbarPanel}
+          allCols={allCols}
+          sortStates={sortStates}
+          setSortStates={setSortStates}
+          filterStates={filterStates}
+          setFilterStates={setFilterStates}
+          groupByColId={groupByColId}
+          setGroupByColId={setGroupByColId}
+          toggleHideColumn={toggleHideColumn}
+        />
       )}
 
       {viewMode === "kanban" && (
@@ -1207,30 +817,15 @@ export function DatabaseView({ databaseId }: Props) {
                   checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
                   onChange={toggleSelectAll} title="全选" />
               </th>
-              {cols.map(col => {
-                const rollupOpts = col.type === "rollup" ? parseRollupOpts(col) : null;
-                const relMissing = col.type === "rollup" && rollupOpts?.relation_column_id
-                  ? rollupRelationMissing(col, allCols)
-                  : false;
-                const relationTargetDeleted = col.type === "relation"
-                  ? deletedTargetDbIds.has(parseRelationOpts(col)?.target_database_id ?? "")
-                  : false;
-                return (
-                  <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
-                    <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
-                      <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
-                      <span className="col-name-text">{col.name}</span>
-                      {relMissing && (
-                        <span className="rollup-dep-missing" title="关联列已被删除，汇总列无法计算"> (关联列已删除)</span>
-                      )}
-                      {relationTargetDeleted && (
-                        <span className="rollup-dep-missing" title="关联的目标数据库已被删除"> (目标已删除)</span>
-                      )}
-                    </button>
-                    <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
-                  </th>
-                );
-              })}
+              {cols.map(col => (
+                <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
+                  <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
+                    <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
+                    <span className="col-name-text">{col.name}</span>
+                  </button>
+                  <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
+                </th>
+              ))}
               <th className="col-add-th">
                 <button className="col-add-th-btn" onClick={openAddCol} title="添加列"><Plus size={16} /></button>
               </th>
@@ -1285,138 +880,28 @@ export function DatabaseView({ databaseId }: Props) {
                   </div>
                 </td>
                 {cols.map(col => {
-                  const val = row.cells[col.id] ?? "";
                   const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
-                  const cellRollupRelMissing = col.type === "rollup" ? rollupRelationMissing(col, allCols) : false;
                   return (
                     <td key={col.id}>
-                      {col.type === "rollup" ? (
-                        <span className="cell-formula-inner">
-                          {cellRollupRelMissing
-                            ? <span className="cell-empty">—</span>
-                            : (val || <span className="cell-empty">—</span>)
-                          }
-                        </span>
-                      ) : col.type === "formula" ? (
-                        <span className="cell-formula-inner">
-                          {(() => { const r = evalFormula(col.formula, row, cols); return r || <span className="cell-empty">—</span>; })()}
-                        </span>
-                      ) : col.type === "created_time" ? (
-                        <span className="cell-time-readonly">{fmtTimestamp(row.created_at)}</span>
-                      ) : col.type === "last_edited_time" ? (
-                        <span className="cell-time-readonly">{fmtTimestamp(row.updated_at)}</span>
-                      ) : col.type === "checkbox" ? (
-                        <div className="cell-checkbox">
-                          <input type="checkbox" checked={val === "true"} onChange={() => void toggleCheckbox(row.id, col.id, val)} />
-                        </div>
-                      ) : col.type === "select" ? (
-                        <div className="cell-select-wrap" onClick={e => openSelectDropdown(e, row, col)}>
-                          {val ? (
-                            <Chip label={val} colors={[{ bg: tagColor(val).bg, text: tagColor(val).color }]} colorIdx={0} />
-                          ) : (
-                            <span className="cell-empty">　</span>
-                          )}
-                        </div>
-                      ) : col.type === "multi-select" ? (
-                        <div className="cell-select-wrap" onClick={e => openMultiSelectDropdown(e, row, col)}>
-                          {val ? val.split(",").map(s => s.trim()).filter(Boolean).map((v, i) => (
-                            <Chip key={i} label={v} colors={[{ bg: tagColor(v).bg, text: tagColor(v).color }]} colorIdx={0} />
-                          )) : <span className="cell-empty">　</span>}
-                        </div>
-                      ) : col.type === "status" ? (
-                        <div className="cell-select-wrap" onClick={e => openSelectDropdown(e, row, col)}>
-                          {val ? (() => {
-                            const opts = parseOptions(col.options);
-                            const opt = opts.find(o => o.value === val);
-                            const c = opt ? TAG_COLORS[opt.colorIdx % TAG_COLORS.length] : tagColor(val);
-                            return <Chip label={val} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />;
-                          })() : <span className="cell-empty">　</span>}
-                        </div>
-                      ) : col.type === "phone" ? (
-                        isEditing ? (
-                          <input ref={cellInputRef} className="cell-input" type="tel" value={cellDraft}
-                            onChange={e => setCellDraft(e.target.value)}
-                            onBlur={() => void commitEdit(row.id, col.id)}
-                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
-                        ) : (
-                          <div className="cell-select-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? <Chip label={val} href={`tel:${val}`} /> : <span className="cell-empty">　</span>}
-                          </div>
-                        )
-                      ) : col.type === "people" ? (
-                        isEditing ? (
-                          <input ref={cellInputRef} className="cell-input" type="text" value={cellDraft}
-                            onChange={e => setCellDraft(e.target.value)}
-                            onBlur={() => void commitEdit(row.id, col.id)}
-                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
-                        ) : (
-                          <div className="cell-select-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? val.split(",").map(s => s.trim()).filter(Boolean).map((name, i) => (
-                              <Chip key={i} label={name} />
-                            )) : <span className="cell-empty">　</span>}
-                          </div>
-                        )
-                      ) : col.type === "url" ? (
-                        isEditing ? (
-                          <input ref={cellInputRef} className="cell-input" type="url" value={cellDraft}
-                            onChange={e => setCellDraft(e.target.value)}
-                            onBlur={() => void commitEdit(row.id, col.id)}
-                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
-                        ) : (
-                          <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? <a href={val} target="_blank" rel="noopener noreferrer" className="cell-url-link" onClick={e => e.stopPropagation()}><Link size={12} /> {val}</a> : <span className="cell-empty">　</span>}
-                          </span>
-                        )
-                      ) : col.type === "email" ? (
-                        isEditing ? (
-                          <input ref={cellInputRef} className="cell-input" type="email" value={cellDraft}
-                            onChange={e => setCellDraft(e.target.value)}
-                            onBlur={() => void commitEdit(row.id, col.id)}
-                            onKeyDown={e => handleCellKeyDown(e, row.id, col.id)} />
-                        ) : (
-                          <span className="cell-url-wrap" onClick={() => startEdit(row.id, col.id, val)}>
-                            {val ? <a href={`mailto:${val}`} className="cell-url-link" onClick={e => e.stopPropagation()}><Mail size={12} /> {val}</a> : <span className="cell-empty">　</span>}
-                          </span>
-                        )
-                      ) : col.type === "files" ? (
-                        <FilesCell
-                          attachments={parseFileAttachments(row.cells[col.id])}
-                          onUpdate={(newAttachments) => {
-                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: JSON.stringify(newAttachments) }]).then(() => void reload());
-                          }}
-                        />
-                      ) : col.type === "relation" ? (
-                        <RelationCell
-                          column={col}
-                          value={val}
-                          onChange={(newVal) => {
-                            void api.databases.updateCells(databaseId, row.id, [{ column_id: col.id, value: newVal }])
-                              .then(() => void reload());
-                          }}
-                          targetRowsCache={(() => {
-                            const opts = parseRelationOpts(col);
-                            return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
-                          })()}
-                          onTargetDeleted={() => {
-                            const targetDbId = parseRelationOpts(col)?.target_database_id;
-                            if (targetDbId) setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId));
-                          }}
-                        />
-                      ) : isEditing ? (
-                        <input
-                          ref={cellInputRef}
-                          className="cell-input"
-                          type={col.type === "number" ? "number" : col.type === "date" ? "date" : "text"}
-                          value={cellDraft}
-                          onChange={e => setCellDraft(e.target.value)}
-                          onBlur={() => void commitEdit(row.id, col.id)}
-                          onKeyDown={e => handleCellKeyDown(e, row.id, col.id)}
-                        />
-                      ) : (
-                        <span className={`cell-${col.type}-inner`} onClick={() => startEdit(row.id, col.id, val)}>
-                          {val || <span className="cell-empty">　</span>}
-                        </span>
-                      )}
+                      <CellRenderer
+                        col={col}
+                        row={row}
+                        cols={cols}
+                        isEditing={isEditing}
+                        cellDraft={cellDraft}
+                        setCellDraft={setCellDraft}
+                        cellInputRef={cellInputRef}
+                        startEdit={startEdit}
+                        commitEdit={commitEdit}
+                        handleCellKeyDown={handleCellKeyDown}
+                        toggleCheckbox={toggleCheckbox}
+                        openSelectDropdown={openSelectDropdown}
+                        openMultiSelectDropdown={openMultiSelectDropdown}
+                        parseRelationOpts={parseRelationOpts}
+                        relationRowsCache={relationRowsCache}
+                        databaseId={databaseId}
+                        reload={reload}
+                      />
                     </td>
                   );
                 })}
@@ -1437,186 +922,45 @@ export function DatabaseView({ databaseId }: Props) {
 
       {/* column header menu */}
       {colMenu && menuCol && (
-        <>
-          <div className="col-menu-overlay" onClick={closeColMenu} />
-          <div className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
-            <div className="col-menu-rename">
-              <input
-                ref={renameInputRef}
-                value={colMenu.draft}
-                onChange={e => setColMenu(m => m ? { ...m, draft: e.target.value } : m)}
-                onKeyDown={e => { if (e.key === "Enter") void commitRename(); if (e.key === "Escape") closeColMenu(); }}
-                onBlur={() => void commitRename()}
-                placeholder="列名"
-              />
-            </div>
-            <div className="col-menu-divider" />
-            <div className="col-menu-type-label">列类型</div>
-            {COL_TYPES.map(t => (
-              <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
-                onClick={() => void changeColType(t)}>
-                <span className="col-icon-wrap"><ColIcon type={t} /></span>{t}
-              </button>
-            ))}
-            {menuCol.type === "formula" && (
-              <>
-                <div className="col-menu-divider" />
-                <button className="col-menu-formula-btn" onClick={e => openFormulaPopover(e, menuCol)}>ƒ 编辑公式</button>
-              </>
-            )}
-            {menuCol.type === "rollup" && (
-              <>
-                <div className="col-menu-divider" />
-                <button className="col-menu-formula-btn" onClick={e => openRollupPopover(e, menuCol)}>Σ 编辑汇总</button>
-              </>
-            )}
-            {(menuCol.type === "select" || menuCol.type === "multi-select" || menuCol.type === "status") && (
-              <>
-                <div className="col-menu-divider" />
-                <button className="col-menu-formula-btn" onClick={e => openSelectOptions(e, menuCol)}>≡ 管理选项</button>
-              </>
-            )}
-            <div className="col-menu-divider" />
-            <button className="col-menu-del-btn" onClick={() => void deleteCol()}><Trash2 size={14} /> 删除列</button>
-          </div>
-        </>
+        <ColumnHeaderMenu
+          colMenu={colMenu}
+          menuCol={menuCol}
+          renameInputRef={renameInputRef}
+          setColMenu={setColMenu}
+          closeColMenu={closeColMenu}
+          commitRename={commitRename}
+          changeColType={changeColType}
+          deleteCol={deleteCol}
+          openFormulaPopover={openFormulaPopover}
+          openRollupPopover={openRollupPopover}
+          openSelectOptions={openSelectOptions}
+        />
       )}
 
       {/* formula editor popover */}
       {formulaPopover && db && (
-        <>
-          <div className="formula-overlay" onClick={() => setFormulaPopover(null)} />
-          <div className="formula-popover" style={{ top: formulaPopover.y, left: formulaPopover.x }}>
-            <div className="formula-popover-title">编辑公式</div>
-            <div className="formula-input-wrap">
-              <textarea
-                ref={formulaInputRef}
-                className="formula-input"
-                value={formulaPopover.draft}
-                onChange={e => updateFormulaPreview(e.target.value)}
-                onKeyDown={e => {
-                  if (formulaPopover.acItems.length > 0) {
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setFormulaPopover(p => p ? { ...p, acIndex: (p.acIndex + 1) % p.acItems.length } : p);
-                      return;
-                    }
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setFormulaPopover(p => p ? { ...p, acIndex: (p.acIndex - 1 + p.acItems.length) % p.acItems.length } : p);
-                      return;
-                    }
-                    if (e.key === "Enter" || e.key === "Tab") {
-                      e.preventDefault();
-                      applyAcItem(formulaPopover.acItems[formulaPopover.acIndex]);
-                      return;
-                    }
-                  }
-                  if (e.key === "Escape") setFormulaPopover(null);
-                }}
-                placeholder={`prop("列名") + prop("列名")`}
-                rows={3}
-                spellCheck={false}
-              />
-              {formulaPopover.acItems.length > 0 && (
-                <div className="formula-ac-list">
-                  {formulaPopover.acItems.map((item, i) => (
-                    <button
-                      key={item}
-                      className={`formula-ac-item${i === formulaPopover.acIndex ? " active" : ""}`}
-                      onMouseDown={e => { e.preventDefault(); applyAcItem(item); }}
-                    >
-                      <span className="formula-ac-fn">ƒ</span> {item}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="formula-props-label">可引用属性</div>
-            <div className="formula-props">
-              {db.columns.filter(c => c.type !== "formula").map(c => (
-                <button key={c.id} className="formula-prop-chip"
-                  onClick={() => {
-                    const ins = `prop("${c.name}")`;
-                    const next = formulaPopover.draft + ins;
-                    updateFormulaPreview(next, []);
-                  }}>
-                  <ColIcon type={c.type} /> {c.name}
-                </button>
-              ))}
-            </div>
-            {formulaPopover.preview !== "" && (
-              <div className="formula-preview">
-                <span className="formula-preview-label">预览：</span>
-                <span className={formulaPopover.preview === "⚠" ? "formula-preview-err" : "formula-preview-val"}>
-                  {formulaPopover.preview}
-                </span>
-              </div>
-            )}
-            <div className="formula-actions">
-              <button className="formula-save-btn" onClick={() => void saveFormula()}>完成</button>
-              <button className="formula-cancel-btn" onClick={() => setFormulaPopover(null)}>取消</button>
-            </div>
-          </div>
-        </>
+        <FormulaPopoverPanel
+          formulaPopover={formulaPopover}
+          db={db}
+          formulaInputRef={formulaInputRef}
+          setFormulaPopover={setFormulaPopover}
+          updateFormulaPreview={updateFormulaPreview}
+          applyAcItem={applyAcItem}
+          saveFormula={saveFormula}
+        />
       )}
 
       {/* select options manager */}
       {selectOptionsPopover && (
-        <>
-          <div className="formula-overlay" onClick={() => setSelectOptionsPopover(null)} />
-          <div className="select-opts-popover" style={{ top: selectOptionsPopover.y, left: selectOptionsPopover.x }}>
-            <div className="formula-popover-title">管理选项</div>
-            <DndContext
-              sensors={selectOptSensors}
-              onDragEnd={async (event: DragEndEvent) => {
-                const { active, over } = event;
-                if (!over || active.id === over.id || !selectOptionsPopover) return;
-                const oldIdx = selectOptionsPopover.options.findIndex((_, i) => String(i) === active.id);
-                const newIdx = selectOptionsPopover.options.findIndex((_, i) => String(i) === over.id);
-                if (oldIdx < 0 || newIdx < 0) return;
-                const updated = arrayMove(selectOptionsPopover.options, oldIdx, newIdx);
-                setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
-                await saveSelectOptions(selectOptionsPopover.colId, updated);
-              }}
-            >
-              <SortableContext
-                items={selectOptionsPopover.options.map((_, i) => String(i))}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="select-opts-list">
-                  {selectOptionsPopover.options.map((opt, idx) => (
-                    <SortableOptionRow
-                      key={idx}
-                      opt={opt}
-                      idx={idx}
-                      onRename={async (i, value) => {
-                        const updated = selectOptionsPopover.options.map((o, oi) => oi === i ? { ...o, value } : o);
-                        setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
-                        await saveSelectOptions(selectOptionsPopover.colId, updated);
-                      }}
-                      onColorChange={async (i, colorIdx) => {
-                        const updated = selectOptionsPopover.options.map((o, oi) => oi === i ? { ...o, colorIdx } : o);
-                        setSelectOptionsPopover(p => p ? { ...p, options: updated } : p);
-                        await saveSelectOptions(selectOptionsPopover.colId, updated);
-                      }}
-                      onDelete={removeSelectOption}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-            <div className="select-opt-add">
-              <input
-                placeholder="新选项名称"
-                value={newOptionName}
-                onChange={e => setNewOptionName(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") void addSelectOption(); }}
-              />
-              <button onClick={() => void addSelectOption()}>添加</button>
-            </div>
-          </div>
-        </>
+        <SelectOptionsPopoverPanel
+          selectOptionsPopover={selectOptionsPopover}
+          newOptionName={newOptionName}
+          setNewOptionName={setNewOptionName}
+          setSelectOptionsPopover={setSelectOptionsPopover}
+          saveSelectOptions={saveSelectOptions}
+          addSelectOption={addSelectOption}
+          removeSelectOption={removeSelectOption}
+        />
       )}
 
       {/* select dropdown */}
@@ -1722,7 +1066,6 @@ export function DatabaseView({ databaseId }: Props) {
       {pendingRollupColId && db && (() => {
         const rollupCol = db.columns.find(c => c.id === pendingRollupColId);
         if (!rollupCol) return null;
-        // Position near center of screen
         const cx = Math.max(0, window.innerWidth / 2 - 160);
         const cy = Math.max(60, window.innerHeight / 3);
         return (
@@ -1774,172 +1117,19 @@ export function DatabaseView({ databaseId }: Props) {
 
       {/* row detail modal */}
       {rowModal && db && (
-        <>
-          <div className="row-modal-overlay" onClick={saveRowModal} />
-          <div className="row-modal" onClick={e => e.stopPropagation()}>
-            <div className="row-modal-header">
-              <span className="row-modal-title">行详情</span>
-              <button className="row-modal-close" onClick={() => void saveRowModal()}>×</button>
-            </div>
-            <div className="row-modal-body">
-              <RowContentEditor
-                databaseId={databaseId}
-                rowId={rowModal.row.id}
-                initialContent={rowModal.row.content ?? ""}
-                onSaveRef={rowContentSaveRef}
-              />
-              <div className="row-modal-content-divider" />
-              {cols.map(col => (
-                <div key={col.id} className="row-modal-field">
-                  <div className="row-modal-label">
-                    <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
-                    {col.name}
-                  </div>
-                  <div className="row-modal-value">
-                    {col.type === "rollup" ? (
-                      <span className="cell-formula-inner">{rowModal.row.cells[col.id] || "—"}</span>
-                    ) : col.type === "formula" ? (
-                      <span className="cell-formula-inner">{evalFormula(col.formula, rowModal.row, cols) || "—"}</span>
-                    ) : col.type === "created_time" ? (
-                      <span className="cell-time-readonly">{fmtTimestamp(rowModal.row.created_at)}</span>
-                    ) : col.type === "last_edited_time" ? (
-                      <span className="cell-time-readonly">{fmtTimestamp(rowModal.row.updated_at)}</span>
-                    ) : col.type === "url" ? (
-                      <div className="row-modal-url-wrap">
-                        <input className="row-modal-input" type="url" value={rowModalDraft[col.id] ?? ""}
-                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="https://" />
-                        {rowModalDraft[col.id] && (
-                          <a href={rowModalDraft[col.id]} target="_blank" rel="noopener noreferrer" className="cell-url-link row-modal-url-open">↗</a>
-                        )}
-                      </div>
-                    ) : col.type === "email" ? (
-                      <div className="row-modal-url-wrap">
-                        <input className="row-modal-input" type="email" value={rowModalDraft[col.id] ?? ""}
-                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="name@example.com" />
-                        {rowModalDraft[col.id] && (
-                          <a href={`mailto:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open"><Mail size={12} /></a>
-                        )}
-                      </div>
-                    ) : col.type === "checkbox" ? (
-                      <input
-                        type="checkbox"
-                        checked={rowModalDraft[col.id] === "true"}
-                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.checked ? "true" : "false" }))}
-                        style={{ accentColor: "#2383e2", width: 15, height: 15 }}
-                      />
-                    ) : col.type === "select" ? (
-                      <select
-                        value={rowModalDraft[col.id] ?? ""}
-                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
-                        className="row-modal-select"
-                      >
-                        <option value="">—</option>
-                        {parseOptions(col.options).map((opt, idx) => (
-                          <option key={idx} value={opt.value}>{opt.value}</option>
-                        ))}
-                      </select>
-                    ) : col.type === "multi-select" ? (
-                      <div className="row-modal-multiselect">
-                        {parseOptions(col.options).map((opt, idx) => {
-                          const selected = (rowModalDraft[col.id] ?? "").split(",").map(s => s.trim()).filter(Boolean);
-                          const isSelected = selected.includes(opt.value);
-                          const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-                          return (
-                            <button key={idx}
-                              className={`cell-tag${isSelected ? " selected" : ""}`}
-                              style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280", border: isSelected ? `1.5px solid ${c.color}` : "1.5px solid transparent" }}
-                              onClick={() => {
-                                const next = isSelected ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
-                                setRowModalDraft(d => ({ ...d, [col.id]: next.join(",") }));
-                              }}>
-                              {opt.value}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : col.type === "status" ? (
-                      <div className="row-modal-multiselect">
-                        {parseOptions(col.options).map((opt, idx) => {
-                          const currentVal = rowModalDraft[col.id] ?? "";
-                          const isSelected = currentVal === opt.value;
-                          const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-                          return (
-                            <button key={idx}
-                              className={`cell-tag${isSelected ? " selected" : ""}`}
-                              style={{ background: isSelected ? c.bg : "#f0f0f0", color: isSelected ? c.color : "#6b7280", border: isSelected ? `1.5px solid ${c.color}` : "1.5px solid transparent" }}
-                              onClick={() => setRowModalDraft(d => ({ ...d, [col.id]: isSelected ? "" : opt.value }))}>
-                              {opt.value}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : col.type === "phone" ? (
-                      <div className="row-modal-url-wrap">
-                        <input className="row-modal-input" type="tel" value={rowModalDraft[col.id] ?? ""}
-                          onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))} placeholder="+86 138 0000 0000" />
-                        {rowModalDraft[col.id] && (
-                          <a href={`tel:${rowModalDraft[col.id]}`} className="cell-url-link row-modal-url-open" onClick={e => e.stopPropagation()}><Phone size={12} /></a>
-                        )}
-                      </div>
-                    ) : col.type === "people" ? (
-                      <input
-                        className="row-modal-input"
-                        type="text"
-                        value={rowModalDraft[col.id] ?? ""}
-                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
-                        placeholder="张三,李四（逗号分隔）"
-                      />
-                    ) : col.type === "files" ? (
-                      <FilesModalField
-                        attachments={parseFileAttachments(rowModal.row.cells[col.id])}
-                        onUpdate={(newAtts) => {
-                          void api.databases.updateCells(databaseId, rowModal.row.id, [{ column_id: col.id, value: JSON.stringify(newAtts) }])
-                            .then(() => {
-                              // 同步更新 rowModal.row 的 cells，不走 rowModalDraft
-                              setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: JSON.stringify(newAtts) } } } : null);
-                              void reload();
-                            });
-                        }}
-                      />
-                    ) : col.type === "relation" ? (
-                      <RelationCell
-                        column={col}
-                        value={rowModal.row.cells[col.id] ?? ""}
-                        onChange={(newVal) => {
-                          // 即存即存，不走 rowModalDraft
-                          void api.databases.updateCells(databaseId, rowModal.row.id, [{ column_id: col.id, value: newVal }])
-                            .then(() => {
-                              setRowModal(m => m ? { row: { ...m.row, cells: { ...m.row.cells, [col.id]: newVal } } } : null);
-                              void reload();
-                            });
-                        }}
-                        targetRowsCache={(() => {
-                          const opts = parseRelationOpts(col);
-                          return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
-                        })()}
-                        onTargetDeleted={() => {
-                          const targetDbId = parseRelationOpts(col)?.target_database_id;
-                          if (targetDbId) setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId));
-                        }}
-                      />
-                    ) : (
-                      <input
-                        className="row-modal-input"
-                        type={col.type === "number" ? "number" : col.type === "date" ? "date" : "text"}
-                        value={rowModalDraft[col.id] ?? ""}
-                        onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
-                        placeholder="空"
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="row-modal-footer">
-              <button className="formula-save-btn" onClick={() => void saveRowModal()}>保存</button>
-            </div>
-          </div>
-        </>
+        <RowModal
+          rowModal={rowModal}
+          cols={cols}
+          rowModalDraft={rowModalDraft}
+          setRowModalDraft={setRowModalDraft}
+          setRowModal={setRowModal}
+          saveRowModal={saveRowModal}
+          databaseId={databaseId}
+          rowContentSaveRef={rowContentSaveRef}
+          parseRelationOpts={parseRelationOpts}
+          relationRowsCache={relationRowsCache}
+          reload={reload}
+        />
       )}
     </div>
   );
