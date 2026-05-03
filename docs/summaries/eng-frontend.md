@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
-| 最后更新 | 2026-05-02 |
-| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 |
+| 最后更新 | 2026-05-03 |
+| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 / REQ-074 |
 
 ---
 
@@ -27,6 +27,8 @@
 | `web/src/components/editor/Editor.tsx` | BlockNote 编辑器，含硬编码 localhost URL（待 T-P1-2 修复） |
 | `web/src/components/database/DatabaseView.tsx` | 数据库视图（≈1917 行大组件，待 AR-1 拆分） |
 | `web/src/components/sidebar/Sidebar.tsx` | 页面树侧边栏 |
+| `web/src/components/quickstart/QuickstartCard.tsx` | 空状态快速入门卡片（轻量 JSX 渲染，不依赖 BlockNote） |
+| `web/src/data/quickstart.json` | 快速入门内容种子数据（16 块，5 章节） |
 | `web/src/settings/settingsStore.ts` | 字体/主题 Context |
 | `web/src/types/index.ts` | 业务类型定义 |
 
@@ -38,7 +40,16 @@
 
 ---
 
-## 上次变更摘要（ISS-013）
+## 上次变更摘要（REQ-074）
+
+- `web/src/data/quickstart.json`：新增快速入门种子数据，16 块覆盖 5 章节（标题/创建页面/块编辑器/数据库/常用快捷键），纯字符串 content 格式
+- `web/src/components/quickstart/QuickstartCard.tsx`：轻量 JSX 卡片组件，将 seed blocks 渲染为 h1/h2/ul/li/p；底部「导入为页面」按钮调用 `api.pages.create` + `api.blocks.create` 逐块写入，成功后回调 `onImported`，失败调用 `toast.error`
+- `web/src/components/quickstart/QuickstartCard.css`：卡片样式，max-width: 600px，margin: 0 auto
+- `web/src/App.tsx`：empty-state 内容替换为 `<QuickstartCard onImported={handleSelect} />`，新增 import
+- `web/src/App.css`：`.empty-state` 改为 `align-items: flex-start; padding: 32px 0`，适配卡片展示
+- commit: `feat(quickstart)[eng-frontend#130]: 实现空状态快速入门说明卡片`
+
+## 历史变更摘要（ISS-013）
 
 - `web/src/utils/toBlockNote.test.ts`：修复 11 处 TS2532/TS18048 类型错误
   - 根因：`BNBlock.children` 类型为 `BNBlock[] | undefined`（可选字段），直接用 `children[n]` 访问触发 TS2532
