@@ -155,10 +155,12 @@
   position: absolute;
   bottom: 10px;
   right: 16px;
-  display: none;
+  display: flex;
   gap: 6px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
 }
-.page-cover:hover .page-cover-actions { display: flex; }
+.page-cover:hover .page-cover-actions { opacity: 1; }
 
 .page-cover-action-btn {
   background: var(--color-bg-primary);
