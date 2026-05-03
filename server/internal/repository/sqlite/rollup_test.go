@@ -694,3 +694,150 @@ func rowsByID(rows []*model.DBRow) map[string]*model.DBRow {
 	}
 	return m
 }
+
+// ---------------------------------------------------------------------------
+// GetRow rollup integration tests
+// ---------------------------------------------------------------------------
+
+func TestGetRow_Rollup_Count(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	addRollupCol(t, f.repo, "col-count", f.dbID, f.relColID, f.targetColID, "count")
+
+	// row1 references 2 target rows
+	relVal, _ := json.Marshal([]string{f.targetRow1ID, f.targetRow2ID})
+	setCell(t, f.repo, f.row1ID, f.relColID, string(relVal))
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-count"]; got != "2" {
+		t.Errorf("count: got %q, want %q", got, "2")
+	}
+}
+
+func TestGetRow_Rollup_Sum(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	addRollupCol(t, f.repo, "col-sum", f.dbID, f.relColID, f.targetColID, "sum")
+
+	setCell(t, f.repo, f.targetRow1ID, f.targetColID, "3")
+	setCell(t, f.repo, f.targetRow2ID, f.targetColID, "7")
+
+	relVal, _ := json.Marshal([]string{f.targetRow1ID, f.targetRow2ID})
+	setCell(t, f.repo, f.row1ID, f.relColID, string(relVal))
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-sum"]; got != "10" {
+		t.Errorf("sum: got %q, want %q", got, "10")
+	}
+}
+
+func TestGetRow_Rollup_Avg(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	addRollupCol(t, f.repo, "col-avg", f.dbID, f.relColID, f.targetColID, "avg")
+
+	setCell(t, f.repo, f.targetRow1ID, f.targetColID, "10")
+	setCell(t, f.repo, f.targetRow2ID, f.targetColID, "20")
+
+	relVal, _ := json.Marshal([]string{f.targetRow1ID, f.targetRow2ID})
+	setCell(t, f.repo, f.row1ID, f.relColID, string(relVal))
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-avg"]; got != "15.00" {
+		t.Errorf("avg: got %q, want %q", got, "15.00")
+	}
+}
+
+func TestGetRow_Rollup_ShowOriginal(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	addRollupCol(t, f.repo, "col-show", f.dbID, f.relColID, f.targetColID, "show_original")
+
+	setCell(t, f.repo, f.targetRow1ID, f.targetColID, "apple")
+	setCell(t, f.repo, f.targetRow2ID, f.targetColID, "banana")
+
+	relVal, _ := json.Marshal([]string{f.targetRow1ID, f.targetRow2ID})
+	setCell(t, f.repo, f.row1ID, f.relColID, string(relVal))
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-show"]; got != "apple,banana" {
+		t.Errorf("show_original: got %q, want %q", got, "apple,banana")
+	}
+}
+
+func TestGetRow_Rollup_EmptyRelation(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	addRollupCol(t, f.repo, "col-count-empty", f.dbID, f.relColID, f.targetColID, "count")
+
+	// row1 has no relation cell set → relatedIDs is empty → count = 0
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-count-empty"]; got != "0" {
+		t.Errorf("count with empty relation: got %q, want %q", got, "0")
+	}
+}
+
+func TestGetRow_Rollup_CorruptedOptions_ColumnEmpty(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	now := time.Now().Unix()
+
+	// Add a rollup column with broken JSON options
+	_, err := f.repo.db.ExecContext(ctx,
+		`INSERT INTO database_columns(id,database_id,name,type,options,formula,is_hidden,order_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+		"col-rollup-bad", f.dbID, "BadRollup", "rollup", "NOT_JSON{{{", "", 0, 10, now, now)
+	if err != nil {
+		t.Fatalf("insert bad rollup col: %v", err)
+	}
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	// Corrupted options → cell should be absent or empty string
+	if got, exists := row.Cells["col-rollup-bad"]; exists && got != "" {
+		t.Errorf("broken rollup col: expected absent or empty, got %q", got)
+	}
+}
+
+func TestGetRow_Rollup_RelationColumnNotExist(t *testing.T) {
+	f := seedMinimalDB(t)
+	ctx := context.Background()
+	now := time.Now().Unix()
+
+	// Rollup pointing to a non-existent relation column
+	opts, _ := json.Marshal(map[string]string{
+		"relation_column_id": "col-nonexistent",
+		"target_column_id":   f.targetColID,
+		"aggregation":        "count",
+	})
+	_, err := f.repo.db.ExecContext(ctx,
+		`INSERT INTO database_columns(id,database_id,name,type,options,formula,is_hidden,order_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+		"col-rollup-norel", f.dbID, "NoRelRollup", "rollup", string(opts), "", 0, 11, now, now)
+	if err != nil {
+		t.Fatalf("insert rollup col: %v", err)
+	}
+
+	row, err := f.repo.GetRow(ctx, f.dbID, f.row1ID)
+	if err != nil {
+		t.Fatalf("GetRow: %v", err)
+	}
+	if got := row.Cells["col-rollup-norel"]; got != "" {
+		t.Errorf("relation col not exist: expected empty string, got %q", got)
+	}
+}

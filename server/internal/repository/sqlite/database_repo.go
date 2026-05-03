@@ -473,6 +473,54 @@ func (r *DatabaseRepo) GetRow(ctx context.Context, databaseID, rowID string) (*m
 		row.Cells[col.ID] = evalFormula(col.Formula, row.Cells, colByName)
 	}
 
+	// 计算 rollup 列
+	colByID := make(map[string]*model.DBColumn, len(cols))
+	for _, c := range cols {
+		colByID[c.ID] = c
+	}
+	for _, col := range cols {
+		if col.Type != "rollup" {
+			continue
+		}
+
+		var opts struct {
+			RelationColumnID string `json:"relation_column_id"`
+			TargetColumnID   string `json:"target_column_id"`
+			Aggregation      string `json:"aggregation"`
+		}
+		if err := json.Unmarshal([]byte(col.Options), &opts); err != nil {
+			row.Cells[col.ID] = ""
+			continue
+		}
+
+		if _, ok := colByID[opts.RelationColumnID]; !ok {
+			row.Cells[col.ID] = ""
+			continue
+		}
+
+		// 取该行 relation 列的关联行 ID 数组
+		cellVal := row.Cells[opts.RelationColumnID]
+		var relatedIDs []string
+		if cellVal != "" {
+			if err := json.Unmarshal([]byte(cellVal), &relatedIDs); err != nil {
+				relatedIDs = nil
+			}
+		}
+
+		// 查询目标列的 cells
+		relatedIDSet := make(map[string]struct{}, len(relatedIDs))
+		for _, id := range relatedIDs {
+			relatedIDSet[id] = struct{}{}
+		}
+		targetCells, err := r.batchFetchCells(ctx, relatedIDSet, opts.TargetColumnID)
+		if err != nil {
+			row.Cells[col.ID] = ""
+			continue
+		}
+
+		row.Cells[col.ID] = computeRollup(opts.Aggregation, relatedIDs, targetCells)
+	}
+
 	return row, nil
 }
 
