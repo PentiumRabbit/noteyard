@@ -691,7 +691,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
       if (b.type === "subpage" || b.type === "fileAttach" || b.type === "bookmark" || b.type === "embed" || b.type === "pdf" || b.type === "button") {
         return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify(b.props), props: "{}", order_index: i }];
       }
-      return [{ id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i }];
+      const blockDto: Partial<Block> = { id: b.id, page_id: pid, parent_block_id: parentBlockId, type: b.type, content: JSON.stringify((b as { content?: unknown }).content ?? []), props: JSON.stringify((b as { props?: unknown }).props ?? {}), order_index: i };
+      const childDtos = buildDtosRecursive((b as { children?: unknown[] }).children ?? [], pid, b.id);
+      return [blockDto, ...childDtos];
     });
 
   const buildDtos = (pid: string): Partial<Block>[] =>
