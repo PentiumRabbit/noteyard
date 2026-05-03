@@ -195,12 +195,16 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
     }
   };
 
+  const PICKER_PAGE_SIZE = 50;
+
   const filteredPickerRows = pickerSearch.trim()
     ? pickerRows.filter(r => {
         const label = rowLabel(r).toLowerCase();
         return label.includes(pickerSearch.trim().toLowerCase());
       })
-    : pickerRows;
+    : pickerRows.slice(0, PICKER_PAGE_SIZE);
+
+  const showTruncationHint = !pickerSearch.trim() && pickerRows.length > PICKER_PAGE_SIZE;
 
   return (
     <div className="relation-cell" onClick={openPicker}>
@@ -278,6 +282,9 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
                   </button>
                 );
               })}
+              {!pickerLoading && showTruncationHint && (
+                <div className="relation-picker-hint">显示前 50 条，输入搜索查找更多</div>
+              )}
             </div>
             <div className="relation-picker-footer">
               <button
