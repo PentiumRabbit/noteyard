@@ -86,6 +86,63 @@ mark { background: rgba(255, 212, 0, 0.4); border-radius: 2px; padding: 0 1px; }
   color: var(--color-text-tertiary);
 }
 
+.search-section-label--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.search-history-clear-all {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-secondary);
+  padding: 0;
+}
+.search-history-clear-all:hover { color: var(--color-text-primary); text-decoration: underline; }
+
+.search-history-item {
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  margin: 0 4px;
+}
+.search-history-item:hover { background: var(--color-hover-bg-medium); }
+
+.search-history-term {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 8px 8px 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-primary);
+  min-width: 0;
+}
+
+.search-history-icon { font-size: 14px; flex-shrink: 0; color: var(--color-text-tertiary); }
+
+.search-history-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  opacity: 0;
+}
+.search-history-item:hover .search-history-delete { opacity: 1; }
+.search-history-delete:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
+
 .search-empty {
   padding: 20px 16px;
   text-align: center;

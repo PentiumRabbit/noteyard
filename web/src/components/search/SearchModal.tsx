@@ -6,6 +6,37 @@ import "./SearchModal.css";
 const RECENT_KEY = "noteyard_recent_pages";
 const RECENT_MAX = 8;
 
+const HISTORY_KEY = "noteyard_search_history";
+const HISTORY_MAX = 10;
+
+function loadHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(term: string): void {
+  const trimmed = term.trim();
+  if (!trimmed) return;
+  const history = loadHistory().filter((h) => h !== trimmed);
+  history.unshift(trimmed);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_MAX)));
+}
+
+function deleteHistoryItem(term: string): void {
+  const history = loadHistory().filter((h) => h !== term);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function clearHistory(): void {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([]));
+}
+
 function getRecentPageIds(): string[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY);
@@ -48,6 +79,7 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recentPageIds] = useState<string[]>(getRecentPageIds);
+  const [history, setHistory] = useState<string[]>(loadHistory);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -89,6 +121,29 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
   // Active list is either search results or recent items
   const activeList = trimmedQuery ? results : recentItems;
 
+  const handleSelectResult = (pageId: string) => {
+    if (trimmedQuery) {
+      saveHistory(trimmedQuery);
+      setHistory(loadHistory());
+    }
+    onSelect(pageId);
+  };
+
+  const handleHistoryClick = (term: string) => {
+    setQuery(term);
+  };
+
+  const handleDeleteHistory = (e: React.MouseEvent, term: string) => {
+    e.stopPropagation();
+    deleteHistoryItem(term);
+    setHistory(loadHistory());
+  };
+
+  const handleClearHistory = () => {
+    clearHistory();
+    setHistory([]);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -98,7 +153,7 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       if (trimmedQuery && results[activeIndex]) {
-        onSelect(results[activeIndex].page_id);
+        handleSelectResult(results[activeIndex].page_id);
       } else if (!trimmedQuery && recentItems[activeIndex]) {
         onSelect(recentItems[activeIndex].id);
       }
@@ -135,7 +190,7 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
               <button
                 key={item.page_id}
                 className={`search-result-item${i === activeIndex ? " active" : ""}`}
-                onClick={() => onSelect(item.page_id)}
+                onClick={() => handleSelectResult(item.page_id)}
                 onMouseEnter={() => setActiveIndex(i)}
               >
                 <span className="search-result-icon">{item.page_icon ?? "📄"}</span>
@@ -167,6 +222,38 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
           </div>
         )}
 
+        {/* Search history (empty query) */}
+        {!trimmedQuery && history.length > 0 && (
+          <>
+            <div className="search-section-label search-section-label--with-action">
+              <span>搜索历史</span>
+              <button className="search-history-clear-all" onClick={handleClearHistory}>
+                清除全部
+              </button>
+            </div>
+            <div className="search-results">
+              {history.map((term) => (
+                <div key={term} className="search-history-item">
+                  <button
+                    className="search-history-term"
+                    onClick={() => handleHistoryClick(term)}
+                  >
+                    <span className="search-history-icon">🕐</span>
+                    <span className="search-result-title">{term}</span>
+                  </button>
+                  <button
+                    className="search-history-delete"
+                    onClick={(e) => handleDeleteHistory(e, term)}
+                    title="删除"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Recent pages (empty query) */}
         {!trimmedQuery && recentItems.length > 0 && (
           <>
@@ -191,8 +278,8 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
           </>
         )}
 
-        {/* Empty state (no query, no recent) */}
-        {!trimmedQuery && recentItems.length === 0 && (
+        {/* Empty state (no query, no recent, no history) */}
+        {!trimmedQuery && recentItems.length === 0 && history.length === 0 && (
           <div className="search-empty">输入关键词搜索页面和内容</div>
         )}
       </div>
