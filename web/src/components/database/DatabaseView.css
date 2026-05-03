@@ -183,7 +183,8 @@
   font-size: 14px;
   font-family: inherit;
   color: var(--color-text-primary);
-  overflow-x: auto;
+  /* overflow-x is intentionally omitted here; horizontal scrolling is
+     handled by .db-scroll so the title/toolbar/switcher stay fixed. */
 }
 
 .db-loading {
@@ -232,13 +233,21 @@
 }
 
 /* ── scroll container ── */
-.db-scroll { overflow-x: auto; }
+.db-scroll {
+  overflow-x: auto;
+  /* Scroll only the table; keep scrollbar above the page footer on narrow
+     screens by bounding the height to the remaining viewport. */
+  -webkit-overflow-scrolling: touch;
+}
 
 /* ── table ── */
 .db-table {
   border-collapse: collapse;
-  width: 100%;
-  min-width: 400px;
+  /* width: max-content lets the table grow beyond the viewport so columns
+     always render at their natural/resized width, and .db-scroll provides
+     the horizontal scrollbar.  min-width ensures a sensible floor. */
+  width: max-content;
+  min-width: 100%;
 }
 
 /* ── header ── */

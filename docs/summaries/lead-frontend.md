@@ -1,8 +1,8 @@
 # lead-frontend 摘要
 
 > 角色: 研发负责人（lead）
-> 最后更新: 2026-05-02
-> 覆盖需求: REQ-062（设置页改为独立界面）
+> 最后更新: 2026-05-03
+> 覆盖需求: REQ-062（设置页改为独立界面）、FEAT001（数据库视图横向滚动）
 
 ---
 
@@ -55,6 +55,16 @@
 - **编辑器必须用 `display:none` 隐藏，不得用条件渲染卸载**，否则 BlockNote 实例销毁触发 flush，违反场景 10 验收
 - Esc 快捷键判断 `activeElement.tagName !== 'INPUT' && !== 'TEXTAREA'`，避免干扰输入框
 - `handleSelect` 选中页面时必须调用 `setView('editor')`，实现场景 6（设置页内点击侧边栏页面自动关闭）
+
+---
+
+## 上次变更摘要（FEAT001 · #125 — 数据库视图横向滚动）
+
+修改 `DatabaseView.css`：
+- 移除 `.db-wrap` 上的 `overflow-x: auto`，避免标题/工具栏/视图切换器随表格一起横向滚动。
+- `.db-scroll` 保留 `overflow-x: auto`，并补充 `-webkit-overflow-scrolling: touch` 支持移动端惯性滚动。
+- `.db-table` 由 `width: 100%` 改为 `width: max-content; min-width: 100%`：列多时表格按自然宽度展开，`.db-scroll` 提供横向滚动条；列少时 `min-width: 100%` 保证填满容器，无白边。
+- 表头与内容在同一 `<table>` 元素内，横向滚动时天然同步，无错位风险。
 
 ---
 
