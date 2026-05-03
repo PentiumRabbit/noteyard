@@ -1,18 +1,21 @@
 package handler
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"noteyard/server/internal/model"
 	"noteyard/server/internal/repository"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	gast "github.com/yuin/goldmark/ast"
+	extast "github.com/yuin/goldmark/extension/ast"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/text"
 )
 
 // ImportHandler handles Markdown file imports.
@@ -60,12 +63,18 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read file content.
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(file); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read file")
-		return
+	var buf strings.Builder
+	tmp := make([]byte, 32*1024)
+	for {
+		n, readErr := file.Read(tmp)
+		if n > 0 {
+			buf.Write(tmp[:n])
+		}
+		if readErr != nil {
+			break
+		}
 	}
-	src := buf.Bytes()
+	src := []byte(buf.String())
 
 	// Create the page.
 	now := time.Now().UnixMilli()
@@ -81,7 +90,7 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse Markdown into blocks.
+	// Parse Markdown into blocks using goldmark AST.
 	blocks := parseMarkdownToBlocks(src, page.ID)
 
 	// Persist blocks.
@@ -96,175 +105,375 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
-// Markdown → Block parser (line-by-line, no external dependencies)
+// Markdown → Block parser (goldmark AST-based)
 // ---------------------------------------------------------------------------
 
 // inlineItem represents a single inline content element in BlockNote format.
 type inlineItem struct {
-	Type   string                 `json:"type"`
-	Text   string                 `json:"text,omitempty"`
-	Href   string                 `json:"href,omitempty"`
-	Styles map[string]interface{} `json:"styles"`
+	Type    string                 `json:"type"`
+	Text    string                 `json:"text,omitempty"`
+	Href    string                 `json:"href,omitempty"`
+	Styles  map[string]interface{} `json:"styles"`
+	Content []inlineItem           `json:"content,omitempty"`
 }
 
-var (
-	reFencedOpen  = regexp.MustCompile(`^` + "```" + `(\S*)`)
-	reHeading     = regexp.MustCompile(`^(#{1,3})\s+(.+)`)
-	reOrderedItem = regexp.MustCompile(`^\d+\.\s+(.*)`)
-	reUnorderedItem = regexp.MustCompile(`^[-*+]\s+(.*)`)
-	reTaskChecked   = regexp.MustCompile(`^\[x\]\s*(.*?)$`)
-	reTaskUnchecked = regexp.MustCompile(`^\[ \]\s*(.*?)$`)
-	reDivider     = regexp.MustCompile(`^(---+|\*\*\*+|___+)\s*$`)
-	reBlockquote  = regexp.MustCompile(`^>\s?(.*)`)
+// mdParser is the goldmark Markdown parser with GFM extensions enabled.
+var mdParser = goldmark.New(
+	goldmark.WithExtensions(
+		extension.GFM,
+		extension.Strikethrough,
+	),
 )
 
-// parseMarkdownToBlocks converts raw Markdown bytes into a slice of model.Block.
+// parseMarkdownToBlocks converts raw Markdown bytes into a slice of model.Block
+// using goldmark AST traversal.
 func parseMarkdownToBlocks(src []byte, pageID string) []*model.Block {
+	reader := text.NewReader(src)
+	doc := mdParser.Parser().Parse(reader)
+
 	var blocks []*model.Block
 	orderIdx := 0.0
 
-	scanner := bufio.NewScanner(bytes.NewReader(src))
-
-	var (
-		inCode      bool
-		codeLang    string
-		codeLines   []string
-	)
-
-	// paragraphLines accumulates lines for a paragraph block.
-	var paragraphLines []string
-
-	flushParagraph := func() {
-		if len(paragraphLines) == 0 {
-			return
-		}
-		text := strings.Join(paragraphLines, " ")
-		paragraphLines = nil
-		if strings.TrimSpace(text) == "" {
-			return
-		}
-		blocks = append(blocks, newBlock(pageID, "paragraph", marshalInline(parseInline(text)), "{}", orderIdx))
-		orderIdx++
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		// ── Inside a fenced code block ──────────────────────────────────────
-		if inCode {
-			if strings.HasPrefix(line, "```") {
-				// End of code block.
-				code := strings.Join(codeLines, "\n")
-				props := marshalProps(map[string]interface{}{"language": codeLang})
-				content := marshalInline([]inlineItem{{Type: "text", Text: code, Styles: map[string]interface{}{}}})
-				blocks = append(blocks, newBlock(pageID, "code", content, props, orderIdx))
-				orderIdx++
-				inCode = false
-				codeLines = nil
-				codeLang = ""
-			} else {
-				codeLines = append(codeLines, line)
-			}
-			continue
-		}
-
-		// ── Fenced code block open ──────────────────────────────────────────
-		if m := reFencedOpen.FindStringSubmatch(line); m != nil {
-			flushParagraph()
-			inCode = true
-			codeLang = m[1]
-			codeLines = nil
-			continue
-		}
-
-		// ── Blank line — flush pending paragraph ────────────────────────────
-		if strings.TrimSpace(line) == "" {
-			flushParagraph()
-			continue
-		}
-
-		// ── Thematic break ──────────────────────────────────────────────────
-		if reDivider.MatchString(line) {
-			flushParagraph()
-			blocks = append(blocks, newBlock(pageID, "divider", "[]", "{}", orderIdx))
-			orderIdx++
-			continue
-		}
-
-		// ── Heading ─────────────────────────────────────────────────────────
-		if m := reHeading.FindStringSubmatch(line); m != nil {
-			flushParagraph()
-			level := len(m[1])
+	// Walk only the top-level children of the document.
+	for node := doc.FirstChild(); node != nil; node = node.NextSibling() {
+		switch node.Kind() {
+		case gast.KindHeading:
+			heading := node.(*gast.Heading)
 			blockType := "heading1"
-			switch level {
+			switch heading.Level {
 			case 2:
 				blockType = "heading2"
 			case 3:
 				blockType = "heading3"
 			}
-			content := marshalInline(parseInline(m[2]))
+			content := marshalInlineItems(collectInline(node, src))
 			blocks = append(blocks, newBlock(pageID, blockType, content, "{}", orderIdx))
 			orderIdx++
-			continue
-		}
 
-		// ── Blockquote ──────────────────────────────────────────────────────
-		if m := reBlockquote.FindStringSubmatch(line); m != nil {
-			flushParagraph()
-			content := marshalInline(parseInline(m[1]))
+		case gast.KindParagraph:
+			content := marshalInlineItems(collectInline(node, src))
+			blocks = append(blocks, newBlock(pageID, "paragraph", content, "{}", orderIdx))
+			orderIdx++
+
+		case gast.KindThematicBreak:
+			blocks = append(blocks, newBlock(pageID, "divider", "[]", "{}", orderIdx))
+			orderIdx++
+
+		case gast.KindBlockquote:
+			// Collect text from the first paragraph child of the blockquote.
+			content := marshalInlineItems(collectBlockquoteInline(node, src))
 			blocks = append(blocks, newBlock(pageID, "quote", content, "{}", orderIdx))
 			orderIdx++
-			continue
-		}
 
-		// ── Ordered list item ────────────────────────────────────────────────
-		if m := reOrderedItem.FindStringSubmatch(line); m != nil {
-			flushParagraph()
-			content := marshalInline(parseInline(m[1]))
-			blocks = append(blocks, newBlock(pageID, "numberedListItem", content, "{}", orderIdx))
-			orderIdx++
-			continue
-		}
-
-		// ── Unordered list item (possibly task list) ─────────────────────────
-		if m := reUnorderedItem.FindStringSubmatch(line); m != nil {
-			flushParagraph()
-			rest := m[1]
-			if tc := reTaskChecked.FindStringSubmatch(rest); tc != nil {
-				content := marshalInline(parseInline(tc[1]))
-				props := marshalProps(map[string]interface{}{"checked": true})
-				blocks = append(blocks, newBlock(pageID, "checkListItem", content, props, orderIdx))
-				orderIdx++
-				continue
+		case gast.KindFencedCodeBlock:
+			fcb := node.(*gast.FencedCodeBlock)
+			lang := ""
+			if fcb.Info != nil {
+				lang = strings.TrimSpace(string(fcb.Info.Segment.Value(src)))
+				// goldmark includes extra text after language; take only first word
+				if sp := strings.Fields(lang); len(sp) > 0 {
+					lang = sp[0]
+				}
 			}
-			if tu := reTaskUnchecked.FindStringSubmatch(rest); tu != nil {
-				content := marshalInline(parseInline(tu[1]))
-				props := marshalProps(map[string]interface{}{"checked": false})
-				blocks = append(blocks, newBlock(pageID, "checkListItem", content, props, orderIdx))
-				orderIdx++
-				continue
+			// Collect code lines.
+			var codeLines []string
+			for i := 0; i < fcb.Lines().Len(); i++ {
+				seg := fcb.Lines().At(i)
+				line := string(seg.Value(src))
+				// Remove trailing newline for cleaner storage.
+				line = strings.TrimRight(line, "\n")
+				codeLines = append(codeLines, line)
 			}
-			content := marshalInline(parseInline(rest))
-			blocks = append(blocks, newBlock(pageID, "bulletListItem", content, "{}", orderIdx))
+			code := strings.Join(codeLines, "\n")
+			props := marshalProps(map[string]interface{}{"language": lang})
+			codeInline := marshalInlineItems([]inlineItem{
+				{Type: "text", Text: code, Styles: map[string]interface{}{}},
+			})
+			blocks = append(blocks, newBlock(pageID, "code", codeInline, props, orderIdx))
 			orderIdx++
-			continue
+
+		case gast.KindList:
+			list := node.(*gast.List)
+			// Process only top-level list items (no recursion into nested lists).
+			for item := list.FirstChild(); item != nil; item = item.NextSibling() {
+				if item.Kind() != gast.KindListItem {
+					continue
+				}
+				// Determine if this is a task list item by checking for TaskCheckBox child.
+				isTask := false
+				isChecked := false
+				for child := item.FirstChild(); child != nil; child = child.NextSibling() {
+					if child.Kind() == extast.KindTaskCheckBox {
+						isTask = true
+						isChecked = child.(*extast.TaskCheckBox).IsChecked
+						break
+					}
+				}
+
+				// Collect inline content from the list item's paragraph/text block.
+				itemInline := collectListItemInline(item, src)
+				content := marshalInlineItems(itemInline)
+
+				if isTask {
+					props := marshalProps(map[string]interface{}{"checked": isChecked})
+					blocks = append(blocks, newBlock(pageID, "checkListItem", content, props, orderIdx))
+				} else if list.IsOrdered() {
+					blocks = append(blocks, newBlock(pageID, "numberedListItem", content, "{}", orderIdx))
+				} else {
+					blocks = append(blocks, newBlock(pageID, "bulletListItem", content, "{}", orderIdx))
+				}
+				orderIdx++
+			}
 		}
-
-		// ── Regular text line → accumulate into paragraph ────────────────────
-		paragraphLines = append(paragraphLines, line)
 	}
-
-	// Flush any trailing paragraph and open code block.
-	if inCode && len(codeLines) > 0 {
-		code := strings.Join(codeLines, "\n")
-		props := marshalProps(map[string]interface{}{"language": codeLang})
-		content := marshalInline([]inlineItem{{Type: "text", Text: code, Styles: map[string]interface{}{}}})
-		blocks = append(blocks, newBlock(pageID, "code", content, props, orderIdx))
-		orderIdx++
-	}
-	flushParagraph()
 
 	return blocks
+}
+
+// collectBlockquoteInline gathers inline content from the first paragraph inside a blockquote.
+func collectBlockquoteInline(node gast.Node, src []byte) []inlineItem {
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		if child.Kind() == gast.KindParagraph || child.Kind() == gast.KindTextBlock {
+			return collectInline(child, src)
+		}
+	}
+	return nil
+}
+
+// collectListItemInline gathers inline content from the first paragraph/text block inside a list item,
+// skipping any TaskCheckBox node at the start.
+func collectListItemInline(item gast.Node, src []byte) []inlineItem {
+	for child := item.FirstChild(); child != nil; child = child.NextSibling() {
+		if child.Kind() == gast.KindParagraph || child.Kind() == gast.KindTextBlock {
+			return collectInline(child, src)
+		}
+		// Skip inner nested List nodes (only top-level items are processed).
+		if child.Kind() == gast.KindList {
+			continue
+		}
+	}
+	return nil
+}
+
+// collectInline traverses the inline children of a block node and returns
+// a slice of inlineItems in BlockNote format.
+func collectInline(node gast.Node, src []byte) []inlineItem {
+	var items []inlineItem
+	gast.Walk(node, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if n == node {
+			return gast.WalkContinue, nil
+		}
+		switch n.Kind() {
+		case gast.KindText:
+			if entering {
+				t := n.(*gast.Text)
+				txt := string(t.Segment.Value(src))
+				if t.SoftLineBreak() {
+					txt += " "
+				}
+				// Inherit styles from ancestor emphasis nodes.
+				styles := inheritedStyles(n)
+				if isInsideLink(n) || isInsideStrikethrough(n) {
+					// handled by their parent nodes
+					return gast.WalkSkipChildren, nil
+				}
+				items = append(items, inlineItem{
+					Type:   "text",
+					Text:   txt,
+					Styles: styles,
+				})
+			}
+		case gast.KindString:
+			if entering {
+				s := n.(*gast.String)
+				styles := inheritedStyles(n)
+				items = append(items, inlineItem{
+					Type:   "text",
+					Text:   string(s.Value),
+					Styles: styles,
+				})
+			}
+		case gast.KindCodeSpan:
+			if entering {
+				// Collect raw text from the code span's children.
+				var code string
+				for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+					if child.Kind() == gast.KindText {
+						code += string(child.(*gast.Text).Segment.Value(src))
+					}
+				}
+				items = append(items, inlineItem{
+					Type:   "text",
+					Text:   code,
+					Styles: map[string]interface{}{"code": true},
+				})
+				return gast.WalkSkipChildren, nil
+			}
+		case extast.KindStrikethrough:
+			if entering {
+				inner := collectInlineChildren(n, src)
+				for i := range inner {
+					if inner[i].Styles == nil {
+						inner[i].Styles = map[string]interface{}{}
+					}
+					inner[i].Styles["strike"] = true
+				}
+				items = append(items, inner...)
+				return gast.WalkSkipChildren, nil
+			}
+		case gast.KindEmphasis:
+			if entering {
+				em := n.(*gast.Emphasis)
+				inner := collectInlineChildren(n, src)
+				key := "italic"
+				if em.Level == 2 {
+					key = "bold"
+				}
+				for i := range inner {
+					if inner[i].Styles == nil {
+						inner[i].Styles = map[string]interface{}{}
+					}
+					inner[i].Styles[key] = true
+				}
+				items = append(items, inner...)
+				return gast.WalkSkipChildren, nil
+			}
+		case gast.KindLink:
+			if entering {
+				link := n.(*gast.Link)
+				innerItems := collectInlineChildren(n, src)
+				items = append(items, inlineItem{
+					Type:    "link",
+					Href:    string(link.Destination),
+					Styles:  map[string]interface{}{},
+					Content: innerItems,
+				})
+				return gast.WalkSkipChildren, nil
+			}
+		case extast.KindTaskCheckBox:
+			// Skip task checkbox nodes — handled at list item level.
+			return gast.WalkSkipChildren, nil
+		}
+		return gast.WalkContinue, nil
+	})
+	return items
+}
+
+// collectInlineChildren is like collectInline but processes the children of node n,
+// used for nested inline contexts (emphasis, strikethrough, link).
+func collectInlineChildren(n gast.Node, src []byte) []inlineItem {
+	var items []inlineItem
+	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+		switch child.Kind() {
+		case gast.KindText:
+			t := child.(*gast.Text)
+			txt := string(t.Segment.Value(src))
+			if t.SoftLineBreak() {
+				txt += " "
+			}
+			items = append(items, inlineItem{
+				Type:   "text",
+				Text:   txt,
+				Styles: map[string]interface{}{},
+			})
+		case gast.KindString:
+			s := child.(*gast.String)
+			items = append(items, inlineItem{
+				Type:   "text",
+				Text:   string(s.Value),
+				Styles: map[string]interface{}{},
+			})
+		case gast.KindCodeSpan:
+			var code string
+			for cc := child.FirstChild(); cc != nil; cc = cc.NextSibling() {
+				if cc.Kind() == gast.KindText {
+					code += string(cc.(*gast.Text).Segment.Value(src))
+				}
+			}
+			items = append(items, inlineItem{
+				Type:   "text",
+				Text:   code,
+				Styles: map[string]interface{}{"code": true},
+			})
+		case gast.KindEmphasis:
+			em := child.(*gast.Emphasis)
+			inner := collectInlineChildren(child, src)
+			key := "italic"
+			if em.Level == 2 {
+				key = "bold"
+			}
+			for i := range inner {
+				if inner[i].Styles == nil {
+					inner[i].Styles = map[string]interface{}{}
+				}
+				inner[i].Styles[key] = true
+			}
+			items = append(items, inner...)
+		case extast.KindStrikethrough:
+			inner := collectInlineChildren(child, src)
+			for i := range inner {
+				if inner[i].Styles == nil {
+					inner[i].Styles = map[string]interface{}{}
+				}
+				inner[i].Styles["strike"] = true
+			}
+			items = append(items, inner...)
+		case gast.KindLink:
+			link := child.(*gast.Link)
+			innerItems := collectInlineChildren(child, src)
+			items = append(items, inlineItem{
+				Type:    "link",
+				Href:    string(link.Destination),
+				Styles:  map[string]interface{}{},
+				Content: innerItems,
+			})
+		}
+	}
+	return items
+}
+
+// inheritedStyles walks up the ancestor chain to determine text styles.
+// This is a fallback for deeply nested text nodes not caught by Walk-skipping.
+func inheritedStyles(n gast.Node) map[string]interface{} {
+	styles := map[string]interface{}{}
+	parent := n.Parent()
+	for parent != nil {
+		switch parent.Kind() {
+		case gast.KindEmphasis:
+			em := parent.(*gast.Emphasis)
+			if em.Level == 2 {
+				styles["bold"] = true
+			} else {
+				styles["italic"] = true
+			}
+		case extast.KindStrikethrough:
+			styles["strike"] = true
+		case gast.KindCodeSpan:
+			styles["code"] = true
+		}
+		parent = parent.Parent()
+	}
+	return styles
+}
+
+// isInsideLink returns true if node n has a Link ancestor.
+func isInsideLink(n gast.Node) bool {
+	for p := n.Parent(); p != nil; p = p.Parent() {
+		if p.Kind() == gast.KindLink {
+			return true
+		}
+	}
+	return false
+}
+
+// isInsideStrikethrough returns true if node n has a Strikethrough ancestor.
+func isInsideStrikethrough(n gast.Node) bool {
+	for p := n.Parent(); p != nil; p = p.Parent() {
+		if p.Kind() == extast.KindStrikethrough {
+			return true
+		}
+	}
+	return false
 }
 
 // newBlock constructs a model.Block with generated ID and timestamps.
@@ -282,146 +491,8 @@ func newBlock(pageID, blockType, content, props string, orderIdx float64) *model
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Inline content parser
-// ---------------------------------------------------------------------------
-
-// parseInline converts a Markdown inline string into a slice of inlineItems.
-// Supported: **bold**, *italic*, ~~strikethrough~~, `code`, [text](href).
-func parseInline(s string) []inlineItem {
-	var items []inlineItem
-	for len(s) > 0 {
-		// Link: [text](href)
-		if idx := strings.Index(s, "["); idx >= 0 {
-			// Check for leading plain text before the link.
-			if idx > 0 {
-				items = append(items, plainItem(s[:idx]))
-				s = s[idx:]
-				continue
-			}
-			end := strings.Index(s, "](")
-			if end > 0 {
-				linkText := s[1:end]
-				rest := s[end+2:]
-				closeIdx := strings.Index(rest, ")")
-				if closeIdx >= 0 {
-					href := rest[:closeIdx]
-					items = append(items, inlineItem{
-						Type:   "link",
-						Href:   href,
-						Text:   linkText,
-						Styles: map[string]interface{}{},
-					})
-					s = rest[closeIdx+1:]
-					continue
-				}
-			}
-		}
-
-		// Bold (**text** or __text__)
-		if idx := findDelimiter(s, "**"); idx >= 0 {
-			if idx > 0 {
-				items = append(items, plainItem(s[:idx]))
-				s = s[idx:]
-				continue
-			}
-			end := strings.Index(s[2:], "**")
-			if end >= 0 {
-				inner := s[2 : end+2]
-				items = append(items, inlineItem{
-					Type: "text", Text: inner,
-					Styles: map[string]interface{}{"bold": true},
-				})
-				s = s[end+4:]
-				continue
-			}
-		}
-
-		// Italic (*text* or _text_) — single asterisk/underscore
-		if idx := findDelimiter(s, "*"); idx >= 0 {
-			if idx > 0 {
-				items = append(items, plainItem(s[:idx]))
-				s = s[idx:]
-				continue
-			}
-			end := strings.Index(s[1:], "*")
-			if end >= 0 {
-				inner := s[1 : end+1]
-				items = append(items, inlineItem{
-					Type: "text", Text: inner,
-					Styles: map[string]interface{}{"italic": true},
-				})
-				s = s[end+2:]
-				continue
-			}
-		}
-
-		// Strikethrough (~~text~~)
-		if idx := findDelimiter(s, "~~"); idx >= 0 {
-			if idx > 0 {
-				items = append(items, plainItem(s[:idx]))
-				s = s[idx:]
-				continue
-			}
-			end := strings.Index(s[2:], "~~")
-			if end >= 0 {
-				inner := s[2 : end+2]
-				items = append(items, inlineItem{
-					Type: "text", Text: inner,
-					Styles: map[string]interface{}{"strike": true},
-				})
-				s = s[end+4:]
-				continue
-			}
-		}
-
-		// Inline code (`code`)
-		if idx := strings.Index(s, "`"); idx >= 0 {
-			if idx > 0 {
-				items = append(items, plainItem(s[:idx]))
-				s = s[idx:]
-				continue
-			}
-			end := strings.Index(s[1:], "`")
-			if end >= 0 {
-				inner := s[1 : end+1]
-				items = append(items, inlineItem{
-					Type: "text", Text: inner,
-					Styles: map[string]interface{}{"code": true},
-				})
-				s = s[end+2:]
-				continue
-			}
-		}
-
-		// No more special syntax found — emit the rest as plain text.
-		items = append(items, plainItem(s))
-		break
-	}
-	return items
-}
-
-// findDelimiter returns the first index of delim in s, or -1 if not found.
-func findDelimiter(s, delim string) int {
-	idx := strings.Index(s, delim)
-	if idx < 0 {
-		return -1
-	}
-	// Ensure there's a closing delimiter somewhere after the opening one.
-	rest := s[idx+len(delim):]
-	if strings.Contains(rest, delim) {
-		return idx
-	}
-	return -1
-}
-
-// plainItem creates a plain text inlineItem.
-func plainItem(text string) inlineItem {
-	return inlineItem{Type: "text", Text: text, Styles: map[string]interface{}{}}
-}
-
-// marshalInline serialises a slice of inlineItems to JSON string.
-func marshalInline(items []inlineItem) string {
+// marshalInlineItems serialises a slice of inlineItems to JSON string.
+func marshalInlineItems(items []inlineItem) string {
 	if len(items) == 0 {
 		return "[]"
 	}

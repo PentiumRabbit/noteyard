@@ -1,7 +1,7 @@
 # eng-backend 后端工程摘要
 
 > 产出角色：后端工程师（eng-backend）
-> 最后更新：2026-05-03 · dispatch #133（REQ-071 FTS5 全文索引 + 搜索 API 升级）
+> 最后更新：2026-05-03 · dispatch #135（REQ-073 Markdown 导入 API）
 
 ---
 
@@ -32,8 +32,11 @@
 ### 全库导出（REQ-072 T2）
 请求 → 读取所有非删除页面（PageRepository.ListAll，内部 WHERE deleted_at IS NULL）→ 逐页读取块列表 → 写入 archive/zip 流 → 直接写入 response body
 
-### Markdown 块转换链路
+### Markdown 块转换链路（导出，REQ-072）
 块列表（flat array）→ 按 ParentBlockID 过滤根块 → 递归处理子块 → 内联样式 JSON 反序列化 → 拼接 Markdown 字符串
+
+### Markdown 导入链路（REQ-073）
+multipart/form-data 文件上传（5MB 限制）→ 验证 .md 扩展名 → 文件名去后缀为页面标题 → goldmark AST 解析 → 遍历顶层块节点生成 Block 列表 → PageRepository.Create → BlockRepository.Create 逐块写入 → 返回 page_id
 
 ---
 
@@ -55,7 +58,8 @@
 ## 4. 技术选型
 
 - 全文搜索：SQLite FTS5（modernc.org/sqlite 内置），外表模式（content=），BM25 排序
-- Markdown 转换：纯 Go 字符串拼接，无外部库，零新依赖
+- Markdown 转换（导出）：纯 Go 字符串拼接，无外部库，零新依赖
+- Markdown 解析（导入）：github.com/yuin/goldmark v1.8.2（CommonMark + GFM 扩展，AST 遍历）
 - ZIP 生成：Go 标准库 `archive/zip`，直接写 ResponseWriter
 - JSON 导出：标准库 `encoding/json` MarshalIndent
 
