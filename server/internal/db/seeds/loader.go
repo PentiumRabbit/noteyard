@@ -36,7 +36,7 @@ type SeedNode struct {
 	ID       string          `json:"id"`
 	Type     string          `json:"type"`
 	Props    json.RawMessage `json:"props"`
-	Content  json.RawMessage `json:"content"`  // string or array
+	Content  json.RawMessage `json:"content"` // string or array
 	Children []SeedNode      `json:"children"`
 }
 
