@@ -69,6 +69,7 @@ func main() {
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
 	})
+	eh := handler.NewExportHandler(pages, blocks)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -92,6 +93,7 @@ func main() {
 		r.Get("/config", ch.Get)
 		r.Put("/config", ch.Update)
 		r.Get("/search", sh.Handle)
+		r.Get("/export", eh.ExportAll)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
@@ -106,6 +108,7 @@ func main() {
 			r.Post("/{id}/blocks", bh.Create)
 			r.Get("/{id}/ancestors", ph.GetAncestors)
 			r.Get("/{id}/backlinks", ph.Backlinks)
+			r.Get("/{id}/export", eh.ExportPage)
 		})
 		r.Route("/blocks", func(r chi.Router) {
 			r.Put("/{id}", bh.Update)
