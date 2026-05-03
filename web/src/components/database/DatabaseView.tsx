@@ -918,11 +918,11 @@ export function DatabaseView({ databaseId }: Props) {
       <div className="db-toolbar">
         <button className={`db-toolbar-btn${toolbarPanel === "filter" ? " active" : ""}${filterStates.length > 0 ? " has-filter" : ""}`}
           onClick={() => setToolbarPanel(p => p === "filter" ? null : "filter")}>
-          <Filter size={16} /> {filterStates.length > 0 ? `筛选 ${filterStates.length}` : "筛选"}
+          <Filter size={16} /> 筛选{filterStates.length > 0 && <span className="db-toolbar-badge">{filterStates.length}</span>}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "sort" ? " active" : ""}${sortStates.length > 0 ? " has-sort" : ""}`}
           onClick={() => setToolbarPanel(p => p === "sort" ? null : "sort")}>
-          <ArrowUpDown size={16} /> {sortStates.length > 0 ? `排序 ${sortStates.length}` : "排序"}
+          <ArrowUpDown size={16} /> 排序{sortStates.length > 0 && <span className="db-toolbar-badge">{sortStates.length}</span>}
         </button>
         <button className={`db-toolbar-btn${toolbarPanel === "hide" ? " active" : ""}`}
           onClick={() => setToolbarPanel(p => p === "hide" ? null : "hide")}>
