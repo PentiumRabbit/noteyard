@@ -1212,6 +1212,9 @@ export function DatabaseView({ databaseId }: Props) {
                 const relMissing = col.type === "rollup" && rollupOpts?.relation_column_id
                   ? rollupRelationMissing(col, allCols)
                   : false;
+                const relationTargetDeleted = col.type === "relation"
+                  ? deletedTargetDbIds.has(parseRelationOpts(col)?.target_database_id ?? "")
+                  : false;
                 return (
                   <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
                     <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
@@ -1219,6 +1222,9 @@ export function DatabaseView({ databaseId }: Props) {
                       <span className="col-name-text">{col.name}</span>
                       {relMissing && (
                         <span className="rollup-dep-missing" title="关联列已被删除，汇总列无法计算"> (关联列已删除)</span>
+                      )}
+                      {relationTargetDeleted && (
+                        <span className="rollup-dep-missing" title="关联的目标数据库已被删除"> (目标已删除)</span>
                       )}
                     </button>
                     <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
@@ -1391,6 +1397,10 @@ export function DatabaseView({ databaseId }: Props) {
                             const opts = parseRelationOpts(col);
                             return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
                           })()}
+                          onTargetDeleted={() => {
+                            const targetDbId = parseRelationOpts(col)?.target_database_id;
+                            if (targetDbId) setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId));
+                          }}
                         />
                       ) : isEditing ? (
                         <input
@@ -1907,6 +1917,10 @@ export function DatabaseView({ databaseId }: Props) {
                           const opts = parseRelationOpts(col);
                           return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
                         })()}
+                        onTargetDeleted={() => {
+                          const targetDbId = parseRelationOpts(col)?.target_database_id;
+                          if (targetDbId) setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId));
+                        }}
                       />
                     ) : (
                       <input

@@ -1553,6 +1553,13 @@ tr:hover .row-del-btn { visibility: visible; }
   padding: 0 4px;
 }
 
+.relation-picker-deleted-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: 10px 10px;
+  font-style: italic;
+}
+
 .relation-picker-loading,
 .relation-picker-empty {
   font-size: 13px;

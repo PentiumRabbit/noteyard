@@ -16,6 +16,8 @@ interface RelationCellProps {
   onChange: (newValue: string) => void;
   /** Pre-loaded target rows to avoid N+1 per cell. If provided, getRow won't be called. */
   targetRowsCache?: Map<string, DBRow | null>;
+  /** Called once when the target database is confirmed deleted (API error on picker open). */
+  onTargetDeleted?: () => void;
 }
 
 function parseIds(raw: string): string[] {
@@ -49,7 +51,7 @@ function rowLabel(row: DBRow | null | undefined): string {
   return firstVal || "未命名";
 }
 
-export function RelationCell({ column, value, onChange, targetRowsCache }: RelationCellProps) {
+export function RelationCell({ column, value, onChange, targetRowsCache, onTargetDeleted }: RelationCellProps) {
   const opts = getOpts(column);
   const targetDbId = opts?.target_database_id ?? "";
   const selectedIds = parseIds(value);
@@ -64,6 +66,7 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerLoading, setPickerLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [targetDeleted, setTargetDeleted] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Load resolved rows for selected IDs
@@ -124,6 +127,8 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
     }).catch(() => {
       setPickerRows([]);
       setPickerLoading(false);
+      setTargetDeleted(true);
+      onTargetDeleted?.();
     });
   };
 
@@ -209,10 +214,10 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
   return (
     <div className="relation-cell" onClick={openPicker}>
       <div className="relation-tags">
-        {selectedIds.length === 0 && (
+        {(targetDeleted || selectedIds.length === 0) && (
           <span className="cell-empty">　</span>
         )}
-        {selectedIds.map(id => {
+        {!targetDeleted && selectedIds.map(id => {
           const row = resolvedRows.get(id);
           const label = row === undefined ? id : rowLabel(row);
           const isDeleted = row === null;
@@ -245,19 +250,24 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
             onClick={e => e.stopPropagation()}
           >
             <div className="relation-picker-header">选择关联行</div>
-            <input
-              ref={searchRef}
-              className="relation-picker-search"
-              placeholder="搜索…"
-              value={pickerSearch}
-              onChange={e => setPickerSearch(e.target.value)}
-            />
+            {!targetDeleted && (
+              <input
+                ref={searchRef}
+                className="relation-picker-search"
+                placeholder="搜索…"
+                value={pickerSearch}
+                onChange={e => setPickerSearch(e.target.value)}
+              />
+            )}
             <div className="relation-picker-list">
-              {pickerLoading && <div className="relation-picker-loading">加载中…</div>}
-              {!pickerLoading && filteredPickerRows.length === 0 && !pickerSearch.trim() && (
+              {targetDeleted && (
+                <div className="relation-picker-deleted-hint">关联目标数据库不存在</div>
+              )}
+              {!targetDeleted && pickerLoading && <div className="relation-picker-loading">加载中…</div>}
+              {!targetDeleted && !pickerLoading && filteredPickerRows.length === 0 && !pickerSearch.trim() && (
                 <div className="relation-picker-empty">暂无数据</div>
               )}
-              {!pickerLoading && filteredPickerRows.length === 0 && pickerSearch.trim() && (
+              {!targetDeleted && !pickerLoading && filteredPickerRows.length === 0 && pickerSearch.trim() && (
                 <button
                   className="relation-picker-item"
                   style={{ color: "var(--color-accent)", opacity: creating ? 0.6 : 1 }}
@@ -268,7 +278,7 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
                   <span>新建并关联『{pickerSearch.trim()}』</span>
                 </button>
               )}
-              {!pickerLoading && filteredPickerRows.map(row => {
+              {!targetDeleted && !pickerLoading && filteredPickerRows.map(row => {
                 const isSelected = selectedIds.includes(row.id);
                 const label = rowLabel(row);
                 return (
@@ -282,7 +292,7 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
                   </button>
                 );
               })}
-              {!pickerLoading && showTruncationHint && (
+              {!targetDeleted && !pickerLoading && showTruncationHint && (
                 <div className="relation-picker-hint">显示前 50 条，输入搜索查找更多</div>
               )}
             </div>
