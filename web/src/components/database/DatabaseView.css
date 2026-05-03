@@ -261,6 +261,8 @@
   font-weight: 500;
   position: relative;
   height: 34px;
+  min-width: 120px;
+  max-width: 400px;
 }
 
 .th-row-actions {
@@ -338,7 +340,7 @@
   height: 34px;
   vertical-align: middle;
   min-width: 120px;
-  max-width: 240px;
+  max-width: 400px;
 }
 
 /* ── row actions cell ── */

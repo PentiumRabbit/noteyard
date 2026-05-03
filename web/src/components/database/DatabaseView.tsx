@@ -569,7 +569,7 @@ export function DatabaseView({ databaseId }: Props) {
     const onMove = (mv: MouseEvent) => {
       if (!resizingRef.current) return;
       const delta = mv.clientX - resizingRef.current.startX;
-      const newWidth = Math.max(80, Math.min(500, resizingRef.current.startWidth + delta));
+      const newWidth = Math.max(120, Math.min(400, resizingRef.current.startWidth + delta));
       setColWidths(prev => ({ ...prev, [resizingRef.current!.colId]: newWidth }));
     };
     const onUp = () => {
@@ -834,7 +834,7 @@ export function DatabaseView({ databaseId }: Props) {
                 const relationTargetDeleted = col.type === "relation"
                   ? deletedTargetDbIds.has(parseRelationOpts(col)?.target_database_id ?? "") : false;
                 return (
-                  <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
+                  <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120, maxWidth: 400 }}>
                     <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
                       <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
                       <span className="col-name-text">{col.name}</span>
