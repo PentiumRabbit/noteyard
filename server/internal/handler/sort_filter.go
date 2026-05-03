@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -56,7 +57,8 @@ func matchFilter(cellVal, op, val string) bool {
 		b, err2 := strconv.ParseFloat(val, 64)
 		return err1 == nil && err2 == nil && a < b
 	default:
-		return true
+		log.Printf("[sort_filter] unknown filter operator: %q", op)
+		return false
 	}
 }
 
@@ -66,14 +68,17 @@ func applySort(rows []*model.DBRow, colID, order string) {
 		b := rows[j].Cells[colID]
 		af, aerr := strconv.ParseFloat(a, 64)
 		bf, berr := strconv.ParseFloat(b, 64)
+		if order == "desc" {
+			if aerr == nil && berr == nil {
+				return af > bf
+			}
+			return strings.ToLower(a) > strings.ToLower(b)
+		}
 		var less bool
 		if aerr == nil && berr == nil {
 			less = af < bf
 		} else {
 			less = strings.ToLower(a) < strings.ToLower(b)
-		}
-		if order == "desc" {
-			return !less
 		}
 		return less
 	})
