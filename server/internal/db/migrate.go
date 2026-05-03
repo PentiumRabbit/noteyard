@@ -41,18 +41,27 @@ func syncLegacyMigrations(db *sql.DB) error {
 	}
 
 	// Read all versions present in the legacy table.
+	// Collect all versions first, then close the cursor before issuing writes.
+	// This avoids a connection-pool deadlock when MaxOpenConns=1 (SQLite).
 	rows, err := db.Query(`SELECT version FROM migrations ORDER BY version ASC`)
 	if err != nil {
 		return fmt.Errorf("syncLegacyMigrations: query legacy: %w", err)
 	}
-	defer rows.Close()
-
-	now := time.Now().UTC().Format(time.RFC3339)
+	var versions []int
 	for rows.Next() {
 		var version int
 		if err := rows.Scan(&version); err != nil {
+			rows.Close()
 			return fmt.Errorf("syncLegacyMigrations: scan row: %w", err)
 		}
+		versions = append(versions, version)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("syncLegacyMigrations: close rows: %w", err)
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	for _, version := range versions {
 		// INSERT OR IGNORE so we never overwrite an existing entry.
 		_, err := db.Exec(
 			`INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES(?, ?)`,
@@ -62,7 +71,7 @@ func syncLegacyMigrations(db *sql.DB) error {
 			return fmt.Errorf("syncLegacyMigrations: sync version %d: %w", version, err)
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 // RunMigrations ensures the schema_migrations table exists and then applies
