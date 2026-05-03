@@ -70,6 +70,7 @@ func main() {
 		return config.MigrateDataDir(cfg, newDir)
 	})
 	eh := handler.NewExportHandler(pages, blocks)
+	ih := handler.NewImportHandler(pages, blocks)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -94,6 +95,7 @@ func main() {
 		r.Put("/config", ch.Update)
 		r.Get("/search", sh.Handle)
 		r.Get("/export", eh.ExportAll)
+		r.Post("/import/markdown", ih.ImportMarkdown)
 		r.Route("/pages", func(r chi.Router) {
 			r.Get("/", ph.ListAll)
 			r.Post("/", ph.Create)
