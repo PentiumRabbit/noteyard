@@ -118,6 +118,7 @@ func main() {
 			r.Patch("/batch", bh.BatchUpdate)
 		})
 		r.Route("/databases", func(r chi.Router) {
+			r.Get("/", dh.ListAll)
 			r.Post("/", dh.Create)
 			r.Get("/{id}", dh.Get)
 			r.Patch("/{id}", dh.UpdateTitle)

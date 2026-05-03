@@ -19,6 +19,18 @@ func NewDatabaseHandler(db repository.DatabaseRepository) *DatabaseHandler {
 	return &DatabaseHandler{db: db}
 }
 
+func (h *DatabaseHandler) ListAll(w http.ResponseWriter, r *http.Request) {
+	dbs, err := h.db.ListAll(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if dbs == nil {
+		dbs = []*model.DatabaseSummary{}
+	}
+	writeJSON(w, http.StatusOK, dbs)
+}
+
 func (h *DatabaseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var d model.Database
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {

@@ -546,6 +546,25 @@ func (r *DatabaseRepo) BatchUpdateCells(ctx context.Context, rowID string, cells
 	return tx.Commit()
 }
 
+// ListAll returns a lightweight summary of all databases ordered by creation time.
+func (r *DatabaseRepo) ListAll(ctx context.Context) ([]*model.DatabaseSummary, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, title, page_id FROM databases ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]*model.DatabaseSummary, 0)
+	for rows.Next() {
+		s := &model.DatabaseSummary{}
+		if err := rows.Scan(&s.ID, &s.Name, &s.PageID); err != nil {
+			return nil, err
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
 // checkFormulaLoop 检测公式列是否形成循环引用（有向图 DFS）
 // colName 是当前列的名字，新建时尚未入库，需手动注入以检测自引用
 func (r *DatabaseRepo) checkFormulaLoop(ctx context.Context, dbID, colID, colName, formula string) error {

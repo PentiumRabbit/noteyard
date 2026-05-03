@@ -46,4 +46,5 @@ type DatabaseRepository interface {
 	ListRows(ctx context.Context, dbID string) ([]*model.DBRow, error)
 	GetRow(ctx context.Context, databaseID, rowID string) (*model.DBRow, error)
 	BatchUpdateCells(ctx context.Context, rowID string, cells []*model.DBCell) error
+	ListAll(ctx context.Context) ([]*model.DatabaseSummary, error)
 }

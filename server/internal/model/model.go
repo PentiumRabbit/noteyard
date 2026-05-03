@@ -63,3 +63,11 @@ type DBCell struct {
 	Value     string `json:"value"`
 	UpdatedAt int64  `json:"updated_at"`
 }
+
+// DatabaseSummary is a lightweight representation of a database used by ListAll.
+// It omits columns and row data to keep the response small.
+type DatabaseSummary struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	PageID string `json:"page_id"`
+}
