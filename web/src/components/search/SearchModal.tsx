@@ -73,9 +73,14 @@ interface Props {
   allPages?: Page[];
 }
 
+const SEARCH_LIMIT = 20;
+
 export function SearchModal({ onSelect, onClose, allPages }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recentPageIds] = useState<string[]>(getRecentPageIds);
@@ -91,16 +96,23 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim()) {
       setResults([]);
+      setOffset(0);
+      setHasMore(false);
       setLoading(false);
       return;
     }
     setLoading(true);
+    setOffset(0);
+    setHasMore(false);
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await api.globalSearch(query.trim());
-        setResults(res?.results ?? []);
+        const newResults = res?.results ?? [];
+        setResults(newResults);
+        setHasMore(newResults.length === SEARCH_LIMIT);
       } catch {
         setResults([]);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -110,6 +122,22 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query]);
+
+  const handleLoadMore = async () => {
+    const nextOffset = offset + SEARCH_LIMIT;
+    setLoadingMore(true);
+    try {
+      const res = await api.globalSearch(query.trim(), nextOffset);
+      const newResults = res?.results ?? [];
+      setResults((prev) => [...prev, ...newResults]);
+      setOffset(nextOffset);
+      setHasMore(newResults.length === SEARCH_LIMIT);
+    } catch {
+      // keep existing results on error
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Compute recent pages from allPages or skip if no allPages provided
   const recentItems: Page[] = recentPageIds
@@ -121,12 +149,15 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
   // Active list is either search results or recent items
   const activeList = trimmedQuery ? results : recentItems;
 
-  const handleSelectResult = (pageId: string) => {
+  const handleSelectResult = (item: SearchResultItem) => {
     if (trimmedQuery) {
       saveHistory(trimmedQuery);
       setHistory(loadHistory());
     }
-    onSelect(pageId);
+    if (item.match_type === "content" && item.block_id) {
+      sessionStorage.setItem("search_target_block", item.block_id);
+    }
+    onSelect(item.page_id);
   };
 
   const handleHistoryClick = (term: string) => {
@@ -153,7 +184,7 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       if (trimmedQuery && results[activeIndex]) {
-        handleSelectResult(results[activeIndex].page_id);
+        handleSelectResult(results[activeIndex]);
       } else if (!trimmedQuery && recentItems[activeIndex]) {
         onSelect(recentItems[activeIndex].id);
       }
@@ -190,7 +221,7 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
               <button
                 key={item.page_id}
                 className={`search-result-item${i === activeIndex ? " active" : ""}`}
-                onClick={() => handleSelectResult(item.page_id)}
+                onClick={() => handleSelectResult(item)}
                 onMouseEnter={() => setActiveIndex(i)}
               >
                 <span className="search-result-icon">{item.page_icon ?? "📄"}</span>
@@ -212,6 +243,19 @@ export function SearchModal({ onSelect, onClose, allPages }: Props) {
                 )}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Load more */}
+        {trimmedQuery && hasMore && (
+          <div className="search-load-more">
+            <button
+              className="search-load-more-btn"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? "加载中..." : "加载更多"}
+            </button>
           </div>
         )}
 

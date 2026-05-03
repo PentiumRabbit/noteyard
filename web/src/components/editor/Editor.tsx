@@ -746,7 +746,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BlockNote's Block type differs from BNBlock; cast required
           editor.replaceBlocks(editor.document, bn as any);
         } catch (err) { console.error('[Editor] replaceBlocks failed:', err, 'pageId:', currentPageId); }
-        requestAnimationFrame(() => { readyRef.current = true; });
+        requestAnimationFrame(() => {
+          readyRef.current = true;
+          const targetBlockId = sessionStorage.getItem("search_target_block");
+          if (targetBlockId) {
+            sessionStorage.removeItem("search_target_block");
+            const el = document.querySelector<HTMLElement>(`[data-id="${targetBlockId}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("search-highlight");
+              setTimeout(() => el.classList.remove("search-highlight"), 800);
+            }
+          }
+        });
       };
       setTimeout(() => tryReplace(40), 0);
     })();
