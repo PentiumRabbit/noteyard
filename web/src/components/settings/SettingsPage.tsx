@@ -40,11 +40,12 @@ async function saveConfig(patch: { data_dir?: string; ops_threshold?: number }):
 // ---------------------------------------------------------------------------
 // Category types
 // ---------------------------------------------------------------------------
-type Category = "appearance" | "data";
+type Category = "appearance" | "data" | "shortcuts";
 
 const CATEGORIES: { key: Category; label: string }[] = [
   { key: "appearance", label: "外观" },
   { key: "data", label: "数据 & 备份" },
+  { key: "shortcuts", label: "快捷键" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -88,6 +89,7 @@ export function SettingsPage({ onClose }: Props) {
         <div className="settings-page-body">
           {activeCategory === "appearance" && <AppearanceSection />}
           {activeCategory === "data" && <DataSection />}
+          {activeCategory === "shortcuts" && <ShortcutsSection />}
         </div>
       </div>
     </div>
@@ -332,5 +334,71 @@ function DataSection() {
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shortcuts section
+// ---------------------------------------------------------------------------
+interface ShortcutRow {
+  action: string;
+  keys: string[];
+}
+
+const SHORTCUT_GROUPS: { title: string; rows: ShortcutRow[] }[] = [
+  {
+    title: "全局",
+    rows: [
+      { action: "打开全局搜索", keys: ["⌘K", "Ctrl+K"] },
+    ],
+  },
+  {
+    title: "编辑器",
+    rows: [
+      { action: "斜杠菜单", keys: ["/"] },
+      { action: "撤销", keys: ["⌘Z", "Ctrl+Z"] },
+      { action: "重做", keys: ["⌘⇧Z", "Ctrl+Shift+Z"] },
+      { action: "加粗", keys: ["⌘B", "Ctrl+B"] },
+      { action: "斜体", keys: ["⌘I", "Ctrl+I"] },
+      { action: "代码", keys: ["⌘E", "Ctrl+E"] },
+    ],
+  },
+  {
+    title: "侧边栏",
+    rows: [
+      { action: "新建页面", keys: ["侧边栏 + 按钮"] },
+    ],
+  },
+];
+
+function ShortcutsSection() {
+  return (
+    <>
+      {SHORTCUT_GROUPS.map((group, gi) => (
+        <section key={group.title} className="settings-page-section">
+          <div className="settings-page-section-title">{group.title}</div>
+          <table className="settings-page-shortcuts-table">
+            <tbody>
+              {group.rows.map((row) => (
+                <tr key={row.action} className="settings-page-shortcuts-row">
+                  <td className="settings-page-shortcuts-action">{row.action}</td>
+                  <td className="settings-page-shortcuts-keys">
+                    {row.keys.map((k, i) => (
+                      <span key={k}>
+                        <kbd className="settings-page-kbd">{k}</kbd>
+                        {i < row.keys.length - 1 && (
+                          <span className="settings-page-kbd-sep">/</span>
+                        )}
+                      </span>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {gi < SHORTCUT_GROUPS.length - 1 && <div className="settings-page-divider" />}
+        </section>
+      ))}
+    </>
   );
 }
