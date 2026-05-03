@@ -85,6 +85,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [titleDraft, setTitleDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [resizingColId, setResizingColId] = useState<string | null>(null);
   const [newOptionName, setNewOptionName] = useState("");
   const [sortStates, setSortStates] = useState<SortState[]>([]);
   const [filterStates, setFilterStates] = useState<FilterState[]>([]);
@@ -565,6 +566,7 @@ export function DatabaseView({ databaseId }: Props) {
     const th = (e.currentTarget as HTMLElement).closest("th") as HTMLElement;
     const startWidth = th.getBoundingClientRect().width;
     resizingRef.current = { colId, startX: e.clientX, startWidth };
+    setResizingColId(colId);
 
     const onMove = (mv: MouseEvent) => {
       if (!resizingRef.current) return;
@@ -574,6 +576,7 @@ export function DatabaseView({ databaseId }: Props) {
     };
     const onUp = () => {
       resizingRef.current = null;
+      setResizingColId(null);
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -834,7 +837,7 @@ export function DatabaseView({ databaseId }: Props) {
                 const relationTargetDeleted = col.type === "relation"
                   ? deletedTargetDbIds.has(parseRelationOpts(col)?.target_database_id ?? "") : false;
                 return (
-                  <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120, maxWidth: 400 }}>
+                  <th key={col.id} className={resizingColId === col.id ? "th-resizing" : undefined} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120, maxWidth: 400 }}>
                     <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
                       <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
                       <span className="col-name-text">{col.name}</span>
