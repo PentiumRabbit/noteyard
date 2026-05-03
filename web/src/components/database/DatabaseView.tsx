@@ -520,10 +520,6 @@ export function DatabaseView({ databaseId }: Props) {
   const openSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
     e.stopPropagation();
     const options = parseOptions(col.options);
-    if (options.length === 0) {
-      startEdit(row.id, col.id, row.cells[col.id] ?? "");
-      return;
-    }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
   };
@@ -548,10 +544,6 @@ export function DatabaseView({ databaseId }: Props) {
   const openMultiSelectDropdown = (e: React.MouseEvent, row: DBRow, col: DBColumn) => {
     e.stopPropagation();
     const options = parseOptions(col.options);
-    if (options.length === 0) {
-      startEdit(row.id, col.id, row.cells[col.id] ?? "");
-      return;
-    }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
   };
@@ -998,20 +990,26 @@ export function DatabaseView({ databaseId }: Props) {
         <>
           <div className="col-menu-overlay" onClick={() => setSelectDropdown(null)} />
           <div className="select-dropdown" style={{ top: selectDropdown.y, left: selectDropdown.x }}>
-            {selectDropdown.options.map((opt, idx) => {
-              const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-              return (
-                <button key={idx} className="select-dd-item"
-                  onClick={() => void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value)}>
-                  <Chip label={opt.value} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />
-                </button>
-              );
-            })}
-            <div className="col-menu-divider" />
-            <button className="select-dd-item select-dd-clear"
-              onClick={() => void clearSelectCell(selectDropdown.rowId, selectDropdown.colId)}>
-              清除选择
-            </button>
+            {selectDropdown.options.length === 0 ? (
+              <div className="select-dd-empty">暂无选项，请从列头菜单添加</div>
+            ) : (
+              selectDropdown.options.map((opt, idx) => {
+                const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                return (
+                  <button key={idx} className="select-dd-item"
+                    onClick={() => void selectOption(selectDropdown.rowId, selectDropdown.colId, opt.value)}>
+                    <Chip label={opt.value} colors={[{ bg: c.bg, text: c.color }]} colorIdx={0} />
+                  </button>
+                );
+              })
+            )}
+            {selectDropdown.options.length > 0 && <div className="col-menu-divider" />}
+            {selectDropdown.options.length > 0 && (
+              <button className="select-dd-item select-dd-clear"
+                onClick={() => void clearSelectCell(selectDropdown.rowId, selectDropdown.colId)}>
+                清除选择
+              </button>
+            )}
           </div>
         </>
       )}
@@ -1116,31 +1114,37 @@ export function DatabaseView({ databaseId }: Props) {
         <>
           <div className="col-menu-overlay" onClick={() => setMultiSelectDropdown(null)} />
           <div className="select-dropdown" style={{ top: multiSelectDropdown.y, left: multiSelectDropdown.x }}>
-            {multiSelectDropdown.options.map((opt, idx) => {
-              const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
-              const currentVal = rows.find(r => r.id === multiSelectDropdown.rowId)?.cells[multiSelectDropdown.colId] ?? "";
-              const selected = currentVal.split(",").map(s => s.trim()).filter(Boolean);
-              const isSelected = selected.includes(opt.value);
-              return (
-                <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
-                  onClick={() => void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal)}>
-                  <Chip
-                    label={`${isSelected ? "✓ " : ""}${opt.value}`}
-                    colors={[{ bg: isSelected ? c.bg : "#f0f0f0", text: isSelected ? c.color : "#6b7280" }]}
-                    colorIdx={0}
-                  />
-                </button>
-              );
-            })}
-            <div className="col-menu-divider" />
-            <button className="select-dd-item select-dd-clear"
-              onClick={async () => {
-                await api.databases.updateCells(databaseId, multiSelectDropdown.rowId, [{ column_id: multiSelectDropdown.colId, value: "" }]);
-                setMultiSelectDropdown(null);
-                void reload();
-              }}>
-              清除选择
-            </button>
+            {multiSelectDropdown.options.length === 0 ? (
+              <div className="select-dd-empty">暂无选项，请从列头菜单添加</div>
+            ) : (
+              multiSelectDropdown.options.map((opt, idx) => {
+                const c = TAG_COLORS[opt.colorIdx % TAG_COLORS.length];
+                const currentVal = rows.find(r => r.id === multiSelectDropdown.rowId)?.cells[multiSelectDropdown.colId] ?? "";
+                const selected = currentVal.split(",").map(s => s.trim()).filter(Boolean);
+                const isSelected = selected.includes(opt.value);
+                return (
+                  <button key={idx} className={`select-dd-item${isSelected ? " selected" : ""}`}
+                    onClick={() => void toggleMultiSelectValue(multiSelectDropdown.rowId, multiSelectDropdown.colId, opt.value, currentVal)}>
+                    <Chip
+                      label={`${isSelected ? "✓ " : ""}${opt.value}`}
+                      colors={[{ bg: isSelected ? c.bg : "#f0f0f0", text: isSelected ? c.color : "#6b7280" }]}
+                      colorIdx={0}
+                    />
+                  </button>
+                );
+              })
+            )}
+            {multiSelectDropdown.options.length > 0 && <div className="col-menu-divider" />}
+            {multiSelectDropdown.options.length > 0 && (
+              <button className="select-dd-item select-dd-clear"
+                onClick={async () => {
+                  await api.databases.updateCells(databaseId, multiSelectDropdown.rowId, [{ column_id: multiSelectDropdown.colId, value: "" }]);
+                  setMultiSelectDropdown(null);
+                  void reload();
+                }}>
+                清除选择
+              </button>
+            )}
           </div>
         </>
       )}
