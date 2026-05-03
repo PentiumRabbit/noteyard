@@ -7,7 +7,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteSchema, defaultBlockSpecs, locales } from "@blocknote/core";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, FilterState, SortState } from "../../types";
+import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, RollupColumnOptions, FilterState, SortState } from "../../types";
 import { evalFormula } from "./formulaEngine";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
@@ -319,6 +319,7 @@ export function DatabaseView({ databaseId }: Props) {
   const [newColRelationDbId, setNewColRelationDbId] = useState("");
   const [availableDatabases, setAvailableDatabases] = useState<Database[]>([]);
   const relationRowsCache = useRef<Map<string, Map<string, DBRow | null>>>(new Map());
+  const [deletedTargetDbIds, setDeletedTargetDbIds] = useState<Set<string>>(new Set());
   // rollup new-column pending config popover (shown after column is created)
   const [pendingRollupColId, setPendingRollupColId] = useState<string | null>(null);
 
@@ -345,6 +346,32 @@ export function DatabaseView({ databaseId }: Props) {
     } catch {
       return null;
     }
+  };
+
+  // ── rollup helpers ──
+  const parseRollupOpts = (col: DBColumn): RollupColumnOptions | null => {
+    try {
+      const opts = JSON.parse(col.options);
+      if (
+        opts &&
+        typeof opts === "object" &&
+        "relation_column_id" in opts &&
+        "target_column_id" in opts &&
+        "aggregation" in opts
+      ) {
+        return opts as RollupColumnOptions;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  /** Check if a rollup column's relation_column_id is missing from the given columns list. */
+  const rollupRelationMissing = (col: DBColumn, columns: DBColumn[]): boolean => {
+    const opts = parseRollupOpts(col);
+    if (!opts || !opts.relation_column_id) return false;
+    return !columns.find(c => c.id === opts.relation_column_id);
   };
 
   const reload = useCallback(async () => {
@@ -1180,15 +1207,24 @@ export function DatabaseView({ databaseId }: Props) {
                   checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
                   onChange={toggleSelectAll} title="全选" />
               </th>
-              {cols.map(col => (
-                <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
-                  <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
-                    <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
-                    <span className="col-name-text">{col.name}</span>
-                  </button>
-                  <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
-                </th>
-              ))}
+              {cols.map(col => {
+                const rollupOpts = col.type === "rollup" ? parseRollupOpts(col) : null;
+                const relMissing = col.type === "rollup" && rollupOpts?.relation_column_id
+                  ? rollupRelationMissing(col, allCols)
+                  : false;
+                return (
+                  <th key={col.id} style={{ width: colWidths[col.id] ?? undefined, minWidth: colWidths[col.id] ?? 120 }}>
+                    <button className="col-header-btn" onClick={e => openColMenu(e, col)}>
+                      <span className="col-icon col-icon-wrap"><ColIcon type={col.type} /></span>
+                      <span className="col-name-text">{col.name}</span>
+                      {relMissing && (
+                        <span className="rollup-dep-missing" title="关联列已被删除，汇总列无法计算"> (关联列已删除)</span>
+                      )}
+                    </button>
+                    <div className="col-resize-handle" onMouseDown={e => startResize(e, col.id)} />
+                  </th>
+                );
+              })}
               <th className="col-add-th">
                 <button className="col-add-th-btn" onClick={openAddCol} title="添加列"><Plus size={16} /></button>
               </th>
@@ -1245,11 +1281,15 @@ export function DatabaseView({ databaseId }: Props) {
                 {cols.map(col => {
                   const val = row.cells[col.id] ?? "";
                   const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
+                  const cellRollupRelMissing = col.type === "rollup" ? rollupRelationMissing(col, allCols) : false;
                   return (
                     <td key={col.id}>
                       {col.type === "rollup" ? (
                         <span className="cell-formula-inner">
-                          {val || <span className="cell-empty">—</span>}
+                          {cellRollupRelMissing
+                            ? <span className="cell-empty">—</span>
+                            : (val || <span className="cell-empty">—</span>)
+                          }
                         </span>
                       ) : col.type === "formula" ? (
                         <span className="cell-formula-inner">
