@@ -46,6 +46,16 @@ func MigrateContent(content string, fromVersion int) (string, int, error) {
 // content_version column to the notes table. Register it in migrate.go's
 // Migrations slice via init().
 func ContentVersionMigration(tx *sql.Tx) error {
+	// Use a no-op if the column already exists (idempotent for upgraded databases).
+	var count int
+	if err := tx.QueryRow(
+		`SELECT COUNT(*) FROM pragma_table_info('blocks') WHERE name='content_version'`,
+	).Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
 	_, err := tx.Exec(
 		`ALTER TABLE blocks ADD COLUMN content_version INTEGER NOT NULL DEFAULT 1`,
 	)
@@ -54,7 +64,7 @@ func ContentVersionMigration(tx *sql.Tx) error {
 
 func init() {
 	Migrations = append(Migrations, Migration{
-		Version: 1,
+		Version: 8, // versions 1-7 are reserved for legacy SQL file migrations
 		Up:      ContentVersionMigration,
 	})
 }

@@ -171,6 +171,17 @@ func (m *mockDatabaseRepo) BatchUpdateCells(_ context.Context, rowID string, cel
 	return nil
 }
 
+func (m *mockDatabaseRepo) ListAll(_ context.Context) ([]*model.DatabaseSummary, error) {
+	if m.forceErr != nil {
+		return nil, m.forceErr
+	}
+	var out []*model.DatabaseSummary
+	for _, d := range m.databases {
+		out = append(out, &model.DatabaseSummary{ID: d.ID, Name: d.Title})
+	}
+	return out, nil
+}
+
 // routeWithDBAndRow builds a chi router injecting {id} and {row_id}.
 func routeWithDBAndRow(h http.HandlerFunc) http.Handler {
 	r := chi.NewRouter()
