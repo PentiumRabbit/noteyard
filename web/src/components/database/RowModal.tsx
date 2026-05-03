@@ -12,7 +12,7 @@ import { RelationCell } from "./RelationCell";
 import { TAG_COLORS, parseOptions } from "./shared";
 import { parseFileAttachments } from "../../utils/fileAttachments";
 import { ColIcon } from "./ColIcon";
-import { READONLY_COL_TYPES, fmtTimestamp } from "./databaseConstants";
+import { fmtTimestamp } from "./databaseConstants";
 
 // ── Row content editor schema (basic block types only, no database nesting) ──
 const rowContentSchema = BlockNoteSchema.create({

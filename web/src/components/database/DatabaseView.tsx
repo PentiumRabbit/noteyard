@@ -13,7 +13,7 @@ import { getPopoverY } from "../../utils/popover";
 import { TAG_COLORS, tagColor, parseOptions, serializeOptions } from "./shared";
 import type { SelectOption } from "./shared";
 import { ColIcon } from "./ColIcon";
-import { COL_TYPES, COL_TYPE_LABELS, READONLY_COL_TYPES, FORMULA_FUNCTIONS, fmtTimestamp } from "./databaseConstants";
+import { COL_TYPES, COL_TYPE_LABELS, READONLY_COL_TYPES, FORMULA_FUNCTIONS } from "./databaseConstants";
 import { ColumnHeaderMenu, FormulaPopoverPanel, SelectOptionsPopoverPanel } from "./ColumnHeader";
 import type { ColMenu, FormulaPopover, SelectOptionsPopover } from "./ColumnHeader";
 import { RowModal } from "./RowModal";

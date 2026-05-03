@@ -1,6 +1,5 @@
 // ColumnHeader.tsx — Column header popover (rename, type change, delete, formula, select options)
-import { useRef } from "react";
-import { GripVertical, X, Trash2, Plus } from "lucide-react";
+import { GripVertical, X, Trash2 } from "lucide-react";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -8,7 +7,6 @@ import type { DBColumn, Database } from "../../types";
 import { TAG_COLORS } from "./shared";
 import type { SelectOption } from "./shared";
 import { ColorDotPicker } from "./ColorDotPicker";
-import { Chip } from "./Chip";
 import { ColIcon } from "./ColIcon";
 import { COL_TYPES } from "./databaseConstants";
 
