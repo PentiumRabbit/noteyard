@@ -16,6 +16,7 @@ type SearchResult struct {
 	PagePath  []string `json:"page_path"`
 	MatchType string   `json:"match_type"` // "title" or "content"
 	Snippet   *string  `json:"snippet"`
+	BlockID   *string  `json:"block_id"`
 }
 
 // SearchHandler handles GET /api/search.
@@ -28,7 +29,7 @@ func NewSearchHandler(db *sql.DB) *SearchHandler {
 	return &SearchHandler{db: db}
 }
 
-// Handle serves GET /api/search?q=...&limit=...
+// Handle serves GET /api/search?q=...&limit=...&offset=...
 func (h *SearchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
@@ -49,12 +50,37 @@ func (h *SearchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	results, err := h.search(r.Context(), q, limit)
+	offset := 0
+	if os := r.URL.Query().Get("offset"); os != "" {
+		if n, err := strconv.Atoi(os); err == nil && n > 0 {
+			offset = n
+		}
+	}
+
+	results, err := h.search(r.Context(), q, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string][]SearchResult{"results": results})
+}
+
+// escapeFTSQuery converts a raw user query into a safe FTS5 MATCH expression.
+// Each whitespace-separated word is wrapped in double quotes (phrase token),
+// and any embedded double quotes are stripped to avoid breaking FTS5 syntax.
+// Words are joined with an implicit AND.
+func escapeFTSQuery(q string) string {
+	words := strings.Fields(q)
+	if len(words) == 0 {
+		return ""
+	}
+	escaped := make([]string, len(words))
+	for i, w := range words {
+		// Remove embedded double quotes to avoid breaking FTS5 syntax.
+		w = strings.ReplaceAll(w, `"`, "")
+		escaped[i] = `"` + w + `"`
+	}
+	return strings.Join(escaped, " ")
 }
 
 // pageRow is an intermediate holder returned by the SQL queries.
@@ -65,14 +91,17 @@ type pageRow struct {
 	parentID *string
 	// for content match only
 	snippet *string
+	blockID *string
 }
 
-func (h *SearchHandler) search(ctx context.Context, q string, limit int) ([]SearchResult, error) {
-	pattern := "%" + q + "%"
-	lowerPattern := "%" + strings.ToLower(q) + "%"
+func (h *SearchHandler) search(ctx context.Context, q string, limit, offset int) ([]SearchResult, error) {
+	ftsQuery := escapeFTSQuery(q)
+	if ftsQuery == "" {
+		return []SearchResult{}, nil
+	}
 
 	// --- 1. Title matches ---
-	titleRows, err := h.queryTitleMatches(ctx, lowerPattern)
+	titleRows, err := h.queryTitleMatches(ctx, ftsQuery, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +113,7 @@ func (h *SearchHandler) search(ctx context.Context, q string, limit int) ([]Sear
 	}
 
 	// --- 2. Content matches (exclude pages already matched by title) ---
-	contentRows, err := h.queryContentMatches(ctx, pattern, lowerPattern, q)
+	contentRows, err := h.queryContentMatches(ctx, ftsQuery, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -125,20 +154,22 @@ func (h *SearchHandler) search(ctx context.Context, q string, limit int) ([]Sear
 			PagePath:  path,
 			MatchType: m.matchType,
 			Snippet:   m.snippet,
+			BlockID:   m.blockID,
 		}
 		results = append(results, sr)
 	}
 	return results, nil
 }
 
-func (h *SearchHandler) queryTitleMatches(ctx context.Context, lowerPattern string) ([]pageRow, error) {
+func (h *SearchHandler) queryTitleMatches(ctx context.Context, ftsQuery string, limit, offset int) ([]pageRow, error) {
 	rows, err := h.db.QueryContext(ctx,
-		`SELECT id, title, icon, parent_id
-		 FROM pages
-		 WHERE deleted_at IS NULL
-		   AND lower(title) LIKE ?
-		 ORDER BY updated_at DESC`,
-		lowerPattern,
+		`SELECT p.id, p.title, p.icon, p.parent_id
+		 FROM pages_fts
+		 JOIN pages p ON pages_fts.rowid = p.rowid
+		 WHERE pages_fts MATCH ? AND p.deleted_at IS NULL
+		 ORDER BY rank
+		 LIMIT ? OFFSET ?`,
+		ftsQuery, limit, offset,
 	)
 	if err != nil {
 		return nil, err
@@ -147,18 +178,17 @@ func (h *SearchHandler) queryTitleMatches(ctx context.Context, lowerPattern stri
 	return scanPageRows(rows)
 }
 
-func (h *SearchHandler) queryContentMatches(ctx context.Context, pattern, lowerPattern, q string) ([]pageRow, error) {
-	// Query pages whose blocks contain the search term, carrying one matching
-	// block's content so we can build a snippet.
+func (h *SearchHandler) queryContentMatches(ctx context.Context, ftsQuery string, limit, offset int) ([]pageRow, error) {
 	rows, err := h.db.QueryContext(ctx,
-		`SELECT p.id, p.title, p.icon, p.parent_id, b.content
-		 FROM pages p
-		 JOIN blocks b ON b.page_id = p.id
-		 WHERE p.deleted_at IS NULL
-		   AND (b.content LIKE ? OR lower(b.content) LIKE ?)
-		 GROUP BY p.id
-		 ORDER BY p.updated_at DESC`,
-		pattern, lowerPattern,
+		`SELECT p.id, p.title, p.icon, p.parent_id, b.id AS block_id,
+		        snippet(blocks_fts, 0, '<b>', '</b>', '...', 15) AS snippet
+		 FROM blocks_fts
+		 JOIN blocks b ON blocks_fts.rowid = b.rowid
+		 JOIN pages p ON b.page_id = p.id
+		 WHERE blocks_fts MATCH ? AND p.deleted_at IS NULL
+		 ORDER BY rank
+		 LIMIT ? OFFSET ?`,
+		ftsQuery, limit, offset,
 	)
 	if err != nil {
 		return nil, err
@@ -169,23 +199,24 @@ func (h *SearchHandler) queryContentMatches(ctx context.Context, pattern, lowerP
 	seen := make(map[string]struct{})
 	for rows.Next() {
 		var (
-			id, title, rawContent string
-			icon, parentID        *string
+			id, title, blockID string
+			icon, parentID     *string
+			snip               *string
 		)
-		if err := rows.Scan(&id, &title, &icon, &parentID, &rawContent); err != nil {
+		if err := rows.Scan(&id, &title, &icon, &parentID, &blockID, &snip); err != nil {
 			return nil, err
 		}
 		if _, exists := seen[id]; exists {
 			continue
 		}
 		seen[id] = struct{}{}
-		snip := extractSnippet(rawContent, q, 80)
 		results = append(results, pageRow{
 			id:       id,
 			title:    title,
 			icon:     icon,
 			parentID: parentID,
 			snippet:  snip,
+			blockID:  &blockID,
 		})
 	}
 	return results, rows.Err()
@@ -236,47 +267,4 @@ func (h *SearchHandler) buildPagePath(ctx context.Context, parentID *string) ([]
 		path = []string{}
 	}
 	return path, nil
-}
-
-// extractSnippet returns a substring of content centred around the first
-// occurrence of q (case-insensitive), totalling at most maxLen runes.
-// Returns nil if q is not found.
-func extractSnippet(content, q string, maxLen int) *string {
-	lower := strings.ToLower(content)
-	lowerQ := strings.ToLower(q)
-	idx := strings.Index(lower, lowerQ)
-	if idx < 0 {
-		return nil
-	}
-
-	runes := []rune(content)
-	qRunes := []rune(q)
-	// Find rune index corresponding to byte index idx.
-	runeIdx := len([]rune(content[:idx]))
-
-	half := (maxLen - len(qRunes)) / 2
-	if half < 0 {
-		half = 0
-	}
-	start := runeIdx - half
-	if start < 0 {
-		start = 0
-	}
-	end := start + maxLen
-	if end > len(runes) {
-		end = len(runes)
-		start = end - maxLen
-		if start < 0 {
-			start = 0
-		}
-	}
-
-	snip := string(runes[start:end])
-	if start > 0 {
-		snip = "..." + snip
-	}
-	if end < len(runes) {
-		snip = snip + "..."
-	}
-	return &snip
 }

@@ -68,7 +68,11 @@ export const api = {
     search: (q: string) => req<Page[]>("GET", `/pages/search?q=${encodeURIComponent(q)}`),
     backlinks: (id: string) => req<Page[]>("GET", `/pages/${id}/backlinks`),
   },
-  globalSearch: (q: string) => req<SearchResponse>("GET", `/search?q=${encodeURIComponent(q)}`),
+  globalSearch: (q: string, offset?: number) => {
+    const params = new URLSearchParams({ q });
+    if (offset && offset > 0) params.set("offset", String(offset));
+    return req<SearchResponse>("GET", `/search?${params.toString()}`);
+  },
   blocks: {
     listByPage: (pageId: string) => req<Block[]>("GET", `/pages/${pageId}/blocks`),
     create: (pageId: string, data: Partial<Block>) => req<Block>("POST", `/pages/${pageId}/blocks`, data),

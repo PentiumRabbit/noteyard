@@ -5,6 +5,7 @@ export interface SearchResultItem {
   page_path: string[];
   match_type: "title" | "content";
   snippet: string | null;
+  block_id: string | null;
 }
 
 export interface SearchResponse {
