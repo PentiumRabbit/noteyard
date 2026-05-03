@@ -12,6 +12,7 @@ import { SettingsContext, loadSavedSettings, saveFont, saveTheme } from "./setti
 import { loadResource } from "./settings/resourceLoader";
 import { FONTS, DEFAULT_FONT_ID } from "./settings/fontConfig";
 import { THEMES, DEFAULT_THEME_ID } from "./settings/themeConfig";
+import { QuickstartCard } from "./components/quickstart/QuickstartCard";
 import "./App.css";
 
 const EMOJI_COMMON = ["📄","📝","📌","📎","🗒","🗃","📂","📁","⭐","🔖","💡","🔍","🎯","🚀","✅","❌","⚠️","🔧","🔑","📊","📈","📉","🗓","💬","📧","🏠","🌟","💎","🎨","🎵"];
@@ -296,7 +297,7 @@ export default function App() {
           </div>
         ) : (
           <div className="empty-state">
-            <p>从左侧选择页面，或点击 + 新建</p>
+            <QuickstartCard onImported={handleSelect} />
           </div>
         )}
         </div>

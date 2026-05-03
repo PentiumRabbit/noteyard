@@ -15,10 +15,10 @@
 .empty-state {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  overflow-y: auto;
+  padding: 32px 0;
 }
 
 /* ── page wrap ── */
