@@ -1,7 +1,7 @@
 # eng-backend 后端工程摘要
 
 > 产出角色：后端工程师（eng-backend）
-> 最后更新：2026-05-03 · dispatch #135（REQ-073 Markdown 导入 API）
+> 最后更新：2026-05-03 · dispatch #137（REQ-055 关联列 GetRow API）
 
 ---
 
@@ -38,6 +38,9 @@
 ### Markdown 导入链路（REQ-073）
 multipart/form-data 文件上传（5MB 限制）→ 验证 .md 扩展名 → 文件名去后缀为页面标题 → goldmark AST 解析 → 遍历顶层块节点生成 Block 列表 → PageRepository.Create → BlockRepository.Create 逐块写入 → 返回 page_id
 
+### 单行查询链路（REQ-055 GetRow）
+请求（database_id + row_id）→ 查询 database_rows（WHERE id=? AND database_id=? 防跨库）→ 行不存在返回 404 → 查询该行所有 cells → 计算 formula 列 → 计算 rollup 列（含批量查询关联行目标列） → 返回 row + cells map
+
 ---
 
 ## 3. 关键约束
@@ -52,6 +55,7 @@ multipart/form-data 文件上传（5MB 限制）→ 验证 .md 扩展名 → 文
 8. **FTS5 特殊字符转义**：用户查询词逐词拆分后用双引号包裹再拼接，避免 MATCH 语法错误；查询出错时降级返回空结果
 9. **FTS5 blocks 只索引文本块**：排除 database/subpage/fileAttach/bookmark/embed/pdf/button/columnList/column 类型，触发器通过 WHEN 条件实现
 10. **迁移版本追加**：新 schema 迁移以 `Version: N+1` 追加到 seed.go 的 init() 中
+11. **GetRow 跨库保护**：单行查询必须同时匹配 row_id 与 database_id，防止通过有效 row_id 跨库读取数据
 
 ---
 
@@ -72,6 +76,8 @@ multipart/form-data 文件上传（5MB 限制）→ 验证 .md 扩展名 → 文
 - `server/internal/handler/export_handler.go` — 单页/全库导出 handler（REQ-072）
 - `server/internal/handler/import_handler.go` — Markdown 导入 handler（REQ-073）
 - `server/cmd/main.go` — 路由注册入口
+- `server/internal/repository/sqlite/database_repo.go` — GetRow、ListRows、rollup 计算
+- `server/internal/handler/database_handler.go` — 数据库 handler（含 GetRow、ListRows、BatchUpdateCells）
 
 ---
 
@@ -83,3 +89,4 @@ multipart/form-data 文件上传（5MB 限制）→ 验证 .md 扩展名 → 文
 | GET /api/pages/{id}/export | 单页导出（format=markdown\|json） |
 | GET /api/export | 全库导出 ZIP（format=markdown\|json） |
 | POST /api/import/markdown | Markdown 文件导入（REQ-073） |
+| GET /api/databases/{id}/rows/{row_id} | 查询单行（含 cells、formula、rollup 计算，跨库返回 404）|
