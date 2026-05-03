@@ -483,6 +483,65 @@ func welcomeSeedV4(tx *sql.Tx) error {
 	return seeds.ApplySeed(tx, page, blocks)
 }
 
+// fts5Migration creates FTS5 virtual tables for full-text search on pages and
+// blocks, installs triggers to keep the indexes in sync, and performs an
+// initial bulk-fill of any existing rows.
+func fts5Migration(tx *sql.Tx) error {
+	stmts := []string{
+		// Virtual tables (external content mode)
+		`CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
+  title,
+  content='pages',
+  content_rowid='rowid'
+)`,
+		`CREATE VIRTUAL TABLE IF NOT EXISTS blocks_fts USING fts5(
+  content,
+  content='blocks',
+  content_rowid='rowid'
+)`,
+		// pages triggers
+		`CREATE TRIGGER pages_fts_insert AFTER INSERT ON pages BEGIN
+  INSERT INTO pages_fts(rowid, title) VALUES (new.rowid, new.title);
+END`,
+		`CREATE TRIGGER pages_fts_update AFTER UPDATE ON pages BEGIN
+  INSERT INTO pages_fts(pages_fts, rowid, title) VALUES ('delete', old.rowid, old.title);
+  INSERT INTO pages_fts(rowid, title) VALUES (new.rowid, new.title);
+END`,
+		`CREATE TRIGGER pages_fts_delete AFTER DELETE ON pages BEGIN
+  INSERT INTO pages_fts(pages_fts, rowid, title) VALUES ('delete', old.rowid, old.title);
+END`,
+		// blocks triggers (text-bearing block types only)
+		`CREATE TRIGGER blocks_fts_insert AFTER INSERT ON blocks
+WHEN new.type NOT IN ('database','subpage','fileAttach','bookmark','embed','pdf','button','columnList','column')
+BEGIN
+  INSERT INTO blocks_fts(rowid, content) VALUES (new.rowid, new.content);
+END`,
+		`CREATE TRIGGER blocks_fts_update AFTER UPDATE ON blocks
+WHEN old.type NOT IN ('database','subpage','fileAttach','bookmark','embed','pdf','button','columnList','column')
+   OR new.type NOT IN ('database','subpage','fileAttach','bookmark','embed','pdf','button','columnList','column')
+BEGIN
+  INSERT INTO blocks_fts(blocks_fts, rowid, content) VALUES ('delete', old.rowid, old.content);
+  INSERT INTO blocks_fts(rowid, content) VALUES (new.rowid, new.content);
+END`,
+		`CREATE TRIGGER blocks_fts_delete AFTER DELETE ON blocks
+WHEN old.type NOT IN ('database','subpage','fileAttach','bookmark','embed','pdf','button','columnList','column')
+BEGIN
+  INSERT INTO blocks_fts(blocks_fts, rowid, content) VALUES ('delete', old.rowid, old.content);
+END`,
+		// Initial population of existing data
+		`INSERT INTO pages_fts(rowid, title) SELECT rowid, title FROM pages`,
+		`INSERT INTO blocks_fts(rowid, content) SELECT rowid, content FROM blocks
+  WHERE type NOT IN ('database','subpage','fileAttach','bookmark','embed','pdf','button','columnList','column')`,
+	}
+
+	for _, s := range stmts {
+		if _, err := tx.Exec(s); err != nil {
+			return fmt.Errorf("fts5 migration: %w", err)
+		}
+	}
+	return nil
+}
+
 func init() {
 	Migrations = append(Migrations, Migration{
 		Version: 2,
@@ -495,5 +554,9 @@ func init() {
 	Migrations = append(Migrations, Migration{
 		Version: 4,
 		Up:      welcomeSeedV4,
+	})
+	Migrations = append(Migrations, Migration{
+		Version: 5,
+		Up:      fts5Migration,
 	})
 }
