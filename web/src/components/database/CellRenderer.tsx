@@ -28,6 +28,8 @@ interface CellRendererProps {
   relationRowsCache: React.MutableRefObject<Map<string, Map<string, DBRow | null>>>;
   databaseId: string;
   reload: () => void;
+  rollupRelMissing?: boolean;
+  onTargetDeleted?: (targetDbId: string) => void;
 }
 
 export function CellRenderer({
@@ -48,13 +50,15 @@ export function CellRenderer({
   relationRowsCache,
   databaseId,
   reload,
+  rollupRelMissing = false,
+  onTargetDeleted,
 }: CellRendererProps) {
   const val = row.cells[col.id] ?? "";
 
   if (col.type === "rollup") {
     return (
       <span className="cell-formula-inner">
-        {val || <span className="cell-empty">—</span>}
+        {rollupRelMissing ? <span className="cell-empty">—</span> : (val || <span className="cell-empty">—</span>)}
       </span>
     );
   }
@@ -196,6 +200,10 @@ export function CellRenderer({
           const opts = parseRelationOpts(col);
           return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
         })()}
+        onTargetDeleted={onTargetDeleted ? () => {
+          const targetDbId = parseRelationOpts(col)?.target_database_id;
+          if (targetDbId) onTargetDeleted(targetDbId);
+        } : undefined}
       />
     );
   }

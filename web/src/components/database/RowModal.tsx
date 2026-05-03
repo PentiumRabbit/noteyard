@@ -120,6 +120,7 @@ interface RowModalProps {
   parseRelationOpts: (col: DBColumn) => RelationColumnOptions | null;
   relationRowsCache: React.MutableRefObject<Map<string, Map<string, DBRow | null>>>;
   reload: () => void;
+  onTargetDeleted?: (targetDbId: string) => void;
 }
 
 export function RowModal({
@@ -134,6 +135,7 @@ export function RowModal({
   parseRelationOpts,
   relationRowsCache,
   reload,
+  onTargetDeleted,
 }: RowModalProps) {
   return (
     <>
@@ -279,6 +281,10 @@ export function RowModal({
                       const opts = parseRelationOpts(col);
                       return opts?.target_database_id ? relationRowsCache.current.get(opts.target_database_id) : undefined;
                     })()}
+                    onTargetDeleted={onTargetDeleted ? () => {
+                      const targetDbId = parseRelationOpts(col)?.target_database_id;
+                      if (targetDbId) onTargetDeleted(targetDbId);
+                    } : undefined}
                   />
                 ) : (
                   <input
