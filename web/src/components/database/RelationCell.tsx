@@ -261,7 +261,7 @@ export function RelationCell({ column, value, onChange, targetRowsCache }: Relat
                   disabled={creating}
                 >
                   <PlusIcon />
-                  <span>新建并关联 '{pickerSearch.trim()}'</span>
+                  <span>新建并关联『{pickerSearch.trim()}』</span>
                 </button>
               )}
               {!pickerLoading && filteredPickerRows.map(row => {
