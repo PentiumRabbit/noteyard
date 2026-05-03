@@ -31,28 +31,6 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
     return { id: b.id, type: BLOCK_TYPES.COLUMN_LIST, props: {}, content: undefined, children: columnChildren };
   }
 
-  // ── columns (old format): fallback — parse columnsData from content, return empty columnList structure ──
-  if (b.type === BLOCK_TYPES.COLUMNS) {
-    let rawProps: Record<string, unknown> = {};
-    try { rawProps = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
-    // If old columnsData prop exists, degrade to empty columnList (no crash)
-    if (rawProps && rawProps.columnsData !== undefined) {
-      const cols = typeof rawProps.cols === "string" ? parseInt(rawProps.cols, 10) : 2;
-      const count = Number.isFinite(cols) && cols > 0 ? cols : 2;
-      // column must have at least one child — BlockNote rejects empty column nodes
-      const emptyColumns = Array.from({ length: count }, (_, i) => ({
-        id: `${b.id}-col-${i}`,
-        type: BLOCK_TYPES.COLUMN,
-        props: {},
-        content: undefined,
-        children: [{ id: `${b.id}-col-${i}-placeholder`, type: BLOCK_TYPES.PARAGRAPH, props: {}, content: [], children: [] }],
-      }));
-      return { id: b.id, type: BLOCK_TYPES.COLUMN_LIST, props: {}, content: undefined, children: emptyColumns };
-    }
-    // No columnsData — treat as generic props-as-content block
-    return { id: b.id, type: b.type, props: rawProps, content: undefined, children: [] };
-  }
-
   // ── props-as-content block types ──
   if (
     b.type === BLOCK_TYPES.DATABASE ||

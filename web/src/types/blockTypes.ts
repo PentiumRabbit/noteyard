@@ -12,7 +12,6 @@ export const BLOCK_TYPES = {
   BUTTON: "button",
   COLUMN_LIST: "columnList",
   COLUMN: "column",
-  COLUMNS: "columns",
   PARAGRAPH: "paragraph",
   HEADING: "heading",
   BULLET_LIST_ITEM: "bulletListItem",

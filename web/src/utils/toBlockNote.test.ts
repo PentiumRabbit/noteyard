@@ -39,17 +39,6 @@ describe("toBlockNote", () => {
     expect(result[0].content).toBeUndefined();
   });
 
-  // ── REQ-052: columns 旧格式 fallback ──
-  it("columns 旧格式（含 columnsData）降级为 columnList 空结构，不崩溃", () => {
-    const block = makeBlock({ type: "columns", content: '{"cols":"2","columnsData":"[[],[]]"}', props: "{}" });
-    const result = toBlockNote([block]);
-    expect(result[0].type).toBe("columnList");
-    expect(result[0].children).toHaveLength(2);
-    expect(result[0]!.children![0]!.type).toBe("column");
-    expect(result[0]!.children![1]!.type).toBe("column");
-    expect(result[0].content).toBeUndefined();
-  });
-
   it("props 为 null 字符串时视为空对象", () => {
     const block = makeBlock({ props: "null" });
     const result = toBlockNote([block]);
@@ -145,7 +134,7 @@ describe("toBlockNote", () => {
     expect(result[0].children![0]!.children).toHaveLength(1);
     expect(result[0].children![0]!.children![0]!.type).toBe("paragraph");
     expect(result[0].children![0]!.children![0]!.content).toEqual([{ text: "hello" }]);
-    expect(result[0].children![1]!.children).toHaveLength(0);
+    expect(result[0].children![1]!.children).toHaveLength(1);
     expect(result[0].content).toBeUndefined();
   });
 
@@ -180,14 +169,6 @@ describe("toBlockNote", () => {
     const result = toBlockNote(blocks);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("cl1");
-  });
-
-  it("columns 旧格式无 columnsData 时保持 columns 类型", () => {
-    const block = makeBlock({ type: "columns", content: '{"x":"1"}', props: "{}" });
-    const result = toBlockNote([block]);
-    expect(result[0].type).toBe("columns");
-    expect(result[0].props).toEqual({ x: "1" });
-    expect(result[0].content).toBeUndefined();
   });
 
   // ── props-as-content 块的 content 字段应为 undefined ──
