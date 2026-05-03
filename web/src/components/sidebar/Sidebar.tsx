@@ -10,7 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { api, exportPage } from "../../api/client";
+import { api, exportPage, importMarkdown } from "../../api/client";
 import type { Page } from "../../types";
 import { TEMPLATES } from "../../templates";
 import "./Sidebar.css";
@@ -191,7 +191,9 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
   const [templateOpen, setTemplateOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [favoritesOpen, setFavoritesOpen] = useState(true);
+  const [importing, setImporting] = useState(false);
   const renamingPageIdRef = useRef<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const refresh = async () => {
@@ -243,6 +245,23 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
     const page = await api.pages.create({ title: "Untitled", order_index: maxOrder + 1 });
     await refresh();
     onSelect(page.id);
+  };
+
+  const handleImportChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!importFileRef.current) return;
+    importFileRef.current.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const { page_id } = await importMarkdown(file);
+      await refresh();
+      handleSelect(page_id);
+    } catch (err) {
+      alert((err as Error).message || "导入失败");
+    } finally {
+      setImporting(false);
+    }
   };
 
   const openCtxMenu = (e: React.MouseEvent, pageId: string) => {
@@ -416,9 +435,27 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
       </div>
 
       <div className="sidebar-footer">
+        <input
+          ref={importFileRef}
+          type="file"
+          accept=".md"
+          style={{ display: "none" }}
+          onChange={e => void handleImportChange(e)}
+        />
         <button className="sidebar-new-page-btn" onClick={() => void handleAddRoot()}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           新建页面
+        </button>
+        <button
+          className="sidebar-new-page-btn"
+          disabled={importing}
+          onClick={() => importFileRef.current?.click()}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1.5v7M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 10.5v1a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          {importing ? "导入中…" : "导入 Markdown"}
         </button>
         <button className="sidebar-new-page-btn" onClick={() => { setRecentItems(loadRecent()); setRecentOpen(true); }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
