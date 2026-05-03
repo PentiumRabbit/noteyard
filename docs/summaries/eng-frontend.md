@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-03 |
-| 对应需求 | REQ-064 / T-P0-2 / ISS-011 / ISS-013 / REQ-074 / REQ-073 |
+| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 |
 
 ---
 
@@ -24,8 +24,15 @@
 |------|------|
 | `web/src/api/client.ts` | 统一 HTTP 层，`req<T>` 函数封装 fetch；已集成 toast.error |
 | `web/src/App.tsx` | 根组件，挂载 `<Toaster />`、SettingsContext、Sidebar、Editor |
-| `web/src/components/editor/Editor.tsx` | BlockNote 编辑器，含硬编码 localhost URL（待 T-P1-2 修复） |
-| `web/src/components/database/DatabaseView.tsx` | 数据库视图（≈1917 行大组件，待 AR-1 拆分） |
+| `web/src/components/editor/Editor.tsx` | BlockNote 编辑器，使用 API_BASE 常量，无硬编码 URL |
+| `web/src/components/database/DatabaseView.tsx` | 数据库视图（大组件，含竞态修复、乐观更新、缓存失效） |
+| `web/src/components/database/shared.ts` | 数据库视图共享：TAG_COLORS、tagColor、parseOptions、serializeOptions、SelectOption |
+| `web/src/utils/fileAttachments.ts` | parseFileAttachments 工具函数 |
+| `web/src/stores/sidebarStore.ts` | Zustand store：renamingPageId 状态管理（替代 CustomEvent） |
+| `web/src/types/blocknote.ts` | BNBlock/BNInline/BNInlineContent/BNTextContent/BNLinkContent 类型 |
+| `web/src/types/blockTypes.ts` | BLOCK_TYPES as const，BlockType 联合类型 |
+| `web/src/hooks/useMonthNav.ts` | 月导航 hook，CalendarView/TimelineView 共用 |
+| `web/src/hooks/useKeyboardShortcuts.ts` | 键盘快捷键 hook，从 App.tsx 提取 |
 | `web/src/components/sidebar/Sidebar.tsx` | 页面树侧边栏 |
 | `web/src/components/quickstart/QuickstartCard.tsx` | 空状态快速入门卡片（轻量 JSX 渲染，不依赖 BlockNote） |
 | `web/src/data/quickstart.json` | 快速入门内容种子数据（16 块，5 章节） |
@@ -76,15 +83,23 @@
 
 ---
 
-## 待完成任务（P0/P1/P2 剩余）
+## REQ-064 修复完成情况（DISPATCH#139）
 
-| 任务 | 依赖 | 状态 |
-|------|------|------|
-| T-P0-1：I-001 useEffect 竞态 | 无 | pending |
-| T-P0-2：I-002 全局错误 toast | 无 | **done** |
-| T-P0-3：I-003 toBlockNote 类型化 | 无 | pending |
-| T-P1-2：I-008 Editor 硬编码 URL | T-P0-2 | pending |
-| T-P1-3：I-009 overlay DOM 泄漏 | 无 | pending |
-| T-P1-4：I-011 Tauri sidecar 崩溃感知 | 无 | pending |
-| T-P1-6：I-013 PageItem 合并 | 无 | pending |
-| T-P2-x：各 P2 优化项 | 见 ARCH-PLAN-FRONTEND | pending |
+| 问题 | 优先级 | 状态 |
+|------|--------|------|
+| I-001：DatabaseView useEffect 竞态 | P0 | **done** — cancelled flag + rowsRef，仅 db 变化驱动 |
+| I-002：API void 吞 rejection | P0 | **done** — useEffect 内改为 `.catch(()=>{})` |
+| I-003：toBlockNote 静默丢失数据 | P0 | **done** — catch 块已有 console.warn，BNBlock 类型完整 |
+| I-006：TAG_COLORS/parseOptions 重复 | P1 | **done** — 提取到 database/shared.ts |
+| I-007：parseFileAttachments 重复 | P1 | **done** — 提取到 utils/fileAttachments.ts |
+| I-008：Editor 硬编码 localhost URL | P1 | **done** — API_BASE 从 api/client.ts 导出 |
+| I-009：column overlay DOM 泄漏 | P1 | **done** — isConnected 检查，_tiptapEditor try/catch |
+| I-011：Tauri sidecar 无崩溃感知 | P1 | **done** — spawn 后台任务监听 CommandEvent::Terminated |
+| I-012：Block 类型链路 any 泛滥 | P1 | **done** — BNTextContent/BNLinkContent/BNInlineContent 新增 |
+| I-013：PageItem/PageItemWithRename 重复 | P1 | **done** — 合并为单组件 + Zustand useSidebarStore |
+| I-016：settingsStore 耦合 | P2 | 跳过（settingsStore 为 Context 非 Zustand） |
+| I-017：useMonthNav 重复 | P2 | **done** — hooks/useMonthNav.ts |
+| I-018：封面图 Base64 存 SQLite | P2 | 跳过（后端 /api/uploads 仅用于文件/PDF，cover 无专用上传接口） |
+| I-019：findPageFlat 多余 | P2 | **done** — findPageFlat 已删除，BLOCK_TYPES as const 建立 |
+| I-020：loadAvailableDatabases O(n) | P2 | **done** — openAddCol 时清空缓存，去掉早返回守卫 |
+| I-022：commitEdit 乐观更新缺失 | P2 | **done** — 乐观更新 + prevRows 回滚快照 |
