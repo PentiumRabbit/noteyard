@@ -33,7 +33,11 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportSize)
 
 	if err := r.ParseMultipartForm(maxImportSize); err != nil {
-		writeError(w, http.StatusBadRequest, "file too large or bad multipart data")
+		if strings.Contains(err.Error(), "MaxBytesReader") || strings.Contains(err.Error(), "too large") || strings.Contains(err.Error(), "request body too large") {
+			writeError(w, http.StatusRequestEntityTooLarge, "file too large")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "bad multipart data")
 		return
 	}
 
