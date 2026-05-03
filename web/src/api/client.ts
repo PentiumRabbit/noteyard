@@ -26,12 +26,17 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 export async function importMarkdown(file: File): Promise<{ page_id: string }> {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch('/api/import/markdown', { method: 'POST', body: form });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'upload failed' }));
-    throw new Error((err as { error?: string }).error ?? 'import failed');
+  try {
+    const res = await fetch(API_BASE + '/api/import/markdown', { method: 'POST', body: form });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: '导入失败' }));
+      throw new Error((err as { error?: string }).error ?? '导入失败');
+    }
+    return res.json() as Promise<{ page_id: string }>;
+  } catch (err) {
+    toast.error((err as Error).message);
+    throw err;
   }
-  return res.json() as Promise<{ page_id: string }>;
 }
 
 export function exportAll(format: 'markdown' | 'json') {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useSidebarStore } from "../../stores/sidebarStore";
 import {
   DndContext,
@@ -258,7 +259,7 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
       await refresh();
       handleSelect(page_id);
     } catch (err) {
-      alert((err as Error).message || "导入失败");
+      toast.error((err as Error).message || "导入失败");
     } finally {
       setImporting(false);
     }
