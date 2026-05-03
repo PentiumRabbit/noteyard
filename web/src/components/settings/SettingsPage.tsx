@@ -170,6 +170,25 @@ function AppearanceSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Cleanup orphan uploads
+// ---------------------------------------------------------------------------
+interface CleanupResult {
+  deleted: number;
+  files: string[];
+}
+
+async function cleanupOrphanUploads(): Promise<CleanupResult> {
+  const res = await fetch("http://localhost:8080/api/uploads/cleanup", {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `HTTP ${res.status}`);
+  }
+  return (await res.json()) as CleanupResult;
+}
+
+// ---------------------------------------------------------------------------
 // Data & Backup section
 // ---------------------------------------------------------------------------
 function DataSection() {
@@ -178,6 +197,8 @@ function DataSection() {
   const [opsThreshold, setOpsThreshold] = useState(50);
   const [configSaving, setConfigSaving] = useState(false);
   const [configStatus, setConfigStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupStatus, setCleanupStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     fetchConfig().then((cfg) => {
@@ -188,6 +209,22 @@ function DataSection() {
       }
     });
   }, []);
+
+  const handleCleanup = async () => {
+    setCleanupRunning(true);
+    setCleanupStatus(null);
+    try {
+      const result = await cleanupOrphanUploads();
+      setCleanupStatus({
+        ok: true,
+        msg: result.deleted === 0 ? "无孤儿文件" : `已清理 ${result.deleted} 个文件`,
+      });
+    } catch (err) {
+      setCleanupStatus({ ok: false, msg: String(err instanceof Error ? err.message : err) });
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
 
   const handleSaveConfig = async () => {
     setConfigSaving(true);
@@ -269,6 +306,29 @@ function DataSection() {
       {configStatus && (
         <div className={`settings-page-status${configStatus.ok ? "" : " settings-page-status--error"}`}>
           {configStatus.msg}
+        </div>
+      )}
+
+      <div className="settings-page-divider" />
+
+      <div className="settings-page-field">
+        <span className="settings-page-field-label">清理孤儿上传文件</span>
+        <span className="settings-page-field-value settings-page-field-value--hint">
+          删除不再被任何页面或数据库引用的上传文件
+        </span>
+      </div>
+
+      <button
+        className="settings-page-save-btn"
+        onClick={() => void handleCleanup()}
+        disabled={cleanupRunning}
+      >
+        {cleanupRunning ? "清理中…" : "立即清理"}
+      </button>
+
+      {cleanupStatus && (
+        <div className={`settings-page-status${cleanupStatus.ok ? "" : " settings-page-status--error"}`}>
+          {cleanupStatus.msg}
         </div>
       )}
     </section>

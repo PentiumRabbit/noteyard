@@ -64,6 +64,7 @@ func main() {
 	dh := handler.NewDatabaseHandler(databases)
 	sh := handler.NewSearchHandler(db)
 	uh := handler.NewUploadHandler(uploadDir, "http://localhost:8080")
+	cuh := handler.NewCleanupHandler(uploadDir, db)
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
 	})
@@ -85,6 +86,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/uploads", uh.Upload)
+		r.Post("/uploads/cleanup", cuh.CleanupOrphanUploads)
 		r.Get("/meta", handler.MetaHandler)
 		r.Get("/config", ch.Get)
 		r.Put("/config", ch.Update)
