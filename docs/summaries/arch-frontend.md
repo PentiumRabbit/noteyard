@@ -116,3 +116,21 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 - **TS2345 parseInt**：`blockToMd` 中 `b.props?.level` 类型为 `unknown`，包装 `String()` 再传给 `parseInt`。
 
 *由前端架构师（arch-frontend）生成，dispatch #56 / REQ-066。ISS-011 补充于 dispatch #72。*
+
+---
+
+## ISS-016 修复摘要（2026-05-03，dispatch #121–#123）
+
+**问题**：数据库单选/多选交互不符合 Notion 预期行为（三处缺陷）。
+
+**根因与修复**：
+
+- **多选面板提前关闭**：`col-menu-overlay` 的 `onClick` 捕获了从选项按钮冒泡上来的事件，导致每次点选项后面板立即关闭。修复：在每个 `select-dd-item` 按钮的 `onClick` 中添加 `e.stopPropagation()`。
+- **缺少勾选状态（单选）**：单选下拉面板未与当前行已选值做对比。修复：在 map 中读取 `currentVal`，计算 `isSelected`，为已选项添加 `"✓ "` 前缀和 `.selected` class；点击已选项改为调 `clearSelectCell`（取消 + 关闭），与多选面板模式对齐。
+- **缺少添加选项入口**：两个下拉面板均无"+ 添加选项"按钮。修复：在两个面板底部新增按钮，`onClick` 通过 `colId` 查找 `col` 对象后调用已有的 `openSelectOptions(e, col)` 函数。
+
+**影响文件**：
+- `web/src/components/database/DatabaseView.tsx`（选项渲染逻辑）
+- `web/src/components/database/DatabaseView.css`（`.select-dd-add-option` 样式）
+
+*由前端架构师（arch-frontend）生成，dispatch #121 / ISS-016。*
