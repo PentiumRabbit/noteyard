@@ -4,6 +4,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"noteyard/server/internal/db/seeds"
 	"time"
 )
 
@@ -472,6 +473,16 @@ func cleanWelcomeBlocks(tx *sql.Tx) error {
 	return nil
 }
 
+// welcomeSeedV4 is migration v4: insert the welcome page from the embedded
+// welcome.json seed file. Idempotent — skipped if the page already exists.
+func welcomeSeedV4(tx *sql.Tx) error {
+	page, blocks, err := seeds.ParseSeed(seeds.WelcomeJSON)
+	if err != nil {
+		return fmt.Errorf("welcome seed v4: parse seed: %w", err)
+	}
+	return seeds.ApplySeed(tx, page, blocks)
+}
+
 func init() {
 	Migrations = append(Migrations, Migration{
 		Version: 2,
@@ -480,5 +491,9 @@ func init() {
 	Migrations = append(Migrations, Migration{
 		Version: 3,
 		Up:      cleanWelcomeBlocks,
+	})
+	Migrations = append(Migrations, Migration{
+		Version: 4,
+		Up:      welcomeSeedV4,
 	})
 }

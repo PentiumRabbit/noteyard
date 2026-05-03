@@ -1,0 +1,308 @@
+{
+  "version": 1,
+  "page": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "title": "欢迎使用 noteyard",
+    "icon": "👋",
+    "order_index": 0
+  },
+  "blocks": [
+    {
+      "id": "00000000-0000-0000-0001-000000000001",
+      "type": "heading",
+      "props": {"level": 1, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "欢迎使用 noteyard 👋"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000002",
+      "type": "callout",
+      "props": {"icon": "📝"},
+      "content": "noteyard 是一款本地优先的块编辑器笔记应用，数据存储在本机，无需联网。你可以自由组合页面、数据库和各种内容块，构建属于自己的知识体系。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000003",
+      "type": "horizontalRule"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000004",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "📄 页面与导航"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000005",
+      "type": "paragraph",
+      "content": "noteyard 以页面为基本单位，页面可以无限嵌套，形成树状结构。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000006",
+      "type": "heading",
+      "props": {"level": 3, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "创建与管理页面"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000007",
+      "type": "numberedListItem",
+      "content": [
+        {"type": "text", "text": "点击左侧边栏底部的 ", "styles": {}},
+        {"type": "text", "text": "「+ 新建页面」", "styles": {"bold": true}},
+        {"type": "text", "text": " 按钮，创建顶级页面。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000008",
+      "type": "numberedListItem",
+      "content": [
+        {"type": "text", "text": "将鼠标悬停在侧边栏的页面条目上，点击右侧 ", "styles": {}},
+        {"type": "text", "text": "「+」", "styles": {"bold": true}},
+        {"type": "text", "text": " 可在该页面下创建子页面。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000009",
+      "type": "numberedListItem",
+      "content": "拖动侧边栏条目可以调整页面的层级与顺序。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000010",
+      "type": "numberedListItem",
+      "content": "右键点击页面条目可以重命名、设置图标、删除页面。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000011",
+      "type": "callout",
+      "props": {"icon": "🔍"},
+      "content": "顶部搜索栏（⌘K）可以全局搜索所有页面标题，快速跳转。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000012",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "✏️ 块编辑器"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000013",
+      "type": "paragraph",
+      "content": "noteyard 的编辑器以「块」为单位组织内容。每一段文字、每一个标题、每一张图片都是一个独立的块，可以自由拖拽排序。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000014",
+      "type": "heading",
+      "props": {"level": 3, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "插入块"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000015",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "在任意位置输入 ", "styles": {}},
+        {"type": "text", "text": "/", "styles": {"bold": true}},
+        {"type": "text", "text": " 打开块菜单，选择要插入的块类型。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000016",
+      "type": "bulletListItem",
+      "content": "块类型包括：标题（H1/H2/H3）、段落、有序列表、无序列表、引用、标注、分割线、代码块、数据库、子页面等。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000017",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "每个块左侧有 ", "styles": {}},
+        {"type": "text", "text": "⠿ 拖拽手柄", "styles": {"bold": true}},
+        {"type": "text", "text": "，鼠标悬停后可拖动调整顺序，点击可以进行删除、复制、转换块类型等操作。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000018",
+      "type": "heading",
+      "props": {"level": 3, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "文字格式化"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000019",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "选中文字后会弹出格式工具栏，支持 ", "styles": {}},
+        {"type": "text", "text": "加粗", "styles": {"bold": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "斜体", "styles": {"italic": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "下划线", "styles": {"underline": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "删除线", "styles": {"strike": true}},
+        {"type": "text", "text": "、设置文字颜色与背景色。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000020",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "也可以直接用 Markdown 快捷语法：", "styles": {}},
+        {"type": "text", "text": "**粗体**  *斜体*  ~~删除线~~  `代码`", "styles": {"code": true}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000021",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "🗃️ 数据库"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000022",
+      "type": "paragraph",
+      "content": "数据库块可以将结构化数据嵌入到任意页面中，适合管理任务、书单、项目等有规律的信息。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000023",
+      "type": "numberedListItem",
+      "content": [
+        {"type": "text", "text": "在编辑区输入 ", "styles": {}},
+        {"type": "text", "text": "/", "styles": {"bold": true}},
+        {"type": "text", "text": " 选择「数据库」，即可在当前页面内嵌入一个表格。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000024",
+      "type": "numberedListItem",
+      "content": [
+        {"type": "text", "text": "点击列标题可以修改字段名称；点击 ", "styles": {}},
+        {"type": "text", "text": "「+ 添加列」", "styles": {"bold": true}},
+        {"type": "text", "text": " 新增字段，支持文本、数字、日期、勾选框、选项等类型。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000025",
+      "type": "numberedListItem",
+      "content": [
+        {"type": "text", "text": "点击底部 ", "styles": {}},
+        {"type": "text", "text": "「+ 新建行」", "styles": {"bold": true}},
+        {"type": "text", "text": " 添加数据行，直接在单元格内编辑内容。", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000026",
+      "type": "callout",
+      "props": {"icon": "💾"},
+      "content": "数据库的数据与页面内容一样保存在本地数据库中，重启后依然存在。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000035",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "🎨 页面装饰"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000036",
+      "type": "paragraph",
+      "content": "每个页面可以设置封面图和图标，让笔记更有辨识度。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000037",
+      "type": "bulletListItem",
+      "content": "点击页面标题上方的「添加封面」按钮，可以选择渐变色或上传图片作为封面。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000038",
+      "type": "bulletListItem",
+      "content": "点击页面标题前的图标区域，可以选择 emoji 作为页面图标。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000039",
+      "type": "bulletListItem",
+      "content": "封面和图标会在侧边栏和搜索结果中显示，方便快速识别页面。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000040",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "📐 并排布局"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000041",
+      "type": "paragraph",
+      "content": "noteyard 支持将块拖动成左右并排的多列布局。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000042",
+      "type": "numberedListItem",
+      "content": "创建两个或多个段落块。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000043",
+      "type": "numberedListItem",
+      "content": "拖动其中一个块到另一个块的左侧或右侧边缘，出现蓝色分栏指示线时释放鼠标。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000044",
+      "type": "numberedListItem",
+      "content": "两个块会自动合并为左右并排的双列布局。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000045",
+      "type": "callout",
+      "props": {"icon": "💡"},
+      "content": "可以继续向列中拖入更多块，也可以拖出列来恢复单列排列。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000027",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "⌨️ 常用快捷键"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000028",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "⌘K", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 全局搜索页面", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000029",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "/", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 打开块插入菜单", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000030",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "⌘Z / ⌘⇧Z", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 撤销 / 重做", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000031",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "Tab / ⇧Tab", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 列表缩进 / 取消缩进", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000032",
+      "type": "bulletListItem",
+      "content": [
+        {"type": "text", "text": "Enter", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 新建块；", "styles": {}},
+        {"type": "text", "text": "⇧Enter", "styles": {"bold": true, "code": true}},
+        {"type": "text", "text": " — 块内换行", "styles": {}}
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000033",
+      "type": "horizontalRule"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000034",
+      "type": "quote",
+      "content": [
+        {"type": "text", "text": "这是你的起点，也是你的空白画布。删掉这个页面，或者就从这里开始写第一篇笔记吧。", "styles": {"italic": true}}
+      ]
+    }
+  ]
+}
