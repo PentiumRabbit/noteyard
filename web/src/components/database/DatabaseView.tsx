@@ -13,6 +13,7 @@ import { TimelineView } from "./TimelineView";
 import { RollupConfigPopover } from "./RollupConfigPopover";
 import { Chip } from "./Chip";
 import { getPopoverY } from "../../utils/popover";
+import { applyFilters } from "../../utils/filterUtils";
 import { TAG_COLORS, tagColor, parseOptions, serializeOptions } from "./shared";
 import type { SelectOption } from "./shared";
 import { ColIcon } from "./ColIcon";
@@ -635,26 +636,7 @@ export function DatabaseView({ databaseId }: Props) {
   const selectCols = allCols.filter(c => c.type === "select");
   const activeGroupColId = kanbanGroupColId || selectCols[0]?.id || "";
 
-  const applyFilter = (row: DBRow, f: FilterState): boolean => {
-    const val = (row.cells[f.colId] ?? "").toLowerCase();
-    const fval = f.val.toLowerCase();
-    switch (f.op) {
-      case "contains": return val.includes(fval);
-      case "not_contains": return !val.includes(fval);
-      case "equals": return val === fval;
-      case "not_equals": return val !== fval;
-      case "is_empty": return val === "";
-      case "is_not_empty": return val !== "";
-      case "gt": return parseFloat(val) > parseFloat(fval);
-      case "lt": return parseFloat(val) < parseFloat(fval);
-      default: return true;
-    }
-  };
-
-  const activeFilters = filterStates.filter(f => f.colId && (f.op === "is_empty" || f.op === "is_not_empty" || f.val !== ""));
-  let displayedRows = activeFilters.length > 0
-    ? rows.filter(row => activeFilters.every(f => applyFilter(row, f)))
-    : rows;
+  let displayedRows = applyFilters(rows, filterStates);
 
   const activeSorts = sortStates.filter(s => s.colId);
   const dragEnabled = groupByColId === "" && activeSorts.length === 0;
