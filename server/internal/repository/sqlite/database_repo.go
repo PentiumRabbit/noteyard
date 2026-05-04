@@ -154,6 +154,30 @@ func (r *DatabaseRepo) DeleteRow(ctx context.Context, rowID string) error {
 	return err
 }
 
+func (r *DatabaseRepo) ReorderRows(ctx context.Context, dbID string, rowIDs []string) error {
+	if len(rowIDs) == 0 {
+		return nil
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	now := time.Now().Unix()
+	stmt, err := tx.PrepareContext(ctx,
+		`UPDATE database_rows SET order_index=?,updated_at=? WHERE id=? AND database_id=?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for i, id := range rowIDs {
+		if _, err := stmt.ExecContext(ctx, float64(i), now, id, dbID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (r *DatabaseRepo) ListRows(ctx context.Context, dbID string) ([]*model.DBRow, error) {
 	cols, err := r.listColumns(ctx, dbID)
 	if err != nil {

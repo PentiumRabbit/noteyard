@@ -144,6 +144,7 @@ func main() {
 			r.Put("/{id}/columns/{col_id}", dh.UpdateColumn)
 			r.Delete("/{id}/columns/{col_id}", dh.DeleteColumn)
 			r.Post("/{id}/rows", dh.AddRow)
+			r.Post("/{id}/rows/reorder", dh.ReorderRows)
 			r.Delete("/{id}/rows/{row_id}", dh.DeleteRow)
 			r.Get("/{id}/rows", dh.ListRows)
 			r.Get("/{id}/rows/{row_id}", dh.GetRow)

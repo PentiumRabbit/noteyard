@@ -171,6 +171,10 @@ func (m *mockDatabaseRepo) BatchUpdateCells(_ context.Context, rowID string, cel
 	return nil
 }
 
+func (m *mockDatabaseRepo) ReorderRows(_ context.Context, _ string, _ []string) error {
+	return m.forceErr
+}
+
 func (m *mockDatabaseRepo) ListAll(_ context.Context) ([]*model.DatabaseSummary, error) {
 	if m.forceErr != nil {
 		return nil, m.forceErr

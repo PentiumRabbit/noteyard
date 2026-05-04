@@ -217,6 +217,26 @@ func (h *DatabaseHandler) PatchRow(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, row)
 }
 
+func (h *DatabaseHandler) ReorderRows(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var body struct {
+		Order []string `json:"order"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if len(body.Order) == 0 {
+		writeError(w, http.StatusBadRequest, "order must not be empty")
+		return
+	}
+	if err := h.db.ReorderRows(r.Context(), id, body.Order); err != nil {
+		writeInternalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, struct{}{})
+}
+
 func (h *DatabaseHandler) BatchUpdateCells(w http.ResponseWriter, r *http.Request) {
 	rowID := chi.URLParam(r, "row_id")
 	var cells []*model.DBCell
