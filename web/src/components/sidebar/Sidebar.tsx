@@ -14,32 +14,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { api, exportPage, importMarkdown } from "../../api/client";
 import type { Page } from "../../types";
 import { TEMPLATES } from "../../templates";
+import {
+  type RecentItem,
+  loadRecent,
+  saveRecent,
+  recordVisit,
+  loadFavorites,
+  saveFavorites,
+} from "../../utils/sidebarPersistence";
 import "./Sidebar.css";
-
-interface RecentItem { id: string; title: string; icon: string | null; visitedAt: number }
-
-const RECENT_KEY = "noteyard:recent";
-const FAVORITES_KEY = "noteyard:favorites";
-const RECENT_MAX = 10;
-
-function loadRecent(): RecentItem[] {
-  try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as RecentItem[]; } catch { return []; }
-}
-function saveRecent(items: RecentItem[]) {
-  localStorage.setItem(RECENT_KEY, JSON.stringify(items));
-}
-function recordVisit(id: string, title: string, icon: string | null) {
-  const items = loadRecent().filter(r => r.id !== id);
-  items.unshift({ id, title, icon, visitedAt: Date.now() });
-  saveRecent(items.slice(0, RECENT_MAX));
-}
-
-function loadFavorites(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]") as string[]); } catch { return new Set(); }
-}
-function saveFavorites(set: Set<string>) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...set]));
-}
 
 interface Props {
   selectedId: string | null;
