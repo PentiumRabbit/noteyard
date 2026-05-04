@@ -30,7 +30,7 @@ import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react
 import { api, API_BASE } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
-import { DatabaseView } from "../database/DatabaseView";
+import { DatabaseViewErrorBoundary } from "../database/DatabaseViewErrorBoundary";
 import { useSettings } from "../../settings/settingsStore";
 import { toBlockNote } from "../../utils/toBlockNote";
 import type { BNInline, BNBlock } from "../../types/blocknote";
@@ -160,7 +160,7 @@ const DatabaseBlock = createReactBlockSpec(
     render: ({ block }) => {
       const dbId = block.props.databaseId;
       if (!dbId) return <div style={{ color: "#aaa", padding: 8 }}>Database 初始化中…</div>;
-      return <DatabaseView databaseId={dbId} />;
+      return <DatabaseViewErrorBoundary databaseId={dbId} />;
     },
   },
 );
