@@ -2,7 +2,7 @@
 
 > 角色: 研发负责人（dev-lead）
 > 最后更新: 2026-05-05
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）, ISS-034（拖拽手柄不跟随移动）
 
 ---
 
@@ -107,6 +107,15 @@
   - `docs/requirements/features/REQ-080.md`（状态改为已完成）
 - 关键设计：flag.Visit 判断 --port 是否显式传入；net.Listen(":0") → OS 随机分配；非法端口（<1 或 >65535）立即 os.Exit(1)
 - FR-2（Tauri 传端口）已在 ISS-018 完成，本次仅验证确认
+
+---
+
+## ISS-034（拖拽手柄不跟随移动，2026-05-05）
+
+- 状态：统筹进行中（前端架构师根因分析 pending）
+- 委派链：前端架构师根因分析（#183）→ dev-lead-续1（#184，prereqs=183）→ 工程师修复 → 测试执行者回归
+- 关键排查方向：ISS-032 onDragOver 回归、SideMenuPlugin blockDragStart 调用链、Tauri WKWebView 兼容性、ISS-033 logger 动态 import 时序
+- 续任务：dev-lead-续1（#184）在根因分析完成后负责委派工程师和测试执行者
 
 ---
 
