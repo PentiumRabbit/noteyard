@@ -1,0 +1,30 @@
+status = "delivered"
+delivered_at = "2026-05-05"
+dispatch_id = 184
+assignee = "dev-lead-ISS034-续1"
+
+summary = "ISS-034 修复完成：禁用 wry 文件拖放拦截 + 收窄 handleEditorDragOver。cargo check 零错误，tsc --noEmit 零错误，ISS-034 状态更新为已修复。"
+
+[[items]]
+id = "T1"
+role = "eng-tauri-ISS034"
+description = "tauri.conf.json 添加 dragDropEnabled=false，禁用 wry NSDraggingDestination 拦截"
+file = "src-tauri/tauri.conf.json"
+commit = "7757725"
+status = "done"
+
+[[items]]
+id = "T2"
+role = "eng-frontend-ISS034"
+description = "Editor.tsx handleEditorDragOver 收窄为 blocknote/html 类型检查 + preventDefault"
+file = "web/src/components/editor/Editor.tsx"
+commit = "bcb267b"
+status = "done"
+
+[[items]]
+id = "T3"
+role = "tester-ISS034"
+description = "回归验证：cargo check 零错误，tsc --noEmit 零错误，ISS-034 状态改为已修复"
+file = "docs/issues/ISS-034.md"
+commit = "174f562"
+status = "done"
