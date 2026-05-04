@@ -328,10 +328,19 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
+  const colMenuRef = useRef<HTMLDivElement | null>(null);
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // ISS-020: set initial position immediately; rAF corrects it once the popover
+    // DOM is in the layout tree and its actual height is available.
     setColMenu({ colId: col.id, x: rect.left, y: getPopoverY(rect, 200), renaming: false, draft: col.name, changingType: false });
+    requestAnimationFrame(() => {
+      const popoverEl = colMenuRef.current;
+      if (!popoverEl) return;
+      const actualHeight = popoverEl.getBoundingClientRect().height;
+      setColMenu(m => m ? { ...m, y: getPopoverY(rect, actualHeight) } : m);
+    });
   };
   const closeColMenu = () => setColMenu(null);
 
@@ -950,6 +959,7 @@ export function DatabaseView({ databaseId }: Props) {
         <ColumnHeaderMenu
           colMenu={colMenu}
           menuCol={menuCol}
+          menuRef={colMenuRef}
           renameInputRef={renameInputRef}
           setColMenu={setColMenu}
           closeColMenu={closeColMenu}
