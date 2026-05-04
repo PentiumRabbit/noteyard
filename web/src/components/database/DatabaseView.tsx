@@ -456,7 +456,7 @@ export function DatabaseView({ databaseId }: Props) {
     const firstRow = rows[0];
     const preview = firstRow ? evalFormula(col.formula, firstRow, db?.columns ?? []) : "";
     setColMenu(null);
-    setFormulaPopover({ colId: col.id, x: rect.left, y: rect.bottom + 4, draft: col.formula, preview, acItems: [], acIndex: 0 });
+    setFormulaPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect), draft: col.formula, preview, acItems: [], acIndex: 0 });
   };
 
   const updateFormulaPreview = (draft: string, acItems?: string[]) => {
