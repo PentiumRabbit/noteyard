@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log/slog"
 	appdb "noteyard/server/internal/db"
+	"noteyard/server/internal/db/seeds"
 	"sort"
 	"time"
 
@@ -27,6 +29,17 @@ func Open(path string) (*sql.DB, error) {
 	if err := appdb.RunMigrations(db); err != nil {
 		return nil, fmt.Errorf("schema migration: %w", err)
 	}
+
+	// REQ-078: restore welcome page blocks if the user deleted all of them.
+	welcomePage, welcomeBlocks, err := seeds.ParseSeed(seeds.WelcomeJSON)
+	if err != nil {
+		return nil, fmt.Errorf("parse welcome seed: %w", err)
+	}
+	if err := seeds.RestoreWelcomeIfEmpty(db, welcomePage, welcomeBlocks); err != nil {
+		// Non-fatal: log and continue rather than refusing to start.
+		slog.Warn("RestoreWelcomeIfEmpty failed", "err", err)
+	}
+
 	return db, nil
 }
 

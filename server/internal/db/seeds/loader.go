@@ -212,6 +212,75 @@ func ParseSeed(data []byte) (*SeedPage, []SeedBlock, error) {
 	return &page, blocks, nil
 }
 
+// RestoreWelcomeIfEmpty checks whether the welcome page exists but has zero
+// top-level blocks. If so it clears any orphan blocks and re-inserts the full
+// block set from the seed. This is called every startup (after ApplySeed) so
+// the welcome page auto-recovers when the user has deleted all its content.
+//
+// Trigger condition (both must be true):
+//  1. page.ID exists in the `pages` table
+//  2. SELECT COUNT(*) FROM blocks WHERE page_id=? AND parent_block_id IS NULL → 0
+func RestoreWelcomeIfEmpty(db *sql.DB, page *SeedPage, blocks []SeedBlock) error {
+	// Check page exists.
+	var pageCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pages WHERE id = ?`, page.ID).Scan(&pageCount); err != nil {
+		return fmt.Errorf("RestoreWelcomeIfEmpty: check page: %w", err)
+	}
+	if pageCount == 0 {
+		return nil // page not seeded yet — nothing to restore
+	}
+
+	// Check top-level block count.
+	var blockCount int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM blocks WHERE page_id = ? AND parent_block_id IS NULL`,
+		page.ID,
+	).Scan(&blockCount); err != nil {
+		return fmt.Errorf("RestoreWelcomeIfEmpty: count blocks: %w", err)
+	}
+	if blockCount > 0 {
+		return nil // welcome page still has content — nothing to do
+	}
+
+	// Top-level block count is 0 → restore within a transaction.
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("RestoreWelcomeIfEmpty: begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// Clean up any orphan blocks before re-inserting.
+	if _, err = tx.Exec(`DELETE FROM blocks WHERE page_id = ?`, page.ID); err != nil {
+		return fmt.Errorf("RestoreWelcomeIfEmpty: delete orphan blocks: %w", err)
+	}
+
+	now := time.Now().Unix()
+	const contentVersion = 1
+
+	for _, b := range blocks {
+		var parentID interface{}
+		if b.ParentBlockID != nil {
+			parentID = *b.ParentBlockID
+		}
+		if _, err = tx.Exec(
+			`INSERT INTO blocks(id, page_id, parent_block_id, type, content, content_version, props, order_index, created_at, updated_at)
+			 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			b.ID, b.PageID, parentID, b.Type, b.Content, contentVersion, b.Props, b.OrderIndex, now, now,
+		); err != nil {
+			return fmt.Errorf("RestoreWelcomeIfEmpty: insert block %s: %w", b.ID, err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("RestoreWelcomeIfEmpty: commit: %w", err)
+	}
+	return nil
+}
+
 // ApplySeed writes the page and blocks into the database inside tx.
 // If the page already exists (by id) the operation is a no-op (idempotent).
 func ApplySeed(tx *sql.Tx, page *SeedPage, blocks []SeedBlock) error {
