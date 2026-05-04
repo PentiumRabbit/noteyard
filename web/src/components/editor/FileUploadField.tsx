@@ -1,5 +1,5 @@
 import React from "react";
-import { API_BASE } from "../../api/client";
+import { api } from "../../api/client";
 
 interface FileUploadFieldProps {
   accept?: string;
@@ -17,12 +17,10 @@ export function FileUploadField({ accept, maxSizeMB, label, onUpload, uploading 
       alert(`文件不超过 ${maxSizeMB}MB`);
       return;
     }
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
-    if (!res.ok) { alert("上传失败"); return; }
-    const data = await res.json() as { url: string };
-    onUpload(file, data.url);
+    try {
+      const data = await api.uploads.upload(file);
+      onUpload(file, data.url);
+    } catch { alert("上传失败"); }
   };
 
   return (

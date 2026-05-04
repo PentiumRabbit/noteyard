@@ -575,11 +575,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
     dropCursor: multiColumnDropCursor,
     uploadFile: async (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
-      if (!res.ok) throw new Error("图片上传失败");
-      const data = await res.json() as { url: string };
+      const data = await api.uploads.upload(file);
       return data.url;
     },
   });
