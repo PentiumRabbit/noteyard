@@ -23,6 +23,33 @@ fn get_port(state: tauri::State<PortState>) -> u16 {
     state.0
 }
 
+#[tauri::command]
+async fn write_frontend_log(
+    app: tauri::AppHandle,
+    level: String,
+    layer: String,
+    msg: String,
+    fields: Option<serde_json::Value>,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let log_dir = app.path().app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("logs");
+    tokio::fs::create_dir_all(&log_dir).await.map_err(|e| e.to_string())?;
+    let log_path = log_dir.join("frontend.log");
+    let mut file = tokio::fs::OpenOptions::new()
+        .create(true).append(true).open(&log_path).await
+        .map_err(|e| e.to_string())?;
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs()).unwrap_or(0);
+    let fields_str = fields.as_ref()
+        .map(|f| format!(" {}", f))
+        .unwrap_or_default();
+    let entry = format!("{} [{}] [{}] {}{}\n", ts, level, layer, msg, fields_str);
+    file.write_all(entry.as_bytes()).await.map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -127,7 +154,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_port])
+        .invoke_handler(tauri::generate_handler![get_port, write_frontend_log])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
