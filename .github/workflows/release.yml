@@ -144,10 +144,9 @@ jobs:
 
       - name: Update cask file
         run: |
-          CASK="homebrew-tap/Casks/noteyard.rb"
-          sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" "$CASK"
-          sed -i '' "/on_arm/,/end/{s/sha256 \"[^\"]*\"/sha256 \"$ARM_SHA\"/}" "$CASK"
-          sed -i '' "/on_intel/,/end/{s/sha256 \"[^\"]*\"/sha256 \"$X64_SHA\"/}" "$CASK"
+          python3 .github/scripts/update-cask.py \
+            homebrew-tap/Casks/noteyard.rb \
+            "$VERSION" "$ARM_SHA" "$X64_SHA"
 
       - name: Commit and push
         working-directory: homebrew-tap
