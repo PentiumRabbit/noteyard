@@ -282,7 +282,10 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  width: calc(100% - 6px);
+  /* ISS-025: 用 max-width 替代 calc(100%-6px)；在 table-cell 中 % 宽度可能不精确，
+     max-width 确保按钮不超过 th 宽度减去 resize handle 所需的 6px 空间 */
+  width: 100%;
+  max-width: calc(100% - 6px);
   height: 100%;
   padding: 0 8px;
   background: none;
@@ -310,10 +313,33 @@
   height: 100%;
   cursor: col-resize;
   user-select: none;
+  /* ISS-025: z-index 确保 handle 层叠在 col-header-btn 之上，
+     防止 btn 覆盖 handle 的 mousedown 事件和 cursor 样式 */
+  z-index: 1;
+}
+/* 默认显示细竖线作为视觉提示，帮助用户发现可拖拽区域 */
+.col-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  right: 2px;
+  width: 2px;
+  height: 60%;
+  background: var(--color-border-medium);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.db-table th:hover .col-resize-handle::after {
+  opacity: 1;
 }
 .col-resize-handle:hover,
 .col-resize-handle:active {
   background: rgba(35, 131, 226, 0.4);
+}
+.col-resize-handle:hover::after,
+.col-resize-handle:active::after {
+  opacity: 0;
 }
 
 .col-add-th {
