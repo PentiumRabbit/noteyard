@@ -8,7 +8,7 @@ import { TAG_COLORS } from "./shared";
 import type { SelectOption } from "./shared";
 import { ColorDotPicker } from "./ColorDotPicker";
 import { ColIcon } from "./ColIcon";
-import { COL_TYPES } from "./databaseConstants";
+import { COL_TYPES, FORMULA_FUNCTION_DOCS } from "./databaseConstants";
 
 // ── Interfaces re-exported so DatabaseView can import them ──
 export interface ColMenu {
@@ -259,6 +259,16 @@ export function FormulaPopoverPanel({
         <div className="formula-actions">
           <button className="formula-save-btn" onClick={() => void saveFormula()}>完成</button>
           <button className="formula-cancel-btn" onClick={() => setFormulaPopover(null)}>取消</button>
+        </div>
+        <div className="formula-fn-docs">
+          <div className="formula-fn-docs-title">支持的函数</div>
+          {FORMULA_FUNCTION_DOCS.map(fn => (
+            <div key={fn.name} className="formula-fn-doc-item">
+              <span className="formula-fn-doc-name">{fn.signature}</span>
+              <span className="formula-fn-doc-desc">{fn.desc}</span>
+              <span className="formula-fn-doc-example">{fn.example}</span>
+            </div>
+          ))}
         </div>
       </div>
     </>
