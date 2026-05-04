@@ -37,6 +37,7 @@ import { toBlockNote } from "../../utils/toBlockNote";
 import type { BNInline, BNBlock } from "../../types/blocknote";
 import "./Editor.css";
 import { FileUploadField } from "./FileUploadField";
+import { UrlInputField } from "./UrlInputField";
 import { useResizable } from "../../hooks/useResizable";
 
 function inlinesToText(content: BNInline[] | undefined): string {
@@ -289,7 +290,6 @@ const BookmarkBlock = createReactBlockSpec(
   },
   {
     render: ({ block, editor }) => {
-      const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
       const [loading, setLoading] = React.useState(false);
 
       const fetchMeta = async (url: string) => {
@@ -305,18 +305,12 @@ const BookmarkBlock = createReactBlockSpec(
 
       if (!block.props.url) {
         return (
-          <div className="bookmark-input-wrap">
-            <span className="bookmark-input-icon">🔗</span>
-            <input
-              className="bookmark-url-input"
-              placeholder="粘贴网址，按 Enter 确认"
-              value={urlDraft}
-              onChange={e => setUrlDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") void fetchMeta(urlDraft); }}
-              onBlur={() => { if (urlDraft) void fetchMeta(urlDraft); }}
-            />
-            {loading && <span className="bookmark-loading">加载中…</span>}
-          </div>
+          <UrlInputField
+            icon="🔗"
+            placeholder="粘贴网址，按 Enter 确认"
+            onConfirm={(url) => void fetchMeta(url)}
+            loading={loading}
+          />
         );
       }
 
@@ -345,7 +339,6 @@ const EmbedBlock = createReactBlockSpec(
   },
   {
     render: ({ block, editor }) => {
-      const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
       const { startResize } = useResizable(400, 100, (newH) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
@@ -353,21 +346,16 @@ const EmbedBlock = createReactBlockSpec(
 
       if (!block.props.url) {
         return (
-          <div className="bookmark-input-wrap">
-            <span className="bookmark-input-icon">🌐</span>
-            <input
-              className="bookmark-url-input"
-              placeholder="粘贴网址嵌入，按 Enter 确认"
-              value={urlDraft}
-              onChange={e => setUrlDraft(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && urlDraft.startsWith("http")) {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  editor.updateBlock(block, { props: { url: urlDraft, height: "400" } } as any);
-                }
-              }}
-            />
-          </div>
+          <UrlInputField
+            icon="🌐"
+            placeholder="粘贴网址嵌入，按 Enter 确认"
+            onConfirm={(url) => {
+              if (url.startsWith("http")) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                editor.updateBlock(block, { props: { url, height: "400" } } as any);
+              }
+            }}
+          />
         );
       }
 

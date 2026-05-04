@@ -20,6 +20,28 @@
 }
 .bookmark-loading { font-size: 12px; color: var(--color-text-tertiary); }
 
+/* ── url input field (shared by bookmark & embed) ── */
+.url-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1.5px dashed var(--color-border-medium);
+  border-radius: 6px;
+  background: var(--color-bg-secondary);
+}
+.url-input-icon { font-size: 14px; flex-shrink: 0; }
+.url-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+  font-family: inherit;
+}
+.url-input-loading { font-size: 12px; color: var(--color-text-tertiary); }
+
 .bookmark-card {
   display: flex;
   border: 1px solid var(--color-border);
