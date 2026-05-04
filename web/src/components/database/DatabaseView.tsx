@@ -134,6 +134,9 @@ export function DatabaseView({ databaseId }: Props) {
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
   const rowContentSaveRef = useRef<(() => void) | null>(null);
 
+  // ISS-028: 必须在 if(!db) return 之前调用，否则违反 React Rules of Hooks
+  const tableDndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
   const parseRelationOpts = (col: DBColumn): RelationColumnOptions | null => {
     try {
       const opts = JSON.parse(col.options);
@@ -655,8 +658,6 @@ export function DatabaseView({ databaseId }: Props) {
 
   const activeSorts = sortStates.filter(s => s.colId);
   const dragEnabled = groupByColId === "" && activeSorts.length === 0;
-
-  const tableDndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleTableDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
