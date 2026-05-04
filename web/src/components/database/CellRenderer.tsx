@@ -1,6 +1,7 @@
 // CellRenderer.tsx — Table cell rendering for each column type
 import { Link, Mail } from "lucide-react";
-import type { DBColumn, DBRow, RelationColumnOptions } from "../../types";
+import type { DBColumn, DBRow } from "../../types";
+import { parseRelationOpts } from "../../utils/columnUtils";
 import { evalFormula } from "./formulaEngine";
 import { FilesCell } from "./FilesCell";
 import { RelationCell } from "./RelationCell";
@@ -24,7 +25,6 @@ interface CellRendererProps {
   toggleCheckbox: (rowId: string, colId: string, val: string) => void;
   openSelectDropdown: (e: React.MouseEvent, row: DBRow, col: DBColumn) => void;
   openMultiSelectDropdown: (e: React.MouseEvent, row: DBRow, col: DBColumn) => void;
-  parseRelationOpts: (col: DBColumn) => RelationColumnOptions | null;
   relationRowsCache: React.MutableRefObject<Map<string, Map<string, DBRow | null>>>;
   databaseId: string;
   reload: () => void;
@@ -46,7 +46,6 @@ export function CellRenderer({
   toggleCheckbox,
   openSelectDropdown,
   openMultiSelectDropdown,
-  parseRelationOpts,
   relationRowsCache,
   databaseId,
   reload,

@@ -5,7 +5,8 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteSchema, defaultBlockSpecs, locales } from "@blocknote/core";
 import { Mail, Phone } from "lucide-react";
 import { api } from "../../api/client";
-import type { DBColumn, DBRow, RelationColumnOptions } from "../../types";
+import type { DBColumn, DBRow } from "../../types";
+import { parseRelationOpts } from "../../utils/columnUtils";
 import { evalFormula } from "./formulaEngine";
 import { FilesModalField } from "./FilesModalField";
 import { RelationCell } from "./RelationCell";
@@ -117,7 +118,6 @@ interface RowModalProps {
   saveRowModal: () => void;
   databaseId: string;
   rowContentSaveRef: React.MutableRefObject<(() => void) | null>;
-  parseRelationOpts: (col: DBColumn) => RelationColumnOptions | null;
   relationRowsCache: React.MutableRefObject<Map<string, Map<string, DBRow | null>>>;
   reload: () => void;
   onTargetDeleted?: (targetDbId: string) => void;
@@ -132,7 +132,6 @@ export function RowModal({
   saveRowModal,
   databaseId,
   rowContentSaveRef,
-  parseRelationOpts,
   relationRowsCache,
   reload,
   onTargetDeleted,
