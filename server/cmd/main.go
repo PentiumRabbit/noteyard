@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"noteyard/server/internal/backup"
@@ -21,6 +22,7 @@ import (
 
 func main() {
 	logDirFlag := flag.String("log-dir", "", "directory for log files")
+	portFlag := flag.Int("port", 8080, "port to listen on")
 	flag.Parse()
 
 	logDir := resolveLogDir(*logDirFlag)
@@ -78,7 +80,7 @@ func main() {
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
 	sh := handler.NewSearchHandler(db)
-	uh := handler.NewUploadHandler(uploadDir, "http://localhost:8080")
+	uh := handler.NewUploadHandler(uploadDir, fmt.Sprintf("http://localhost:%d", *portFlag))
 	cuh := handler.NewCleanupHandler(uploadDir, db)
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
@@ -150,7 +152,7 @@ func main() {
 		})
 	})
 
-	addr := "127.0.0.1:8080"
+	addr := fmt.Sprintf("127.0.0.1:%d", *portFlag)
 	slog.Info("noteyard listening", "addr", "http://"+addr)
 	if err := http.ListenAndServe(addr, r); err != nil {
 		slog.Error("server error", "err", err)
