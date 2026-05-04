@@ -106,3 +106,54 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+  update-homebrew:
+    name: Update Homebrew Cask
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - name: Download DMGs and compute SHA256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          # --draft flag not needed; gh uses GITHUB_TOKEN which has contents:write
+          gh release download "$TAG" \
+            --repo PentiumRabbit/noteyard \
+            --pattern "*.dmg" \
+            --dir dmgs \
+            --clobber
+
+          ARM_DMG="dmgs/noteyard_${VERSION}_aarch64.dmg"
+          X64_DMG="dmgs/noteyard_${VERSION}_x64.dmg"
+
+          ARM_SHA=$(shasum -a 256 "$ARM_DMG" | awk '{print $1}')
+          X64_SHA=$(shasum -a 256 "$X64_DMG" | awk '{print $1}')
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ARM_SHA=$ARM_SHA" >> "$GITHUB_ENV"
+          echo "X64_SHA=$X64_SHA" >> "$GITHUB_ENV"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v6
+        with:
+          repository: PentiumRabbit/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update cask file
+        run: |
+          CASK="homebrew-tap/Casks/noteyard.rb"
+          sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" "$CASK"
+          sed -i '' "/on_arm/,/end/{s/sha256 \"[^\"]*\"/sha256 \"$ARM_SHA\"/}" "$CASK"
+          sed -i '' "/on_intel/,/end/{s/sha256 \"[^\"]*\"/sha256 \"$X64_SHA\"/}" "$CASK"
+
+      - name: Commit and push
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/noteyard.rb
+          git commit -m "chore: update noteyard to $VERSION"
+          git push
