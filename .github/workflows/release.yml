@@ -144,9 +144,34 @@ jobs:
 
       - name: Update cask file
         run: |
-          python3 .github/scripts/update-cask.py \
-            homebrew-tap/Casks/noteyard.rb \
-            "$VERSION" "$ARM_SHA" "$X64_SHA"
+          python3 - <<'PYEOF'
+          import re, os
+
+          cask_path = "homebrew-tap/Casks/noteyard.rb"
+          version  = os.environ["VERSION"]
+          arm_sha  = os.environ["ARM_SHA"]
+          x64_sha  = os.environ["X64_SHA"]
+
+          with open(cask_path) as f:
+              text = f.read()
+
+          text = re.sub(r'version "[^"]*"', f'version "{version}"', text, count=1)
+
+          def replace_sha_in_block(text, marker, sha):
+              return re.sub(
+                  rf'({marker}.*?sha256 ")[^"]*(")',
+                  rf'\g<1>{sha}\g<2>',
+                  text, count=1, flags=re.DOTALL
+              )
+
+          text = replace_sha_in_block(text, 'on_arm', arm_sha)
+          text = replace_sha_in_block(text, 'on_intel', x64_sha)
+
+          with open(cask_path, 'w') as f:
+              f.write(text)
+
+          print(f"Updated {cask_path}: version={version}")
+          PYEOF
 
       - name: Commit and push
         working-directory: homebrew-tap
