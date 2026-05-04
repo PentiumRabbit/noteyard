@@ -37,6 +37,7 @@ import { toBlockNote } from "../../utils/toBlockNote";
 import type { BNInline, BNBlock } from "../../types/blocknote";
 import "./Editor.css";
 import { FileUploadField } from "./FileUploadField";
+import { useResizable } from "../../hooks/useResizable";
 
 function inlinesToText(content: BNInline[] | undefined): string {
   if (!content) return "";
@@ -345,22 +346,10 @@ const EmbedBlock = createReactBlockSpec(
   {
     render: ({ block, editor }) => {
       const [urlDraft, setUrlDraft] = React.useState(block.props.url || "");
-      const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
-
-      const startResize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const h = parseInt(block.props.height || "400", 10);
-        resizeRef.current = { startY: e.clientY, startH: h };
-        const onMove = (mv: MouseEvent) => {
-          if (!resizeRef.current) return;
-          const newH = Math.max(100, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
-        };
-        const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
-      };
+      const { startResize } = useResizable(400, 100, (newH) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
+      });
 
       if (!block.props.url) {
         return (
@@ -391,7 +380,7 @@ const EmbedBlock = createReactBlockSpec(
             sandbox="allow-scripts allow-same-origin allow-forms"
             title="embed"
           />
-          <div className="embed-resize-handle" onMouseDown={startResize} title="拖拽调整高度" />
+          <div className="embed-resize-handle" onMouseDown={(e) => startResize(e, parseInt(block.props.height || "400", 10))} title="拖拽调整高度" />
         </div>
       );
     },
@@ -407,26 +396,14 @@ const PdfBlock = createReactBlockSpec(
   },
   {
     render: ({ block, editor }) => {
-      const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
+      const { startResize } = useResizable(500, 200, (newH) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
+      });
 
       const handleUpload = (file: File, url: string) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         editor.updateBlock(block, { props: { url, name: file.name, height: "500" } } as any);
-      };
-
-      const startResize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const h = parseInt(block.props.height || "500", 10);
-        resizeRef.current = { startY: e.clientY, startH: h };
-        const onMove = (mv: MouseEvent) => {
-          if (!resizeRef.current) return;
-          const newH = Math.max(200, resizeRef.current.startH + mv.clientY - resizeRef.current.startY);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          editor.updateBlock(block, { props: { ...block.props, height: String(newH) } } as any);
-        };
-        const onUp = () => { resizeRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
       };
 
       if (!block.props.url) {
@@ -445,7 +422,7 @@ const PdfBlock = createReactBlockSpec(
             style={{ height: block.props.height + "px" }}
             title={block.props.name}
           />
-          <div className="embed-resize-handle" onMouseDown={startResize} title="拖拽调整高度" />
+          <div className="embed-resize-handle" onMouseDown={(e) => startResize(e, parseInt(block.props.height || "500", 10))} title="拖拽调整高度" />
         </div>
       );
     },
