@@ -536,7 +536,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: false, width: 0 }),
     uploadFile: async (file: File) => {
       const data = await api.uploads.upload(file);
-      return data.url;
+      // 后端返回相对路径后需拼接 API_BASE；startsWith("http") 保持过渡期兼容
+      const url = data.url.startsWith("http") ? data.url : API_BASE + data.url;
+      return url;
     },
   });
 

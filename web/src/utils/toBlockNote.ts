@@ -1,6 +1,16 @@
 import type { Block } from "../types";
 import type { BNBlock } from "../types/blocknote";
 import { BLOCK_TYPES } from "../types/blockTypes";
+import { API_BASE } from "../api/client";
+
+const LOCALHOST_UPLOADS_RE = /^http:\/\/localhost:\d+\/uploads\//;
+
+function normalizeUploadUrl(url: string): string {
+  if (LOCALHOST_UPLOADS_RE.test(url)) {
+    return API_BASE + "/uploads/" + url.split("/uploads/")[1];
+  }
+  return url;
+}
 
 function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
   // ── columnList: build children tree from flat blocks ──
@@ -43,6 +53,13 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
   ) {
     let props: Record<string, unknown> = {};
     try { props = JSON.parse(b.content) as Record<string, unknown>; } catch (e) { console.warn('[toBlockNote] parse failed for block', b.id, e); }
+    // Normalize localhost upload URLs for fileAttach / pdf blocks (ISS-037)
+    if (
+      (b.type === BLOCK_TYPES.FILE_ATTACH || b.type === BLOCK_TYPES.PDF) &&
+      typeof props.url === "string"
+    ) {
+      props = { ...props, url: normalizeUploadUrl(props.url) };
+    }
     return { id: b.id, type: b.type, props, content: undefined, children: [] };
   }
 
@@ -56,6 +73,19 @@ function buildBlock(b: Block, allBlocks: Block[]): BNBlock {
       if (s && "strikethrough" in s) {
         const { strikethrough, ...rest } = s;
         return { ...node as object, styles: { ...rest, strike: strikethrough } };
+      }
+    }
+    return node;
+  });
+  // Normalize localhost upload URLs in inline image nodes (ISS-037)
+  content = content.map((node) => {
+    if (node && typeof node === "object") {
+      const n = node as Record<string, unknown>;
+      if (n.type === "image") {
+        const props = n.props as Record<string, unknown> | undefined;
+        if (props?.url && typeof props.url === "string") {
+          return { ...n, props: { ...props, url: normalizeUploadUrl(props.url) } };
+        }
       }
     }
     return node;
