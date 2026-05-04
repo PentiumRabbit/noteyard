@@ -93,6 +93,20 @@ export interface FileAttachment {
   mime: string;
 }
 
+export interface UploadResponse {
+  url: string
+  name: string
+  size: number
+  mime: string
+}
+
+export interface BookmarkMeta {
+  title: string
+  description: string
+  favicon: string
+  url?: string
+}
+
 export interface FilterState {
   id: string;
   colId: string;

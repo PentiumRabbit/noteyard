@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import type { Block, DBCell, DBColumn, DBRow, Database, Page, SearchResponse } from "../types";
+import type { Block, BookmarkMeta, DBCell, DBColumn, DBRow, Database, Page, SearchResponse, UploadResponse } from "../types";
 import * as logger from "../lib/logger";
 
 export let API_BASE = "http://localhost:8080";
@@ -88,6 +88,11 @@ export const api = {
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}/cells`, cells),
     updateRowContent: (dbId: string, rowId: string, content: string): Promise<void> =>
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}`, { content }),
+    /**
+     * 重新排列数据库行顺序。
+     * @param dbId - 目标数据库 ID
+     * @param order - 全量有序行 ID 数组，服务端按此顺序重写每行的 order_index
+     */
     reorderRows: (dbId: string, order: string[]): Promise<void> =>
       req<void>("POST", `/databases/${dbId}/rows/reorder`, { order }),
   },
@@ -103,6 +108,27 @@ export const api = {
     permanentDelete: (id: string) => req<void>("DELETE", `/pages/${id}/permanent`),
     search: (q: string) => req<Page[]>("GET", `/pages/search?q=${encodeURIComponent(q)}`),
     backlinks: (id: string) => req<Page[]>("GET", `/pages/${id}/backlinks`),
+  },
+  uploads: {
+    upload: (file: File): Promise<UploadResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      const BASE = API_BASE + "/api";
+      return fetch(BASE + "/uploads", { method: "POST", body: form }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          const msg = (err as { error: string }).error || res.statusText;
+          logger.error("api request failed", { method: "POST", path: "/uploads", error: msg });
+          toast.error(msg);
+          throw new Error(msg);
+        }
+        return res.json() as Promise<UploadResponse>;
+      });
+    },
+  },
+  meta: {
+    fetch: (url: string): Promise<BookmarkMeta> =>
+      req<BookmarkMeta>("GET", `/meta?url=${encodeURIComponent(url)}`),
   },
   globalSearch: (q: string, offset?: number) => {
     const params = new URLSearchParams({ q });
