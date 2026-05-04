@@ -205,9 +205,10 @@ func TestLoadSeed_Welcome(t *testing.T) {
 		if b.Type == "" {
 			t.Errorf("block %s has empty type", b.ID)
 		}
-		var arr []interface{}
-		if err := json.Unmarshal([]byte(b.Content), &arr); err != nil {
-			t.Errorf("block %s content is not valid JSON array: %v", b.ID, err)
+		// Content must be a valid JSON array OR object (table/bookmark blocks use object content).
+		var v interface{}
+		if err := json.Unmarshal([]byte(b.Content), &v); err != nil {
+			t.Errorf("block %s content is not valid JSON: %v", b.ID, err)
 		}
 	}
 }
