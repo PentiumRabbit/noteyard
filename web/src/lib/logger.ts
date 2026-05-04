@@ -1,5 +1,4 @@
 import { API_BASE } from "../api/client";
-import { invoke } from "@tauri-apps/api/core";
 
 type Level = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
@@ -41,12 +40,15 @@ function send(level: Level, msg: string, fields?: Record<string, unknown>): void
   });
 
   if (typeof window !== "undefined" && (window as any).__TAURI__) {
-    invoke("write_frontend_log", {
-      level,
-      layer: "frontend",
-      msg,
-      fields: fields ?? null,
-    }).catch(() => {}); // 静默失败，不影响主路径
+    // 动态 import 避免在浏览器环境产生 @tauri-apps/api/core 模块副作用
+    import("@tauri-apps/api/core").then(({ invoke }) => {
+      invoke("write_frontend_log", {
+        level,
+        layer: "frontend",
+        msg,
+        fields: fields ?? null,
+      }).catch(() => {}); // 静默失败，不影响主路径
+    }).catch(() => {}); // 非 Tauri 环境动态 import 失败时静默忽略
   }
 }
 
