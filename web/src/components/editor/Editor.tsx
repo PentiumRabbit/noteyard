@@ -530,7 +530,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const editor = useCreateBlockNote({
     schema,
     dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
-    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: "#3b82f6", width: 3 }),
+    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: false, class: "bn-drop-overlay" }),
     uploadFile: async (file: File) => {
       const data = await api.uploads.upload(file);
       return data.url;
@@ -696,6 +696,21 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [onSelectPage]);
+
+  // ISS-035 修复：WKWebView 环境下 editorView.dom 不是 dragstart 发起元素，
+  // dragend 无法冒泡到 editorView.dom，需在 document 层兜底清除 drop cursor
+  useEffect(() => {
+    const handleDragEnd = () => {
+      // multiColumnDropCursorPlugin 创建的 cursor element 挂在 editorView.dom.offsetParent 下
+      // class 为 prosemirror-dropcursor-block 或 prosemirror-dropcursor-inline
+      const cursors = document.querySelectorAll<HTMLElement>(
+        '.prosemirror-dropcursor-block, .prosemirror-dropcursor-inline'
+      );
+      cursors.forEach((el) => el.parentNode?.removeChild(el));
+    };
+    document.addEventListener('dragend', handleDragEnd);
+    return () => document.removeEventListener('dragend', handleDragEnd);
+  }, []);
 
   // ISS-032 副作用修复 + ISS-034 方案B：仅对 blocknote 内部拖拽启用 move 模式并阻止默认行为，
   // 避免外部文件拖入被错误设为 move，同时通过 preventDefault 覆盖 WKWebView 的 Copy 干扰。
