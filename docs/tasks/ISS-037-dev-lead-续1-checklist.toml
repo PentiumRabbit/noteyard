@@ -1,0 +1,10 @@
+status = "delivered"
+
+[items]
+T1_backend = "done"
+T2_frontend = "done"
+T3_tester = "done"
+go_build = "zero errors"
+tsc_noEmit = "zero errors"
+go_test_upload = "ok"
+ISS037_status = "已修复"
