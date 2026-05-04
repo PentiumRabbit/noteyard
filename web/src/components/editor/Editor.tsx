@@ -697,10 +697,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     return () => document.removeEventListener("click", handler);
   }, [onSelectPage]);
 
-  // ISS-032: 内部块拖拽时强制 move 模式，避免浏览器（尤其 macOS）显示绿色 "copy" 光标。
-  // ProseMirror 拖拽使用 text/html 类型；只要有 dataTransfer 数据则视为内部拖拽并设置 move。
+  // ISS-032 副作用修复 + ISS-034 方案B：仅对 blocknote 内部拖拽启用 move 模式并阻止默认行为，
+  // 避免外部文件拖入被错误设为 move，同时通过 preventDefault 覆盖 WKWebView 的 Copy 干扰。
   const handleEditorDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.dataTransfer.types.length > 0) {
+    if (e.dataTransfer.types.includes("blocknote/html")) {
+      e.preventDefault();
       e.dataTransfer.dropEffect = "move";
     }
   };
