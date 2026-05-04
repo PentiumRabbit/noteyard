@@ -92,6 +92,7 @@ export function SortableOptionRow({
 interface ColumnHeaderMenuProps {
   colMenu: ColMenu;
   menuCol: DBColumn;
+  menuRef: React.RefObject<HTMLDivElement | null>;
   renameInputRef: React.RefObject<HTMLInputElement | null>;
   setColMenu: React.Dispatch<React.SetStateAction<ColMenu | null>>;
   closeColMenu: () => void;
@@ -106,6 +107,7 @@ interface ColumnHeaderMenuProps {
 export function ColumnHeaderMenu({
   colMenu,
   menuCol,
+  menuRef,
   renameInputRef,
   setColMenu,
   closeColMenu,
@@ -119,7 +121,9 @@ export function ColumnHeaderMenu({
   return (
     <>
       <div className="col-menu-overlay" onClick={closeColMenu} />
-      <div className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
+      {/* ISS-020: ref forwarded so DatabaseView can measure actual height via rAF */}
+      <div ref={menuRef} className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
+        {/* ISS-022 order: 1. 列名 2. 高频操作 3. 类型 4. 删除 */}
         <div className="col-menu-rename">
           <input
             ref={renameInputRef}
@@ -130,14 +134,7 @@ export function ColumnHeaderMenu({
             placeholder="列名"
           />
         </div>
-        <div className="col-menu-divider" />
-        <div className="col-menu-type-label">列类型</div>
-        {COL_TYPES.map(t => (
-          <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
-            onClick={() => void changeColType(t)}>
-            <span className="col-icon-wrap"><ColIcon type={t} /></span>{t}
-          </button>
-        ))}
+        {/* ISS-022: high-frequency actions moved above type list */}
         {menuCol.type === "formula" && (
           <>
             <div className="col-menu-divider" />
@@ -156,6 +153,17 @@ export function ColumnHeaderMenu({
             <button className="col-menu-formula-btn" onClick={e => openSelectOptions(e, menuCol)}>≡ 管理选项</button>
           </>
         )}
+        <div className="col-menu-divider" />
+        <div className="col-menu-type-label">列类型</div>
+        {/* ISS-021: constrain type list height so panel stays within viewport */}
+        <div style={{ maxHeight: 240, overflowY: "auto" }}>
+          {COL_TYPES.map(t => (
+            <button key={t} className={`col-menu-type-item${menuCol.type === t ? " active" : ""}`}
+              onClick={() => void changeColType(t)}>
+              <span className="col-icon-wrap"><ColIcon type={t} /></span>{t}
+            </button>
+          ))}
+        </div>
         <div className="col-menu-divider" />
         <button className="col-menu-del-btn" onClick={() => void deleteCol()}><Trash2 size={14} /> 删除列</button>
       </div>
