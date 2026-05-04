@@ -43,7 +43,7 @@ server/
 
 **BlockRepository**：ListByPage、GetByID、Create、Update、Delete、BatchUpdate
 
-**DatabaseRepository**：Create、GetByID、UpdateTitle、Delete、AddColumn、UpdateColumn、DeleteColumn、AddRow、UpdateRow、DeleteRow、ListRows、GetRow、BatchUpdateCells
+**DatabaseRepository**：Create、GetByID、UpdateTitle、Delete、AddColumn、UpdateColumn、DeleteColumn、AddRow、UpdateRow、DeleteRow、ListRows、GetRow、BatchUpdateCells、ReorderRows
 
 ---
 
@@ -123,3 +123,11 @@ Query params（`GET /api/databases/{id}/rows`）：
 | I-021 sort_filter 全通 | default case → false + warn log；降序改为显式 `>` | `sort_filter.go` |
 | 新增接口 | `GET /api/databases`（ListAll）+ `DatabaseSummary` model | 多文件 |
 | ParseSortFilter | 提取 helper，`ListRows` 使用 | `sort_filter.go`, `database_handler.go` |
+
+## 9. ISS-026 变更摘要（dispatch #158，2026-05-04）
+
+新增 `POST /api/databases/{id}/rows/reorder` 接口，支持 Table View 行拖拽排序持久化。
+
+- `ReorderRows(ctx, dbID, rowIDs)` 在单一事务内批量 UPDATE `database_rows.order_index`，`database_rows.order_index` 字段已存在无需迁移
+- 现有 `UpdateRow` 接口不受影响（仅更新 content）
+- 错误处理遵循现有规范：事务失败返回 500

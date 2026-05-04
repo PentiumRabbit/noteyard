@@ -134,3 +134,21 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 - `web/src/components/database/DatabaseView.css`（`.select-dd-add-option` 样式）
 
 *由前端架构师（arch-frontend）生成，dispatch #121 / ISS-016。*
+
+---
+
+## ISS-026 修复摘要（2026-05-04，dispatch #157/#159）
+
+**问题**：Table View 行拖拽排序功能缺失（从未实现）。
+
+**方案**：
+- `DatabaseView.tsx` 新增 `SortableTableRow` 组件（`useSortable` + `GripVertical` 手柄），`Table View tbody` 包裹 `DndContext + SortableContext(verticalListSortingStrategy)`
+- `dragEnabled = groupByColId === "" && activeSorts.length === 0`：分组模式或主动排序激活时禁用拖排序
+- `onDragEnd`：`arrayMove` 乐观更新 `rows` state，调用 `api.databases.reorderRows` 持久化；失败回滚
+- `api/client.ts` 新增 `reorderRows(dbId, order[])` 方法（POST `/databases/{id}/rows/reorder`）
+- `DatabaseView.css` 新增 `.th-row-drag`、`.td-row-drag`、`.row-drag-handle` 样式，手柄 hover 显示
+
+**影响文件**：
+- `web/src/components/database/DatabaseView.tsx`
+- `web/src/components/database/DatabaseView.css`
+- `web/src/api/client.ts`
