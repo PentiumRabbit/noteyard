@@ -88,6 +88,8 @@ export const api = {
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}/cells`, cells),
     updateRowContent: (dbId: string, rowId: string, content: string): Promise<void> =>
       req<void>("PATCH", `/databases/${dbId}/rows/${rowId}`, { content }),
+    reorderRows: (dbId: string, order: string[]): Promise<void> =>
+      req<void>("POST", `/databases/${dbId}/rows/reorder`, { order }),
   },
   pages: {
     listAll: () => req<Page[]>("GET", "/pages"),

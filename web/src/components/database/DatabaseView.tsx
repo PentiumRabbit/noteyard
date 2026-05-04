@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Table, Columns, LayoutGrid, List, CalendarDays, GanttChartSquare, Filter, ArrowUpDown, EyeOff, Rows, Plus, ExternalLink, Copy, Trash2, FileText } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { ChevronDown, Table, Columns, LayoutGrid, List, CalendarDays, GanttChartSquare, Filter, ArrowUpDown, EyeOff, Rows, Plus, ExternalLink, Copy, Trash2, FileText, GripVertical } from "lucide-react";
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
 import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, RollupColumnOptions, FilterState, SortState } from "../../types";
 import { ToolbarPanelView } from "./ToolbarPanel";
@@ -22,6 +25,25 @@ import { evalFormula } from "./formulaEngine";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
+
+function SortableTableRow({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td className="td-row-drag">
+        <span className="row-drag-handle" {...attributes} {...listeners} title="拖拽排序">
+          <GripVertical size={14} />
+        </span>
+      </td>
+      {children}
+    </tr>
+  );
+}
 
 interface AddColPopover { x: number; y: number }
 interface RollupPopover { colId: string; x: number; y: number }
@@ -632,6 +654,26 @@ export function DatabaseView({ databaseId }: Props) {
     : rows;
 
   const activeSorts = sortStates.filter(s => s.colId);
+  const dragEnabled = groupByColId === "" && activeSorts.length === 0;
+
+  const tableDndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleTableDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = rows.findIndex(r => r.id === active.id);
+    const newIndex = rows.findIndex(r => r.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const prevRows = rows;
+    const newRows = arrayMove(rows, oldIndex, newIndex);
+    setRows(newRows);
+    try {
+      await api.databases.reorderRows(databaseId, newRows.map(r => r.id));
+    } catch {
+      setRows(prevRows);
+    }
+  };
+
   if (activeSorts.length > 0) {
     displayedRows = [...displayedRows].sort((a, b) => {
       for (const s of activeSorts) {
@@ -823,9 +865,11 @@ export function DatabaseView({ databaseId }: Props) {
       })()}
 
       <div className="db-scroll" style={{ display: viewMode === "table" ? undefined : "none" }} >
+        <DndContext sensors={tableDndSensors} onDragEnd={(e) => { void handleTableDragEnd(e); }}>
         <table className="db-table">
           <thead>
             <tr>
+              {dragEnabled && <th className="th-row-drag" />}
               <th className="th-row-actions">
                 <input type="checkbox" className="db-row-check"
                   checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
@@ -853,9 +897,10 @@ export function DatabaseView({ databaseId }: Props) {
               </th>
             </tr>
           </thead>
+          <SortableContext items={dragEnabled ? rows.map(r => r.id) : []} strategy={verticalListSortingStrategy}>
           <tbody>
             {displayedRows.length === 0 && cols.length === 0 && (
-              <tr><td colSpan={3} className="db-empty-td">点击右上角 + 添加第一列</td></tr>
+              <tr><td colSpan={dragEnabled ? 4 : 3} className="db-empty-td">点击右上角 + 添加第一列</td></tr>
             )}
             {(() => {
               const groupCol = groupByColId ? allCols.find(c => c.id === groupByColId) : null;
@@ -878,7 +923,7 @@ export function DatabaseView({ databaseId }: Props) {
                 const tc = (() => { const gc = groupByColId ? allCols.find(c => c.id === groupByColId) : null; return gc?.type === "select" && item.groupLabel !== "无" ? tagColor(item.groupLabel!) : null; })();
                 return (
                   <tr key={`group-${idx}`} className="db-group-header-row">
-                    <td colSpan={cols.length + 2} className="db-group-header-td">
+                    <td colSpan={cols.length + (dragEnabled ? 3 : 2)} className="db-group-header-td">
                       {tc ? (
                         <span className="cell-tag" style={{ background: tc.bg, color: tc.color }}>{item.groupLabel}</span>
                       ) : (
@@ -889,60 +934,69 @@ export function DatabaseView({ databaseId }: Props) {
                 );
               }
               const row = item.row;
-              return (
-              <tr key={row.id}>
-                <td className="td-row-actions">
-                  <div className="row-actions-wrap">
-                    <input type="checkbox" className="db-row-check"
-                      checked={selectedRowIds.has(row.id)}
-                      onChange={() => toggleSelectRow(row.id)} />
-                    <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行"><ExternalLink size={14} /></button>
-                    <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行"><Copy size={14} /></button>
-                    <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行"><Trash2 size={14} /></button>
-                  </div>
-                </td>
-                {cols.map(col => {
-                  const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
-                  const rollupRelMissing = col.type === "rollup" ? rollupRelationMissing(col, allCols) : false;
-                  return (
-                    <td key={col.id}>
-                      <CellRenderer
-                        col={col}
-                        row={row}
-                        cols={cols}
-                        isEditing={isEditing}
-                        cellDraft={cellDraft}
-                        setCellDraft={setCellDraft}
-                        cellInputRef={cellInputRef}
-                        startEdit={startEdit}
-                        commitEdit={commitEdit}
-                        handleCellKeyDown={handleCellKeyDown}
-                        toggleCheckbox={toggleCheckbox}
-                        openSelectDropdown={openSelectDropdown}
-                        openMultiSelectDropdown={openMultiSelectDropdown}
-                        parseRelationOpts={parseRelationOpts}
-                        relationRowsCache={relationRowsCache}
-                        databaseId={databaseId}
-                        reload={reload}
-                        rollupRelMissing={rollupRelMissing}
-                        onTargetDeleted={(targetDbId) => setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId))}
-                      />
-                    </td>
-                  );
-                })}
-                <td />
-              </tr>
+              const rowContent = (
+                <>
+                  <td className="td-row-actions">
+                    <div className="row-actions-wrap">
+                      <input type="checkbox" className="db-row-check"
+                        checked={selectedRowIds.has(row.id)}
+                        onChange={() => toggleSelectRow(row.id)} />
+                      <button className="row-open-btn" onClick={() => openRowModal(row)} title="展开行"><ExternalLink size={14} /></button>
+                      <button className="row-dup-btn" onClick={() => void duplicateRow(row)} title="复制行"><Copy size={14} /></button>
+                      <button className="row-del-btn" onClick={() => void deleteRow(row.id)} title="删除行"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                  {cols.map(col => {
+                    const isEditing = editingCell?.rowId === row.id && editingCell?.colId === col.id;
+                    const rollupRelMissing = col.type === "rollup" ? rollupRelationMissing(col, allCols) : false;
+                    return (
+                      <td key={col.id}>
+                        <CellRenderer
+                          col={col}
+                          row={row}
+                          cols={cols}
+                          isEditing={isEditing}
+                          cellDraft={cellDraft}
+                          setCellDraft={setCellDraft}
+                          cellInputRef={cellInputRef}
+                          startEdit={startEdit}
+                          commitEdit={commitEdit}
+                          handleCellKeyDown={handleCellKeyDown}
+                          toggleCheckbox={toggleCheckbox}
+                          openSelectDropdown={openSelectDropdown}
+                          openMultiSelectDropdown={openMultiSelectDropdown}
+                          parseRelationOpts={parseRelationOpts}
+                          relationRowsCache={relationRowsCache}
+                          databaseId={databaseId}
+                          reload={reload}
+                          rollupRelMissing={rollupRelMissing}
+                          onTargetDeleted={(targetDbId) => setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId))}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td />
+                </>
+              );
+              return dragEnabled ? (
+                <SortableTableRow key={row.id} id={row.id}>
+                  {rowContent}
+                </SortableTableRow>
+              ) : (
+                <tr key={row.id}>{rowContent}</tr>
               );
             })}
             <tr className="db-add-row-tr">
-              <td colSpan={cols.length + 2}>
+              <td colSpan={cols.length + (dragEnabled ? 3 : 2)}>
                 <button className="db-add-row-btn" onClick={() => void addRow()}>
                   <Plus size={14} /> 新建
                 </button>
               </td>
             </tr>
           </tbody>
+          </SortableContext>
         </table>
+        </DndContext>
       </div>
 
       {/* column header menu */}
