@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
-| 最后更新 | 2026-05-03 |
-| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 |
+| 最后更新 | 2026-05-05 |
+| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 |
 
 ---
 
@@ -24,7 +24,8 @@
 |------|------|
 | `web/src/api/client.ts` | 统一 HTTP 层，`req<T>` 函数封装 fetch；已集成 toast.error |
 | `web/src/App.tsx` | 根组件，挂载 `<Toaster />`、SettingsContext、Sidebar、Editor |
-| `web/src/components/editor/Editor.tsx` | BlockNote 编辑器，使用 API_BASE 常量，无硬编码 URL |
+| `web/src/components/editor/Editor.tsx` | BlockNote 编辑器，使用 API_BASE 常量，无硬编码 URL；注册 dropOverlayPlugin |
+| `web/src/components/editor/dropOverlayPlugin.ts` | ProseMirror Plugin：dragover 时定位目标块并渲染 position:fixed 浮层；dragend/drop/dragleave 清除 |
 | `web/src/components/database/DatabaseView.tsx` | 数据库视图（大组件，含竞态修复、乐观更新、缓存失效） |
 | `web/src/components/database/shared.ts` | 数据库视图共享：TAG_COLORS、tagColor、parseOptions、serializeOptions、SelectOption |
 | `web/src/utils/fileAttachments.ts` | parseFileAttachments 工具函数 |
@@ -47,7 +48,14 @@
 
 ---
 
-## 上次变更摘要（REQ-073）
+## 上次变更摘要（ISS-035 v2）
+
+- `web/src/components/editor/dropOverlayPlugin.ts`：新建 ProseMirror Plugin（方案D）。dragover 时用 `getNearestBlockPos` 定位目标块，调用 `getBoundingClientRect()` 获取视口坐标，按 clientX 判断 left/right/regular，用 `position: fixed` 的 overlay div 覆盖目标块完整区域（或左/右半边）；dragend/drop/dragleave 清除 overlay。
+- `web/src/components/editor/Editor.tsx`：保留 `multiColumnDropCursor` 负责 handleDrop 逻辑（columnList 创建），但将 `color: false, width: 0` 抑制其视觉输出；通过 `useMemo` + `useEffect` 在 `_tiptapEditor` 上注册/注销 `dropOverlayPlugin`；移除 ISS-035 v1 的 document dragend 兜底 useEffect。
+- `web/src/components/editor/Editor.css`：`.bn-drop-overlay` 新增 `position: fixed !important; z-index: 50`。
+- commit: `fix(editor)[eng-frontend-ISS035-v2#188]: 方案D 自定义 dropOverlayPlugin 替换竖线浮层`
+
+## 历史变更摘要（REQ-073）
 
 - `web/src/api/client.ts`：`importMarkdown(file)` 函数，POST multipart/form-data 到 `/api/import/markdown`，使用 `API_BASE` 常量，失败时 `toast.error` + re-throw
 - `web/src/components/sidebar/Sidebar.tsx`：引入 `toast`，侧边栏底部新增"导入 Markdown"按钮（`disabled` 状态 + "导入中…"文字切换），`handleImportChange` 成功后调用 `handleSelect` 跳转，失败改用 `toast.error`

@@ -668,8 +668,10 @@
 .toggle-arrow.open { transform: rotate(90deg); }
 .toggle-summary { flex: 1; min-width: 0; }
 
-/* ── drag drop overlay（替换 multiColumnDropCursor 竖线）── */
+/* ── drag drop overlay（方案D: 自定义 Plugin，position fixed 覆盖目标块完整区域）── */
 .bn-drop-overlay {
+  position: fixed !important;
+  z-index: 50;
   pointer-events: none;
   border-radius: 4px;
   background: rgba(59, 130, 246, 0.15);

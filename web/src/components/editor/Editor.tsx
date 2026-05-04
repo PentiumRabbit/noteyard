@@ -27,7 +27,7 @@ import {
 } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { withMultiColumn, getMultiColumnSlashMenuItems, locales as multiColumnLocales, multiColumnDropCursor } from "@blocknote/xl-multi-column";
-import React, { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, useRef, forwardRef, useMemo } from "react";
 import { api, API_BASE } from "../../api/client";
 import { pinyinMatch } from "../../utils/pinyinMatch";
 import type { Block } from "../../types";
@@ -38,6 +38,7 @@ import type { BNBlock } from "../../types/blocknote";
 import { blocksToMarkdown } from "../../utils/markdownUtils";
 import { isSafeUrl } from "../../utils/urlUtils";
 import "./Editor.css";
+import { dropOverlayPlugin } from "./dropOverlayPlugin";
 import { PanelSelect } from "../common/PanelSelect";
 import { FileUploadField } from "./FileUploadField";
 import { UrlInputField } from "./UrlInputField";
@@ -530,12 +531,32 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const editor = useCreateBlockNote({
     schema,
     dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
-    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: false, class: "bn-drop-overlay" }),
+    // Keep multiColumnDropCursor for handleDrop logic (columnList creation).
+    // Visual overlay is suppressed (width: 0, color: false); dropOverlayPlugin handles rendering.
+    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: false, width: 0 }),
     uploadFile: async (file: File) => {
       const data = await api.uploads.upload(file);
       return data.url;
     },
   });
+
+  // Register dropOverlayPlugin once after editor mounts.
+  const overlayPlugin = useMemo(() => dropOverlayPlugin(), []);
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tiptap = (editor as any)._tiptapEditor;
+    if (tiptap) {
+      tiptap.registerPlugin(overlayPlugin);
+    }
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = (editor as any)._tiptapEditor;
+      if (t) {
+        t.unregisterPlugin(overlayPlugin.spec.key);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -696,21 +717,6 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [onSelectPage]);
-
-  // ISS-035 修复：WKWebView 环境下 editorView.dom 不是 dragstart 发起元素，
-  // dragend 无法冒泡到 editorView.dom，需在 document 层兜底清除 drop cursor
-  useEffect(() => {
-    const handleDragEnd = () => {
-      // multiColumnDropCursorPlugin 创建的 cursor element 挂在 editorView.dom.offsetParent 下
-      // class 为 prosemirror-dropcursor-block 或 prosemirror-dropcursor-inline
-      const cursors = document.querySelectorAll<HTMLElement>(
-        '.prosemirror-dropcursor-block, .prosemirror-dropcursor-inline'
-      );
-      cursors.forEach((el) => el.parentNode?.removeChild(el));
-    };
-    document.addEventListener('dragend', handleDragEnd);
-    return () => document.removeEventListener('dragend', handleDragEnd);
-  }, []);
 
   // ISS-032 副作用修复 + ISS-034 方案B：仅对 blocknote 内部拖拽启用 move 模式并阻止默认行为，
   // 避免外部文件拖入被错误设为 move，同时通过 preventDefault 覆盖 WKWebView 的 Copy 干扰。
