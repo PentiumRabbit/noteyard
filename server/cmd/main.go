@@ -23,11 +23,18 @@ import (
 
 func main() {
 	logDirFlag := flag.String("log-dir", "", "directory for log files")
-	portFlag := flag.Int("port", -1, "port to listen on (1-65535); omit for random port)")
+	portFlag := flag.Int("port", 0, "port to listen on (1-65535); omit for random port")
 	flag.Parse()
 
+	portSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "port" {
+			portSet = true
+		}
+	})
+
 	port := *portFlag
-	if port != -1 && (port < 1 || port > 65535) {
+	if portSet && (port < 1 || port > 65535) {
 		fmt.Fprintf(os.Stderr, "invalid port %d: must be between 1 and 65535\n", port)
 		os.Exit(1)
 	}
@@ -80,9 +87,9 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Bind listener early to resolve the actual port (port==0 → OS picks random).
+	// Bind listener early to resolve the actual port (no --port → OS picks random).
 	listenAddr := "127.0.0.1:"
-	if port != -1 {
+	if portSet {
 		listenAddr = fmt.Sprintf("127.0.0.1:%d", port)
 	}
 	ln, err := net.Listen("tcp", listenAddr)
