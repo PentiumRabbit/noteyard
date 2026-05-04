@@ -38,6 +38,7 @@ import type { BNBlock } from "../../types/blocknote";
 import { blocksToMarkdown } from "../../utils/markdownUtils";
 import { isSafeUrl } from "../../utils/urlUtils";
 import "./Editor.css";
+import { PanelSelect } from "../common/PanelSelect";
 import { FileUploadField } from "./FileUploadField";
 import { UrlInputField } from "./UrlInputField";
 import { useResizable } from "../../hooks/useResizable";
@@ -454,22 +455,26 @@ const ButtonBlock = createReactBlockSpec(
                   placeholder="按钮文案"
                 />
               </label>
-              <label>
-                颜色
-                <select value={colorDraft} onChange={e => setColorDraft(e.target.value as ButtonColor)}>
-                  <option value="blue">蓝色</option>
-                  <option value="green">绿色</option>
-                  <option value="red">红色</option>
-                  <option value="gray">灰色</option>
-                </select>
-              </label>
-              <label>
-                点击动作
-                <select value={actionDraft} onChange={e => setActionDraft(e.target.value as ButtonAction)}>
-                  <option value="none">无动作</option>
-                  <option value="open_url">打开链接</option>
-                </select>
-              </label>
+              <PanelSelect
+                label="颜色"
+                value={colorDraft}
+                onChange={v => setColorDraft(v as ButtonColor)}
+                options={[
+                  { value: "blue", label: "蓝色" },
+                  { value: "green", label: "绿色" },
+                  { value: "red", label: "红色" },
+                  { value: "gray", label: "灰色" },
+                ]}
+              />
+              <PanelSelect
+                label="点击动作"
+                value={actionDraft}
+                onChange={v => setActionDraft(v as ButtonAction)}
+                options={[
+                  { value: "none", label: "无动作" },
+                  { value: "open_url", label: "打开链接" },
+                ]}
+              />
               {actionDraft === "open_url" && (
                 <label>
                   URL

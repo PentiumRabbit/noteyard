@@ -24,6 +24,7 @@ import { RowModal } from "./RowModal";
 import { CellRenderer } from "./CellRenderer";
 import { evalFormula } from "./formulaEngine";
 import { parseRelationOpts, parseRollupOpts } from "../../utils/columnUtils";
+import { PanelSelect } from "../common/PanelSelect";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -1084,15 +1085,15 @@ export function DatabaseView({ databaseId }: Props) {
               )}
             </div>
             {newColType === "relation" && (
-              <select
+              <PanelSelect
+                label="目标数据库"
                 value={newColRelationDbId}
-                onChange={e => setNewColRelationDbId(e.target.value)}
-              >
-                <option value="">选择目标数据库…</option>
-                {availableDatabases.map(d => (
-                  <option key={d.id} value={d.id}>{d.title || d.id}</option>
-                ))}
-              </select>
+                onChange={setNewColRelationDbId}
+                options={[
+                  { value: "", label: "选择目标数据库…" },
+                  ...availableDatabases.map(d => ({ value: d.id, label: d.title || d.id })),
+                ]}
+              />
             )}
             <div className="add-col-actions">
               <button onClick={() => void submitNewCol()}>确认</button>

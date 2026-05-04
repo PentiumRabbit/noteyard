@@ -619,6 +619,26 @@
 .button-block-panel input:focus,
 .button-block-panel select:focus { border-color: var(--color-accent); }
 
+/* ── PanelSelect common component ── */
+.panel-select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.panel-select {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 4px 7px;
+  font-size: 13px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  outline: none;
+}
+.panel-select:focus { border-color: var(--color-accent); }
+
 /* ── search highlight (jump-to-block from search result) ── */
 .search-highlight {
   background-color: rgba(255, 220, 0, 0.35);
