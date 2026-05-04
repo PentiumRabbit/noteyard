@@ -1,5 +1,6 @@
 // databaseConstants.ts — Shared constants and utilities for DatabaseView and sub-components
 import type { DBColumn } from "../../types";
+import type { SelectOption } from "./shared";
 
 export const COL_TYPES: DBColumn["type"][] = ["text", "number", "checkbox", "select", "multi-select", "date", "formula", "url", "email", "created_time", "last_edited_time", "files", "relation", "rollup", "phone", "people", "status"];
 
@@ -48,3 +49,9 @@ export function fmtTimestamp(ts: number | undefined): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+export const STATUS_PRESETS: SelectOption[] = [
+  { value: "未开始", colorIdx: 5 },
+  { value: "进行中", colorIdx: 1 },
+  { value: "已完成", colorIdx: 2 },
+];

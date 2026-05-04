@@ -4,7 +4,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../api/client";
-import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, RollupColumnOptions, FilterState, SortState } from "../../types";
+import type { DBCell, DBColumn, DBRow, Database, RelationColumnOptions, FilterState, SortState } from "../../types";
 import { ToolbarPanelView } from "./ToolbarPanel";
 import { KanbanView } from "./KanbanView";
 import { GalleryView } from "./GalleryView";
@@ -17,12 +17,13 @@ import { applyFilters } from "../../utils/filterUtils";
 import { TAG_COLORS, tagColor, parseOptions, serializeOptions } from "./shared";
 import type { SelectOption } from "./shared";
 import { ColIcon } from "./ColIcon";
-import { COL_TYPES, COL_TYPE_LABELS, READONLY_COL_TYPES, FORMULA_FUNCTIONS } from "./databaseConstants";
+import { COL_TYPES, COL_TYPE_LABELS, READONLY_COL_TYPES, FORMULA_FUNCTIONS, STATUS_PRESETS } from "./databaseConstants";
 import { ColumnHeaderMenu, FormulaPopoverPanel, SelectOptionsPopoverPanel } from "./ColumnHeader";
 import type { ColMenu, FormulaPopover, SelectOptionsPopover } from "./ColumnHeader";
 import { RowModal } from "./RowModal";
 import { CellRenderer } from "./CellRenderer";
 import { evalFormula } from "./formulaEngine";
+import { parseRelationOpts, parseRollupOpts } from "../../utils/columnUtils";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -137,30 +138,6 @@ export function DatabaseView({ databaseId }: Props) {
 
   // ISS-028: 必须在 if(!db) return 之前调用，否则违反 React Rules of Hooks
   const tableDndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  const parseRelationOpts = (col: DBColumn): RelationColumnOptions | null => {
-    try {
-      const opts = JSON.parse(col.options);
-      if (opts && typeof opts === "object" && "target_database_id" in opts) {
-        return opts as RelationColumnOptions;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const parseRollupOpts = (col: DBColumn): RollupColumnOptions | null => {
-    try {
-      const opts = JSON.parse(col.options);
-      if (opts && typeof opts === "object" && "relation_column_id" in opts && "target_column_id" in opts && "aggregation" in opts) {
-        return opts as RollupColumnOptions;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
 
   const rollupRelationMissing = (col: DBColumn, columns: DBColumn[]): boolean => {
     const opts = parseRollupOpts(col);
@@ -419,12 +396,6 @@ export function DatabaseView({ databaseId }: Props) {
       setAvailableDatabases(dbList);
     } catch { /* ignore */ }
   };
-
-  const STATUS_PRESETS: SelectOption[] = [
-    { value: "未开始", colorIdx: 5 },
-    { value: "进行中", colorIdx: 1 },
-    { value: "已完成", colorIdx: 2 },
-  ];
 
   const submitNewCol = async () => {
     if (!newColName.trim()) return;
@@ -948,7 +919,6 @@ export function DatabaseView({ databaseId }: Props) {
                           toggleCheckbox={toggleCheckbox}
                           openSelectDropdown={openSelectDropdown}
                           openMultiSelectDropdown={openMultiSelectDropdown}
-                          parseRelationOpts={parseRelationOpts}
                           relationRowsCache={relationRowsCache}
                           databaseId={databaseId}
                           reload={reload}
@@ -1230,7 +1200,6 @@ export function DatabaseView({ databaseId }: Props) {
           saveRowModal={saveRowModal}
           databaseId={databaseId}
           rowContentSaveRef={rowContentSaveRef}
-          parseRelationOpts={parseRelationOpts}
           relationRowsCache={relationRowsCache}
           reload={reload}
           onTargetDeleted={(targetDbId) => setDeletedTargetDbIds(prev => new Set(prev).add(targetDbId))}
