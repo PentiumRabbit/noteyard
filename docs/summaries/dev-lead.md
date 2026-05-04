@@ -2,7 +2,7 @@
 
 > 角色: 研发负责人（dev-lead）
 > 最后更新: 2026-05-04
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）
 
 ---
 
@@ -77,6 +77,23 @@
   - `ai-pro/docs/engineering/NEW-PROJECT.md`（日志检查项更新）
 - 并行执行线：Go 线（T1→T4）、Rust 线（T2）、前端线（T3→T5）
 - 沉淀：ai-pro logging-tauri-app.md + NEW-PROJECT.md 在 eng-backend 阶段同步完成
+
+---
+
+## ISS-018（动态端口改造，2026-05-04）
+
+- 状态：全部完成（✅）
+- 委派链：arch 技术评审（#150）→ N2 → eng-tauri（#151）+ eng-backend（#152）并行 → eng-frontend（#153）串行
+- 产出文件：
+  - `docs/architecture/ISS-018-review.md`（架构评审，三层设计方案）
+  - `src-tauri/src/lib.rs`（pick_free_port + PortState + get_port command）
+  - `server/cmd/main.go`（--port flag，动态 addr 和 UploadHandler base URL）
+  - `web/src/api/client.ts`（API_BASE let + setApiBase）
+  - `web/src/lib/logger.ts`（引用 API_BASE）
+  - `web/src/components/settings/SettingsPage.tsx`（引用 API_BASE）
+  - `web/src/main.tsx`（bootstrap invoke get_port）
+- 关键设计：Rust 层 TcpListener::bind(0) 分配空闲端口，通过 --port 传给 sidecar，通过 get_port command 暴露给前端
+- 硬编码 8080 全部消除（Go/Rust/前端）
 
 ---
 
