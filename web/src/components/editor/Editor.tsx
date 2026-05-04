@@ -697,8 +697,16 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     return () => document.removeEventListener("click", handler);
   }, [onSelectPage]);
 
+  // ISS-032: 内部块拖拽时强制 move 模式，避免浏览器（尤其 macOS）显示绿色 "copy" 光标。
+  // ProseMirror 拖拽使用 text/html 类型；只要有 dataTransfer 数据则视为内部拖拽并设置 move。
+  const handleEditorDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.length > 0) {
+      e.dataTransfer.dropEffect = "move";
+    }
+  };
+
   return (
-    <div className="editor-wrap">
+    <div className="editor-wrap" onDragOver={handleEditorDragOver}>
       <BlockNoteView editor={editor} onChange={handleChange} slashMenu={false} formattingToolbar={false} theme={bnTheme}>
         <FormattingToolbarController
           formattingToolbar={() => (
