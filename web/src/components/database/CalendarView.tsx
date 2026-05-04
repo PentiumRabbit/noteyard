@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DBColumn, DBRow } from "../../types";
 import { useMonthNav } from "../../hooks/useMonthNav";
+import CustomSelect from "../common/CustomSelect";
 import "./CalendarView.css";
 
 interface Props {
@@ -46,10 +47,16 @@ export function CalendarView({ columns, rows, onOpenRow }: Props) {
         <span className="cal-title">{year} 年 {month + 1} 月</span>
         <button className="cal-nav-btn" onClick={nextMonth}>›</button>
         {dateCols.length > 0 && (
-          <select className="cal-col-select" value={dateColId} onChange={e => setDateColId(e.target.value)}>
-            <option value="">不按日期显示</option>
-            {dateCols.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <CustomSelect
+            className="cal-col-select"
+            value={dateColId}
+            onChange={v => setDateColId(v)}
+            placeholder="不按日期显示"
+            options={[
+              { value: "", label: "不按日期显示" },
+              ...dateCols.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
         )}
         {dateCols.length === 0 && (
           <span className="cal-no-date">请先添加日期列</span>

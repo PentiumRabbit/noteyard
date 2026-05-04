@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { DBColumn, RollupAggregation, RollupColumnOptions } from "../../types";
+import CustomSelect from "../common/CustomSelect";
 
 interface Props {
   /** All columns in the current database */
@@ -159,18 +160,14 @@ export function RollupConfigPopover({
 
         {/* Step 1: relation column */}
         <div className="rollup-field-label">关联列</div>
-        <select
-          className="rollup-select"
+        <CustomSelect
           value={relationColId}
-          onChange={(e) => setRelationColId(e.target.value)}
-        >
-          <option value="">请选择关联列…</option>
-          {relationCols.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setRelationColId(v)}
+          placeholder="请选择关联列…"
+          options={[
+            ...relationCols.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
         {relationCols.length === 0 && (
           <div className="rollup-hint">当前数据库无关联列，请先添加关联列</div>
         )}
@@ -180,34 +177,24 @@ export function RollupConfigPopover({
         {loading ? (
           <div className="rollup-hint">加载中…</div>
         ) : (
-          <select
-            className="rollup-select"
+          <CustomSelect
             value={targetColId}
-            onChange={(e) => setTargetColId(e.target.value)}
+            onChange={(v) => setTargetColId(v)}
+            placeholder="请选择目标属性…"
             disabled={!relationColId || targetCols.length === 0}
-          >
-            <option value="">请选择目标属性…</option>
-            {targetCols.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              ...targetCols.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
         )}
 
         {/* Step 3: aggregation */}
         <div className="rollup-field-label">聚合函数</div>
-        <select
-          className="rollup-select"
+        <CustomSelect
           value={aggregation}
-          onChange={(e) => setAggregation(e.target.value as RollupAggregation)}
-        >
-          {ALL_AGGREGATIONS.map((a) => (
-            <option key={a} value={a}>
-              {AGGREGATION_LABELS[a]}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setAggregation(v as RollupAggregation)}
+          options={ALL_AGGREGATIONS.map((a) => ({ value: a, label: AGGREGATION_LABELS[a] }))}
+        />
 
         {saveError && <div className="rollup-error">{saveError}</div>}
 

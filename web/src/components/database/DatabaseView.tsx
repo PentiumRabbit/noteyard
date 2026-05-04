@@ -25,6 +25,7 @@ import { CellRenderer } from "./CellRenderer";
 import { evalFormula } from "./formulaEngine";
 import { parseRelationOpts, parseRollupOpts } from "../../utils/columnUtils";
 import { PanelSelect } from "../common/PanelSelect";
+import CustomSelect from "../common/CustomSelect";
 import "./DatabaseView.css";
 
 interface Props { databaseId: string }
@@ -705,12 +706,15 @@ export function DatabaseView({ databaseId }: Props) {
         <div className="db-panel">
           <div className="db-panel-content">
             <div className="db-panel-title">批量修改列值</div>
-            <select value={batchColId} onChange={e => setBatchColId(e.target.value)}>
-              <option value="">选择列</option>
-              {allCols.filter(c => !READONLY_COL_TYPES.has(c.type)).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={batchColId}
+              onChange={v => setBatchColId(v)}
+              placeholder="选择列"
+              options={[
+                { value: "", label: "选择列" },
+                ...allCols.filter(c => !READONLY_COL_TYPES.has(c.type)).map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
             {batchColId && (
               <input className="db-panel-input" placeholder="新值" value={batchVal}
                 onChange={e => setBatchVal(e.target.value)} />
@@ -742,9 +746,11 @@ export function DatabaseView({ databaseId }: Props) {
           <>
             <div className="kanban-group-select">
               分组列：
-              <select value={activeGroupColId} onChange={e => setKanbanGroupColId(e.target.value)}>
-                {selectCols.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <CustomSelect
+                value={activeGroupColId}
+                onChange={v => setKanbanGroupColId(v)}
+                options={selectCols.map(c => ({ value: c.id, label: c.name }))}
+              />
             </div>
             <KanbanView
               columns={allCols}

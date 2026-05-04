@@ -1,4 +1,5 @@
 import React from "react";
+import CustomSelect from "./CustomSelect";
 
 interface PanelSelectProps {
   label: string;
@@ -11,15 +12,11 @@ export function PanelSelect({ label, value, onChange, options }: PanelSelectProp
   return (
     <label className="panel-select-label">
       {label}
-      <select
-        className="panel-select"
+      <CustomSelect
         value={value}
-        onChange={e => onChange(e.target.value)}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options}
+      />
     </label>
   );
 }

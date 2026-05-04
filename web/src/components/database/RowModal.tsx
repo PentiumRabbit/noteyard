@@ -14,6 +14,7 @@ import { TAG_COLORS, parseOptions } from "./shared";
 import { parseFileAttachments } from "../../utils/fileAttachments";
 import { ColIcon } from "./ColIcon";
 import { fmtTimestamp } from "./databaseConstants";
+import CustomSelect from "../common/CustomSelect";
 
 // ── Row content editor schema (basic block types only, no database nesting) ──
 const rowContentSchema = BlockNoteSchema.create({
@@ -191,16 +192,14 @@ export function RowModal({
                     style={{ accentColor: "#2383e2", width: 15, height: 15 }}
                   />
                 ) : col.type === "select" ? (
-                  <select
+                  <CustomSelect
                     value={rowModalDraft[col.id] ?? ""}
-                    onChange={e => setRowModalDraft(d => ({ ...d, [col.id]: e.target.value }))}
-                    className="row-modal-select"
-                  >
-                    <option value="">—</option>
-                    {parseOptions(col.options).map((opt, idx) => (
-                      <option key={idx} value={opt.value}>{opt.value}</option>
-                    ))}
-                  </select>
+                    onChange={v => setRowModalDraft(d => ({ ...d, [col.id]: v }))}
+                    options={[
+                      { value: "", label: "—" },
+                      ...parseOptions(col.options).map((opt) => ({ value: opt.value, label: opt.value })),
+                    ]}
+                  />
                 ) : col.type === "multi-select" ? (
                   <div className="row-modal-multiselect">
                     {parseOptions(col.options).map((opt, idx) => {

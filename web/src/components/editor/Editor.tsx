@@ -461,10 +461,10 @@ const ButtonBlock = createReactBlockSpec(
                 value={colorDraft}
                 onChange={v => setColorDraft(v as ButtonColor)}
                 options={[
-                  { value: "blue", label: "蓝色" },
-                  { value: "green", label: "绿色" },
-                  { value: "red", label: "红色" },
-                  { value: "gray", label: "灰色" },
+                  { value: "blue", label: "文字颜色蓝" },
+                  { value: "green", label: "文字颜色绿" },
+                  { value: "red", label: "文字颜色红" },
+                  { value: "gray", label: "文字颜色灰" },
                 ]}
               />
               <PanelSelect
