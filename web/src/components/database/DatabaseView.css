@@ -183,8 +183,9 @@
   font-size: 14px;
   font-family: inherit;
   color: var(--color-text-primary);
-  /* overflow-x is intentionally omitted here; horizontal scrolling is
-     handled by .db-scroll so the title/toolbar/switcher stay fixed. */
+  /* ISS-006/008: overflow-x: auto 确保数据库块在多列布局中可横向滚动，
+     避免被父容器裁切。.db-scroll 同样保留 overflow-x: auto 以支持表格内部滚动。 */
+  overflow-x: auto;
 }
 
 .db-loading {
