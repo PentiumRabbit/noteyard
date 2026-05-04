@@ -36,6 +36,7 @@ import { useSettings } from "../../settings/settingsStore";
 import { toBlockNote } from "../../utils/toBlockNote";
 import type { BNInline, BNBlock } from "../../types/blocknote";
 import "./Editor.css";
+import { FileUploadField } from "./FileUploadField";
 
 function inlinesToText(content: BNInline[] | undefined): string {
   if (!content) return "";
@@ -257,35 +258,19 @@ const FileAttachBlock = createReactBlockSpec(
   {
     render: ({ block, editor }) => {
       const hasFile = !!block.props.url;
-      const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { alert("文件不超过 2MB"); return; }
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
-        if (!res.ok) { alert("上传失败"); return; }
-        const data = await res.json() as { url: string };
+      const handleUpload = (file: File, url: string) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { url: data.url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
+        editor.updateBlock(block, { props: { url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
       };
       if (!hasFile) {
-        return (
-          <label className="file-attach-upload">
-            <span>📎 上传文件</span>
-            <input type="file" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
-          </label>
-        );
+        return <FileUploadField label="📎 上传文件" maxSizeMB={2} onUpload={handleUpload} />;
       }
       return (
         <div className="file-attach-block">
           <span className="file-attach-icon">📎</span>
           <a href={block.props.url} download={block.props.name} className="file-attach-name">{block.props.name}</a>
           <span className="file-attach-size">{block.props.size}</span>
-          <label className="file-attach-reupload">
-            重新上传
-            <input type="file" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
-          </label>
+          <FileUploadField label="重新上传" maxSizeMB={2} onUpload={handleUpload} />
         </div>
       );
     },
@@ -424,17 +409,9 @@ const PdfBlock = createReactBlockSpec(
     render: ({ block, editor }) => {
       const resizeRef = React.useRef<{ startY: number; startH: number } | null>(null);
 
-      const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { alert("PDF 不超过 10MB"); return; }
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch(`${API_BASE}/api/uploads`, { method: "POST", body: form });
-        if (!res.ok) { alert("上传失败"); return; }
-        const data = await res.json() as { url: string };
+      const handleUpload = (file: File, url: string) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { url: data.url, name: file.name, height: "500" } } as any);
+        editor.updateBlock(block, { props: { url, name: file.name, height: "500" } } as any);
       };
 
       const startResize = (e: React.MouseEvent) => {
@@ -453,12 +430,7 @@ const PdfBlock = createReactBlockSpec(
       };
 
       if (!block.props.url) {
-        return (
-          <label className="file-attach-upload">
-            <span>📄 上传 PDF</span>
-            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => void handleUpload(e)} />
-          </label>
-        );
+        return <FileUploadField label="📄 上传 PDF" maxSizeMB={10} accept=".pdf" onUpload={handleUpload} />;
       }
 
       return (
