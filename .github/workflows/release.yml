@@ -103,7 +103,7 @@ jobs:
           releaseName: noteyard ${{ github.ref_name }}
           releaseBody: |
             See the full changelog in the commit history.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
 

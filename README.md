@@ -5,6 +5,7 @@ A local-first Notion alternative — block editor, database views, formula engin
 [中文](README_CN.md) · GitHub: [PentiumRabbit/noteyard](https://github.com/PentiumRabbit/noteyard) · Gitee mirror (China): [PentiumRabbit/noteyard](https://gitee.com/PentiumRabbit/noteyard)
 
 ![CI](https://github.com/PentiumRabbit/noteyard/actions/workflows/ci.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/PentiumRabbit/noteyard)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg)
 
