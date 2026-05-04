@@ -1,4 +1,4 @@
-const API_LOG_URL = "http://localhost:8080/api/log";
+import { API_BASE } from "../api/client";
 
 type Level = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
@@ -8,7 +8,7 @@ function send(level: Level, msg: string, fields?: Record<string, unknown>): void
   const body: Record<string, unknown> = { level, layer: "frontend", msg };
   if (fields && Object.keys(fields).length > 0) body.fields = fields;
 
-  fetch(API_LOG_URL, {
+  fetch(API_BASE + "/api/log", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

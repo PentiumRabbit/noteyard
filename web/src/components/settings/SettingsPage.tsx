@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { exportAll } from "../../api/client";
+import { exportAll, API_BASE } from "../../api/client";
 import { FONTS } from "../../settings/fontConfig";
 import { THEMES } from "../../settings/themeConfig";
 import { useSettings } from "../../settings/settingsStore";
@@ -18,7 +18,7 @@ interface AppConfig {
 
 async function fetchConfig(): Promise<AppConfig | null> {
   try {
-    const res = await fetch("http://localhost:8080/api/config");
+    const res = await fetch(API_BASE + "/api/config");
     if (!res.ok) return null;
     return (await res.json()) as AppConfig;
   } catch {
@@ -27,7 +27,7 @@ async function fetchConfig(): Promise<AppConfig | null> {
 }
 
 async function saveConfig(patch: { data_dir?: string; ops_threshold?: number; max_backups?: number }): Promise<AppConfig> {
-  const res = await fetch("http://localhost:8080/api/config", {
+  const res = await fetch(API_BASE + "/api/config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
@@ -182,7 +182,7 @@ interface CleanupResult {
 }
 
 async function cleanupOrphanUploads(): Promise<CleanupResult> {
-  const res = await fetch("http://localhost:8080/api/uploads/cleanup", {
+  const res = await fetch(API_BASE + "/api/uploads/cleanup", {
     method: "POST",
   });
   if (!res.ok) {

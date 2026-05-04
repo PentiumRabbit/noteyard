@@ -1,10 +1,14 @@
 import toast from "react-hot-toast";
 import type { Block, DBCell, DBColumn, DBRow, Database, Page, SearchResponse } from "../types";
 
-export const API_BASE = "http://localhost:8080";
-const BASE = API_BASE + "/api";
+export let API_BASE = "http://localhost:8080";
+
+export function setApiBase(base: string): void {
+  API_BASE = base;
+}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const BASE = API_BASE + "/api";
   try {
     const res = await fetch(BASE + path, {
       method,
@@ -110,7 +114,7 @@ export const api = {
     // sendBeacon 用于页面卸载时可靠发送，不会被浏览器截断
     batchUpdateBeacon: (blocks: Partial<Block>[]) => {
       navigator.sendBeacon(
-        BASE + "/blocks/batch",
+        API_BASE + "/api/blocks/batch",
         new Blob([JSON.stringify(blocks)], { type: "application/json" }),
       );
     },
