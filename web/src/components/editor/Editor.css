@@ -158,11 +158,12 @@
   cursor: pointer;
   font-size: 13px;
   color: var(--color-text-secondary);
+  flex-shrink: 0;
 }
 .file-attach-upload:hover { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-selected-bg); }
 
 .file-attach-block {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
@@ -170,7 +171,9 @@
   border-radius: 4px;
   background: var(--color-bg-secondary);
   font-size: 13px;
-  max-width: 500px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .file-attach-icon { flex-shrink: 0; }
 .file-attach-name {
