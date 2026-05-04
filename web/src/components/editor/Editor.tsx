@@ -12,6 +12,7 @@ import {
   UnnestBlockButton,
   BlockTypeSelect,
   CreateLinkButton,
+  SideMenuController,
   createReactBlockSpec,
   createReactInlineContentSpec,
   getDefaultReactSlashMenuItems,
@@ -828,6 +829,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
             </FormattingToolbar>
           )}
         />
+        <SideMenuController />
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <DatabaseSlashItem editor={editor as any} pageId={pageId} />
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
