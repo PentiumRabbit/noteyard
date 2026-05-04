@@ -530,7 +530,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const editor = useCreateBlockNote({
     schema,
     dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
-    dropCursor: multiColumnDropCursor,
+    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: "#3b82f6", width: 3 }),
     uploadFile: async (file: File) => {
       const data = await api.uploads.upload(file);
       return data.url;
