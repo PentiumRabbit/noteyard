@@ -1,11 +1,13 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"log/slog"
 	"net/http"
 	"noteyard/server/internal/backup"
 	"noteyard/server/internal/config"
 	"noteyard/server/internal/handler"
+	applog "noteyard/server/internal/log"
 	"noteyard/server/internal/repository/sqlite"
 	"os"
 	"os/signal"
@@ -18,25 +20,37 @@ import (
 )
 
 func main() {
+	logDirFlag := flag.String("log-dir", "", "directory for log files")
+	flag.Parse()
+
+	logDir := resolveLogDir(*logDirFlag)
+	if err := applog.Init(logDir); err != nil {
+		slog.Error("init log", "err", err)
+		os.Exit(1)
+	}
+
 	// Load application configuration from ~/.config/noteyard/config.toml.
 	cfg := config.Load()
 
 	// Ensure data directory and backups subdirectory exist.
 	if err := os.MkdirAll(filepath.Join(cfg.Data.Dir, "backups"), 0755); err != nil {
-		log.Fatalf("create data dir: %v", err)
+		slog.Error("create data dir", "err", err)
+		os.Exit(1)
 	}
 
 	dbPath := filepath.Join(cfg.Data.Dir, "noteyard.db")
 
 	db, err := sqlite.Open(dbPath)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		slog.Error("open db", "err", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
 	uploadDir := uploadDirPath(cfg)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		log.Fatalf("create upload dir: %v", err)
+		slog.Error("create upload dir", "err", err)
+		os.Exit(1)
 	}
 
 	// Set up backup manager.
@@ -52,7 +66,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-quit
-		log.Println("[main] shutting down, running exit backup...")
+		slog.Info("[main] shutting down, running exit backup...")
 		backupMgr.OnExit()
 		os.Exit(0)
 	}()
@@ -88,6 +102,7 @@ func main() {
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	r.Route("/api", func(r chi.Router) {
+		r.Post("/log", handler.LogHandler)
 		r.Post("/uploads", uh.Upload)
 		r.Post("/uploads/cleanup", cuh.CleanupOrphanUploads)
 		r.Get("/meta", handler.MetaHandler)
@@ -136,8 +151,22 @@ func main() {
 	})
 
 	addr := "127.0.0.1:8080"
-	log.Printf("noteyard listening on http://%s", addr)
-	log.Fatal(http.ListenAndServe(addr, r))
+	slog.Info("noteyard listening", "addr", "http://"+addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
+		slog.Error("server error", "err", err)
+		os.Exit(1)
+	}
+}
+
+// resolveLogDir determines the log directory using priority: CLI flag > env var > default.
+func resolveLogDir(flagVal string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	if env := os.Getenv("NOTEYARD_LOG_DIR"); env != "" {
+		return env
+	}
+	return "./logs"
 }
 
 // uploadDirPath returns the upload directory derived from the config.
