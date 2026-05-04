@@ -42,21 +42,11 @@ jobs:
 
       - name: Set version from tag
         shell: bash
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-          python3 -c "
-import re, sys
-v = sys.argv[1]
-# tauri.conf.json
-with open('src-tauri/tauri.conf.json', 'r') as f: c = f.read()
-c = re.sub(r'\"version\": \"[^\"]*\"', f'\"version\": \"{v}\"', c, count=1)
-with open('src-tauri/tauri.conf.json', 'w') as f: f.write(c)
-# Cargo.toml — only first occurrence (under [package])
-with open('src-tauri/Cargo.toml', 'r') as f: c = f.read()
-c = re.sub(r'^version = \"[^\"]*\"', f'version = \"{v}\"', c, count=1, flags=re.MULTILINE)
-with open('src-tauri/Cargo.toml', 'w') as f: f.write(c)
-" "$VERSION"
+          VERSION="${TAG_VERSION#v}"
+          python3 .github/scripts/set-version.py "$VERSION"
 
       - uses: actions/setup-go@v6
         with:
