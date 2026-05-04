@@ -35,6 +35,8 @@ function send(level: Level, msg: string, fields?: Record<string, unknown>): void
     body: JSON.stringify(body),
   }).catch(() => {
     // Backend unreachable — log is already in localStorage and console.
+    const fallbackFn = level === "ERROR" ? console.error : console.warn;
+    fallbackFn(`[noteyard:log] backend unreachable, log dropped: ${msg}`);
   });
 }
 
