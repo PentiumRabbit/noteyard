@@ -2,8 +2,29 @@ import { API_BASE } from "../api/client";
 
 type Level = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
+const LOCAL_LOG_KEY = "noteyard:logs";
+const LOCAL_LOG_MAX = 500;
+
+function writeLocal(level: Level, msg: string, fields?: Record<string, unknown>): void {
+  try {
+    const entry = { time: new Date().toISOString(), level, msg, ...(fields ? { fields } : {}) };
+    const raw = localStorage.getItem(LOCAL_LOG_KEY);
+    const logs: unknown[] = raw ? JSON.parse(raw) : [];
+    logs.push(entry);
+    if (logs.length > LOCAL_LOG_MAX) logs.splice(0, logs.length - LOCAL_LOG_MAX);
+    localStorage.setItem(LOCAL_LOG_KEY, JSON.stringify(logs));
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
+}
+
 function send(level: Level, msg: string, fields?: Record<string, unknown>): void {
   if (level === "DEBUG" && !import.meta.env.DEV) return;
+
+  const consoleFn = level === "ERROR" ? console.error : level === "WARN" ? console.warn : console.log;
+  consoleFn(`[noteyard:${level}]`, msg, fields ?? "");
+
+  writeLocal(level, msg, fields);
 
   const body: Record<string, unknown> = { level, layer: "frontend", msg };
   if (fields && Object.keys(fields).length > 0) body.fields = fields;
@@ -12,12 +33,8 @@ function send(level: Level, msg: string, fields?: Record<string, unknown>): void
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  }).catch((err) => {
-    if (level === "ERROR") {
-      console.error("[logger] fetch failed:", err);
-    } else {
-      console.warn("[logger] fetch failed:", err);
-    }
+  }).catch(() => {
+    // Backend unreachable — log is already in localStorage and console.
   });
 }
 
