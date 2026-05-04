@@ -92,7 +92,6 @@ export function SortableOptionRow({
 interface ColumnHeaderMenuProps {
   colMenu: ColMenu;
   menuCol: DBColumn;
-  menuRef: React.RefObject<HTMLDivElement | null>;
   renameInputRef: React.RefObject<HTMLInputElement | null>;
   setColMenu: React.Dispatch<React.SetStateAction<ColMenu | null>>;
   closeColMenu: () => void;
@@ -107,7 +106,6 @@ interface ColumnHeaderMenuProps {
 export function ColumnHeaderMenu({
   colMenu,
   menuCol,
-  menuRef,
   renameInputRef,
   setColMenu,
   closeColMenu,
@@ -121,9 +119,7 @@ export function ColumnHeaderMenu({
   return (
     <>
       <div className="col-menu-overlay" onClick={closeColMenu} />
-      {/* ISS-020: ref forwarded so DatabaseView can measure actual height via rAF */}
-      <div ref={menuRef} className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
-        {/* ISS-022 order: 1. 列名 2. 高频操作 3. 类型 4. 删除 */}
+      <div className="col-menu" style={{ top: colMenu.y, left: colMenu.x }}>
         <div className="col-menu-rename">
           <input
             ref={renameInputRef}
@@ -134,7 +130,6 @@ export function ColumnHeaderMenu({
             placeholder="列名"
           />
         </div>
-        {/* ISS-022: high-frequency actions moved above type list */}
         {menuCol.type === "formula" && (
           <>
             <div className="col-menu-divider" />
