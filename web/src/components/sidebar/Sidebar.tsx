@@ -14,6 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { api, exportPage, importMarkdown } from "../../api/client";
 import type { Page } from "../../types";
 import { TEMPLATES } from "../../templates";
+import { createFromTemplate, duplicatePage } from "../../services/pageService";
 import {
   type RecentItem,
   loadRecent,
@@ -195,24 +196,10 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
   };
 
   const applyTemplate = async (templateId: string) => {
-    const tpl = TEMPLATES.find(t => t.id === templateId);
-    if (!tpl) return;
-    const maxOrder = Math.max(0, ...tree.map(p => p.order_index));
-    const page = await api.pages.create({ title: tpl.name, icon: tpl.icon, order_index: maxOrder + 1 });
-    if (tpl.blocks.length > 0) {
-      await api.blocks.batchUpdate(tpl.blocks.map((b, i) => ({
-        id: crypto.randomUUID(),
-        page_id: page.id,
-        type: (b as { type: string }).type,
-        content: JSON.stringify((b as { content?: unknown }).content ?? []),
-        props: JSON.stringify((b as { props?: unknown }).props ?? {}),
-        order_index: i,
-        parent_block_id: null,
-      })));
-    }
+    const pageId = await createFromTemplate(templateId, tree);
     setTemplateOpen(false);
     void refresh();
-    handleSelect(page.id);
+    handleSelect(pageId);
   };
 
   const toggleFavorite = (id: string) => {
@@ -272,22 +259,9 @@ export function Sidebar({ selectedId, onSelect, onOpenSettings, settingsActive }
     const src = findPage(tree, ctxMenu.pageId);
     closeCtxMenu();
     if (!src) return;
-    const [srcPage, srcBlocks] = await Promise.all([
-      api.pages.get(src.id),
-      api.blocks.listByPage(src.id),
-    ]);
-    const newPage = await api.pages.create({
-      parent_id: srcPage.parent_id ?? undefined,
-      title: `${srcPage.title || "Untitled"} 副本`,
-      icon: srcPage.icon ?? undefined,
-      cover: srcPage.cover ?? undefined,
-      order_index: srcPage.order_index + 0.5,
-    });
-    if (srcBlocks.length > 0) {
-      await api.blocks.batchUpdate(srcBlocks.map(b => ({ ...b, id: crypto.randomUUID(), page_id: newPage.id })));
-    }
+    const newPageId = await duplicatePage(src.id);
     void refresh();
-    onSelect(newPage.id);
+    onSelect(newPageId);
   };
 
   const handleCtxDelete = async () => {
