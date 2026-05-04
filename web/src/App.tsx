@@ -13,6 +13,7 @@ import { loadResource } from "./settings/resourceLoader";
 import { FONTS, DEFAULT_FONT_ID } from "./settings/fontConfig";
 import { THEMES, DEFAULT_THEME_ID } from "./settings/themeConfig";
 import { QuickstartCard } from "./components/quickstart/QuickstartCard";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
 const EMOJI_COMMON = ["📄","📝","📌","📎","🗒","🗃","📂","📁","⭐","🔖","💡","🔍","🎯","🚀","✅","❌","⚠️","🔧","🔑","📊","📈","📉","🗓","💬","📧","🏠","🌟","💎","🎨","🎵"];
@@ -198,16 +199,22 @@ export default function App() {
     <SettingsContext.Provider value={{ fontId, themeId, setFont, setTheme }}>
     <Toaster position="bottom-center" />
     <div className="app">
-      <Sidebar
-        key={sidebarKey}
-        selectedId={selectedPageId}
-        onSelect={handleSelect}
-        onOpenSettings={openSettings}
-        settingsActive={view === "settings"}
-      />
+      <ErrorBoundary fallbackTitle="侧边栏加载失败">
+        <Sidebar
+          key={sidebarKey}
+          selectedId={selectedPageId}
+          onSelect={handleSelect}
+          onOpenSettings={openSettings}
+          settingsActive={view === "settings"}
+        />
+      </ErrorBoundary>
       {searchOpen && <SearchModal onSelect={handleSearchSelect} onClose={() => setSearchOpen(false)} allPages={allPages} />}
       <main className="main">
-        {view === "settings" && <SettingsPage onClose={closeSettings} />}
+        {view === "settings" && (
+          <ErrorBoundary fallbackTitle="设置页加载失败">
+            <SettingsPage onClose={closeSettings} />
+          </ErrorBoundary>
+        )}
         <div style={{ display: view === "settings" ? "none" : "contents" }}>
         {selectedPageId && pageMeta !== null ? (
           <>
@@ -269,7 +276,9 @@ export default function App() {
                 rows={1}
               />
             </div>
-            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
+            <ErrorBoundary fallbackTitle="编辑器加载失败">
+              <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
+            </ErrorBoundary>
             {backlinks.length > 0 && (
               <div className="backlinks-section">
                 <button className="backlinks-toggle" onClick={() => setBacklinksOpen(v => !v)}>
@@ -293,7 +302,9 @@ export default function App() {
         ) : selectedPageId ? (
           <div className="page-wrap">
             <div className="page-header-loading" />
-            <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
+            <ErrorBoundary fallbackTitle="编辑器加载失败">
+              <Editor key={selectedPageId} ref={editorRef} pageId={selectedPageId} onSelectPage={handleSelect} />
+            </ErrorBoundary>
           </div>
         ) : (
           <div className="empty-state">
