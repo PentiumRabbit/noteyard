@@ -1,5 +1,6 @@
 // lib.rs — sidecar startup/stop logic
 
+use std::net::TcpListener;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -7,6 +8,20 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandChild;
 
 pub struct SidecarState(pub Mutex<Option<CommandChild>>);
+pub struct PortState(pub u16);
+
+/// Bind an ephemeral port on loopback and return the port number.
+/// The listener is dropped immediately so the sidecar can bind the same port.
+fn pick_free_port() -> u16 {
+    let listener =
+        TcpListener::bind("127.0.0.1:0").expect("failed to bind ephemeral port");
+    listener.local_addr().unwrap().port()
+}
+
+#[tauri::command]
+fn get_port(state: tauri::State<PortState>) -> u16 {
+    state.0
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -31,6 +46,8 @@ pub fn run() {
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
+            let port = pick_free_port();
+            app.manage(PortState(port));
             let log_dir_str = app
                 .path()
                 .app_local_data_dir()
@@ -43,6 +60,7 @@ pub fn run() {
             if !log_dir_str.is_empty() {
                 sidecar_cmd = sidecar_cmd.args(["--log-dir", &log_dir_str]);
             }
+            sidecar_cmd = sidecar_cmd.args(["--port", &port.to_string()]);
             match sidecar_cmd.spawn() {
                 Ok((rx, child)) => {
                     *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
@@ -109,6 +127,7 @@ pub fn run() {
                 }
             }
         })
+        .invoke_handler(tauri::generate_handler![get_port])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
