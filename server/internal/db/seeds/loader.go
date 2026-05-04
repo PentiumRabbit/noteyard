@@ -119,6 +119,10 @@ func expandContent(raw json.RawMessage) (string, error) {
 		// Already a JSON array — return as-is.
 		return string(raw), nil
 
+	case '{':
+		// JSON object content (table, bookmark, button, database, etc.) — pass through as-is.
+		return string(raw), nil
+
 	default:
 		return "", fmt.Errorf("expandContent: unexpected content type (starts with %q)", string(trimmed[0]))
 	}
