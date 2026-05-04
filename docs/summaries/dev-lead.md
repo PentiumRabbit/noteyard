@@ -1,8 +1,8 @@
 # dev-lead 摘要
 
 > 角色: 研发负责人（dev-lead）
-> 最后更新: 2026-05-04
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）
+> 最后更新: 2026-05-05
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）
 
 ---
 
@@ -94,6 +94,19 @@
   - `web/src/main.tsx`（bootstrap invoke get_port）
 - 关键设计：Rust 层 TcpListener::bind(0) 分配空闲端口，通过 --port 传给 sidecar，通过 get_port command 暴露给前端
 - 硬编码 8080 全部消除（Go/Rust/前端）
+
+---
+
+## REQ-080（Go server 固定端口支持，2026-05-05）
+
+- 状态：全部完成（✅）
+- 委派链：eng-backend（#174）+ eng-tauri（#175）并行 → tester（#177）
+- 产出文件：
+  - `server/cmd/main.go`（--port 参数：不传随机端口，非法端口验证，net.Listen 预绑定）
+  - `src-tauri/src/lib.rs`（已在 ISS-018 完成，本次验证无需修改）
+  - `docs/requirements/features/REQ-080.md`（状态改为已完成）
+- 关键设计：flag.Visit 判断 --port 是否显式传入；net.Listen(":0") → OS 随机分配；非法端口（<1 或 >65535）立即 os.Exit(1)
+- FR-2（Tauri 传端口）已在 ISS-018 完成，本次仅验证确认
 
 ---
 
