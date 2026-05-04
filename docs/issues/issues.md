@@ -124,7 +124,8 @@ macOS Dock 中图标仅显示白色圆角方块，橙色斜体 N 字未出现。
 |------|------|
 | Issue ID | ISS-001 |
 | 严重程度 | P1 |
-| 状态 | 修复中 |
+| 状态 | ✅ 已修复 |
+| 修复版本 | v0.1.0 前 |
 | 指派给 | 研发负责人 |
 
 **标题**: 切换页面时编辑内容丢失，自动保存未可靠生效
@@ -150,3 +151,42 @@ macOS Dock 中图标仅显示白色圆角方块，橙色斜体 N 字未出现。
 4. 额外加 30s 定时兜底保存
 5. `beforeunload` 改用 `sendBeacon`，不会被浏览器截断
 6. App 层持有 flush ref，切换页面前主动调用
+
+**修复 commits**: 96f48cb（upsert）、79473d1（batchUpdateBeacon）、4a42d5c（flush+防抖+兜底）
+
+---
+
+## ISS-004: column 空内容导致编辑器崩溃
+
+| 字段 | 内容 |
+|------|------|
+| Issue ID | ISS-004 |
+| 严重程度 | P1 |
+| 状态 | ✅ 已修复 |
+| 修复版本 | v0.1.19 |
+| 指派给 | 前端工程师 |
+
+**标题**: 含空 column 的 columnList 页面打开时编辑器崩溃，内容全部丢失
+
+`toBlockNote.ts` 反序列化 columnList 时，若某列无子块（colChildren 为空），BlockNote ProseMirror schema 要求 column 节点至少有一个子节点，传入空数组导致 `RangeError: Invalid content for node column: <>`，整个 `replaceBlocks` 失败。
+
+**修复**: `colChildren` 为空时补充空段落占位块（`safeChildren` 逻辑，`toBlockNote.ts` 第 26-28 行），经 REQ-079 T01 验证有效。
+
+---
+
+## ISS-027: 数据库视图公式弹窗超出视口，编辑公式功能表现消失
+
+| 字段 | 内容 |
+|------|------|
+| Issue ID | ISS-027 |
+| 严重程度 | P1 |
+| 状态 | ✅ 已修复 |
+| 修复版本 | v0.1.17 |
+| 指派给 | 前端工程师 |
+
+**标题**: formula 列列头菜单「编辑公式」点击后弹窗渲染在视口外，不可见
+
+ISS-023 修复弹窗定位时遗漏了 `openFormulaPopover`，仍使用 `y: rect.bottom + 4` 硬编码。修复将其替换为 `getPopoverY(rect)`，实现视口感知的自动向上/向下展开。
+
+**修复 commit**: f522179
+
