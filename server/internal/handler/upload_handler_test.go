@@ -29,7 +29,7 @@ func newUploadRequest(t *testing.T, filename string, content []byte) *http.Reque
 
 func TestUpload_PNG(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	// 最小合法 PNG（8 字节签名 + 空）
 	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
@@ -68,7 +68,7 @@ func TestUpload_PNG(t *testing.T) {
 
 func TestUpload_InvalidFormat(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	// .exe is not in the allowlist — must return 400
 	req := newUploadRequest(t, "malware.exe", []byte("MZ\x90\x00"))
@@ -82,7 +82,7 @@ func TestUpload_InvalidFormat(t *testing.T) {
 
 func TestUpload_MissingFile(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/uploads", bytes.NewBufferString(""))
 	req.Header.Set("Content-Type", "multipart/form-data; boundary=xxx")
@@ -96,7 +96,7 @@ func TestUpload_MissingFile(t *testing.T) {
 
 func TestUpload_JPEG(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	// JPEG magic bytes
 	jpegHeader := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46}
@@ -111,7 +111,7 @@ func TestUpload_JPEG(t *testing.T) {
 
 func TestUpload_URLFormat(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 	req := newUploadRequest(t, "test.png", pngHeader)
@@ -121,10 +121,10 @@ func TestUpload_URLFormat(t *testing.T) {
 	var resp uploadResponse
 	json.NewDecoder(rr.Body).Decode(&resp)
 	url := resp.URL
-	if len(url) < len("http://localhost:8080/uploads/") {
+	if len(url) < len("/uploads/") {
 		t.Fatalf("url too short: %s", url)
 	}
-	if url[:len("http://localhost:8080/uploads/")] != "http://localhost:8080/uploads/" {
+	if url[:len("/uploads/")] != "/uploads/" {
 		t.Fatalf("url prefix wrong: %s", url)
 	}
 }
@@ -132,7 +132,7 @@ func TestUpload_URLFormat(t *testing.T) {
 // 场景 8：上传超过 10MB 的文件，期望返回 400
 func TestUpload_OversizeFile(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	// 11MB — exceeds the 10MB limit
 	bigContent := make([]byte, 11<<20)
@@ -148,7 +148,7 @@ func TestUpload_OversizeFile(t *testing.T) {
 // 场景 10：特殊字符文件名（中文 + 全角括号），期望 200 且响应 name 字段与原始文件名一致
 func TestUpload_SpecialCharFilename(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	filename := "项目报告（终版）.docx"
 	// Minimal 2-byte content; extension whitelist grants docx
@@ -171,7 +171,7 @@ func TestUpload_SpecialCharFilename(t *testing.T) {
 // 新 MIME 上传：PDF 文件（%PDF 文件头 + .pdf 扩展名），期望 200 且 mime 为 application/pdf
 func TestUpload_PDF(t *testing.T) {
 	dir := t.TempDir()
-	h := NewUploadHandler(dir, "http://localhost:8080")
+	h := NewUploadHandler(dir)
 
 	// PDF magic bytes: %PDF
 	pdfHeader := []byte{0x25, 0x50, 0x44, 0x46}

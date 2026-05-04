@@ -52,7 +52,6 @@ var imageMIMEs = map[string]bool{
 
 type UploadHandler struct {
 	uploadDir string
-	baseURL   string
 }
 
 type uploadResponse struct {
@@ -62,8 +61,8 @@ type uploadResponse struct {
 	MIME string `json:"mime"`
 }
 
-func NewUploadHandler(uploadDir, baseURL string) *UploadHandler {
-	return &UploadHandler{uploadDir: uploadDir, baseURL: baseURL}
+func NewUploadHandler(uploadDir string) *UploadHandler {
+	return &UploadHandler{uploadDir: uploadDir}
 }
 
 func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +143,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, uploadResponse{
-		URL:  h.baseURL + "/uploads/" + filename,
+		URL:  "/uploads/" + filename,
 		Name: header.Filename,
 		Size: int64(n) + written,
 		MIME: finalMIME,

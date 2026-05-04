@@ -106,7 +106,7 @@ func main() {
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
 	sh := handler.NewSearchHandler(db)
-	uh := handler.NewUploadHandler(uploadDir, fmt.Sprintf("http://localhost:%d", actualPort))
+	uh := handler.NewUploadHandler(uploadDir)
 	cuh := handler.NewCleanupHandler(uploadDir, db)
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
