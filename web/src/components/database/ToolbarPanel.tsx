@@ -1,8 +1,85 @@
 // ToolbarPanel.tsx — Sort, Filter, Hide, and Group toolbar panels
-import { Plus, X } from "lucide-react";
+import { Plus, X, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { DBColumn, FilterState, SortState } from "../../types";
 import { ColIcon } from "./ColIcon";
 import { READONLY_COL_TYPES } from "./databaseConstants";
+
+// ── PanelSelect: custom styled dropdown replacing native <select> ──
+interface PanelSelectOption {
+  value: string;
+  label: string;
+}
+
+interface PanelSelectProps {
+  value: string;
+  options: PanelSelectOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+function PanelSelect({ value, options, onChange, placeholder = "选择…", className = "" }: PanelSelectProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const selected = options.find(o => o.value === value);
+  const label = selected ? selected.label : placeholder;
+
+  return (
+    <div ref={ref} className={`panel-select-wrap ${className}`} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        type="button"
+        className="panel-select-trigger"
+        onClick={() => setOpen(v => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="panel-select-label">{label}</span>
+        <ChevronDown size={11} className="panel-select-chevron" />
+      </button>
+      {open && (
+        <div className="panel-select-dropdown" role="listbox">
+          {placeholder && (
+            <button
+              key=""
+              type="button"
+              role="option"
+              aria-selected={value === ""}
+              className={`panel-select-item${value === "" ? " selected" : ""}`}
+              onMouseDown={e => { e.preventDefault(); onChange(""); setOpen(false); }}
+            >
+              {placeholder}
+            </button>
+          )}
+          {options.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={value === o.value}
+              className={`panel-select-item${value === o.value ? " selected" : ""}`}
+              onMouseDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export type ToolbarPanel = "sort" | "filter" | "hide" | "group" | null;
 
@@ -36,15 +113,12 @@ export function ToolbarPanelView({
           <div className="db-panel-title">排序</div>
           {sortStates.map((s) => (
             <div key={s.id} className="db-panel-list-row">
-              <select
-                className="db-panel-list-select"
+              <PanelSelect
                 value={s.colId}
-                onChange={e => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, colId: e.target.value } : x))}>
-                <option value="">选择列</option>
-                {allCols.filter(c => c.type !== "formula").map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+                placeholder="选择列"
+                options={allCols.filter(c => c.type !== "formula").map(c => ({ value: c.id, label: c.name }))}
+                onChange={v => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, colId: v } : x))}
+              />
               <button
                 className="db-panel-order-btn"
                 onClick={() => setSortStates(prev => prev.map(x => x.id === s.id ? { ...x, order: x.order === "asc" ? "desc" : "asc" } : x))}>
@@ -70,28 +144,26 @@ export function ToolbarPanelView({
           <div className="db-panel-title">筛选</div>
           {filterStates.map((f) => (
             <div key={f.id} className="db-panel-list-row">
-              <select
-                className="db-panel-list-select"
+              <PanelSelect
                 value={f.colId}
-                onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, colId: e.target.value } : x))}>
-                <option value="">选择列</option>
-                {allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <select
-                className="db-panel-list-select"
+                placeholder="选择列"
+                options={allCols.filter(c => c.type !== "formula" && c.type !== "checkbox").map(c => ({ value: c.id, label: c.name }))}
+                onChange={v => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, colId: v } : x))}
+              />
+              <PanelSelect
                 value={f.op}
-                onChange={e => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, op: e.target.value } : x))}>
-                <option value="contains">包含</option>
-                <option value="not_contains">不包含</option>
-                <option value="equals">等于</option>
-                <option value="not_equals">不等于</option>
-                <option value="is_empty">为空</option>
-                <option value="is_not_empty">不为空</option>
-                <option value="gt">大于</option>
-                <option value="lt">小于</option>
-              </select>
+                options={[
+                  { value: "contains", label: "包含" },
+                  { value: "not_contains", label: "不包含" },
+                  { value: "equals", label: "等于" },
+                  { value: "not_equals", label: "不等于" },
+                  { value: "is_empty", label: "为空" },
+                  { value: "is_not_empty", label: "不为空" },
+                  { value: "gt", label: "大于" },
+                  { value: "lt", label: "小于" },
+                ]}
+                onChange={v => setFilterStates(prev => prev.map(x => x.id === f.id ? { ...x, op: v } : x))}
+              />
               {f.op !== "is_empty" && f.op !== "is_not_empty" && (
                 <input
                   className="db-panel-list-input"
