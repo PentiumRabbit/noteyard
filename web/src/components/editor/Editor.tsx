@@ -36,6 +36,7 @@ import { useSettings } from "../../settings/settingsStore";
 import { toBlockNote } from "../../utils/toBlockNote";
 import type { BNBlock } from "../../types/blocknote";
 import { blocksToMarkdown } from "../../utils/markdownUtils";
+import { isSafeUrl } from "../../utils/urlUtils";
 import "./Editor.css";
 import { FileUploadField } from "./FileUploadField";
 import { UrlInputField } from "./UrlInputField";
@@ -377,12 +378,6 @@ const PdfBlock = createReactBlockSpec(
 // REQ-054 — Button 块
 type ButtonColor = "blue" | "green" | "red" | "gray";
 type ButtonAction = "none" | "open_url";
-
-function isSafeUrl(url: string): boolean {
-  if (!url) return false;
-  const trimmed = url.trim().toLowerCase();
-  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
-}
 
 const ButtonBlock = createReactBlockSpec(
   {
