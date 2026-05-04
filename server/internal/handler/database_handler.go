@@ -83,11 +83,23 @@ func (h *DatabaseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+var validColTypes = map[string]bool{
+	"text": true, "number": true, "checkbox": true, "select": true,
+	"multi-select": true, "date": true, "formula": true, "url": true,
+	"email": true, "created_time": true, "last_edited_time": true,
+	"files": true, "relation": true, "rollup": true, "phone": true,
+	"people": true, "status": true,
+}
+
 func (h *DatabaseHandler) AddColumn(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var col model.DBColumn
 	if err := json.NewDecoder(r.Body).Decode(&col); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if !validColTypes[col.Type] {
+		writeError(w, http.StatusBadRequest, "invalid column type: "+col.Type)
 		return
 	}
 	col.DatabaseID = id
@@ -103,6 +115,10 @@ func (h *DatabaseHandler) UpdateColumn(w http.ResponseWriter, r *http.Request) {
 	var col model.DBColumn
 	if err := json.NewDecoder(r.Body).Decode(&col); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if !validColTypes[col.Type] {
+		writeError(w, http.StatusBadRequest, "invalid column type: "+col.Type)
 		return
 	}
 	col.ID = colID
