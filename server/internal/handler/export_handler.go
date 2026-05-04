@@ -40,7 +40,7 @@ func (h *ExportHandler) ExportPage(w http.ResponseWriter, r *http.Request) {
 
 	allBlocks, err := h.blocks.ListByPage(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *ExportHandler) ExportPage(w http.ResponseWriter, r *http.Request) {
 		}
 		raw, err := json.MarshalIndent(data, "", "  ")
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal error")
+			writeInternalError(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -83,7 +83,7 @@ func (h *ExportHandler) ExportAll(w http.ResponseWriter, r *http.Request) {
 
 	pages, err := h.pages.ListAll(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 

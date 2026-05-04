@@ -22,7 +22,7 @@ func NewDatabaseHandler(db repository.DatabaseRepository) *DatabaseHandler {
 func (h *DatabaseHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 	dbs, err := h.db.ListAll(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	if dbs == nil {
@@ -38,7 +38,7 @@ func (h *DatabaseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.db.Create(r.Context(), &d); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, d)
@@ -52,7 +52,7 @@ func (h *DatabaseHandler) Get(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, d)
@@ -68,7 +68,7 @@ func (h *DatabaseHandler) UpdateTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.db.UpdateTitle(r.Context(), id, body.Title); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -77,7 +77,7 @@ func (h *DatabaseHandler) UpdateTitle(w http.ResponseWriter, r *http.Request) {
 func (h *DatabaseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.db.Delete(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -117,7 +117,7 @@ func (h *DatabaseHandler) UpdateColumn(w http.ResponseWriter, r *http.Request) {
 func (h *DatabaseHandler) DeleteColumn(w http.ResponseWriter, r *http.Request) {
 	colID := chi.URLParam(r, "col_id")
 	if err := h.db.DeleteColumn(r.Context(), colID); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -132,7 +132,7 @@ func (h *DatabaseHandler) AddRow(w http.ResponseWriter, r *http.Request) {
 	}
 	row.DatabaseID = id
 	if err := h.db.AddRow(r.Context(), &row); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	if row.Cells == nil {
@@ -144,7 +144,7 @@ func (h *DatabaseHandler) AddRow(w http.ResponseWriter, r *http.Request) {
 func (h *DatabaseHandler) DeleteRow(w http.ResponseWriter, r *http.Request) {
 	rowID := chi.URLParam(r, "row_id")
 	if err := h.db.DeleteRow(r.Context(), rowID); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -154,7 +154,7 @@ func (h *DatabaseHandler) ListRows(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	rows, err := h.db.ListRows(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	if rows == nil {
@@ -182,7 +182,7 @@ func (h *DatabaseHandler) GetRow(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, row)
@@ -204,14 +204,14 @@ func (h *DatabaseHandler) PatchRow(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	if body.Content != nil {
 		row.Content = *body.Content
 	}
 	if err := h.db.UpdateRow(r.Context(), row); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, row)
@@ -225,7 +225,7 @@ func (h *DatabaseHandler) BatchUpdateCells(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.db.BatchUpdateCells(r.Context(), rowID, cells); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

@@ -86,7 +86,7 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:  now,
 	}
 	if err := h.pages.Create(r.Context(), page); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create page")
+		writeInternalError(w, r, err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *ImportHandler) ImportMarkdown(w http.ResponseWriter, r *http.Request) {
 	// Persist blocks.
 	for _, b := range blocks {
 		if err := h.blocks.Create(r.Context(), b); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to create block")
+			writeInternalError(w, r, err)
 			return
 		}
 	}

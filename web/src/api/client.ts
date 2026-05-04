@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import type { Block, DBCell, DBColumn, DBRow, Database, Page, SearchResponse } from "../types";
+import * as logger from "../lib/logger";
 
 export let API_BASE = "http://localhost:8080";
 
@@ -22,6 +23,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
   } catch (err) {
+    logger.error("api request failed", { method, path, error: (err as Error).message });
     toast.error((err as Error).message);
     throw err;
   }

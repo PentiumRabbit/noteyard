@@ -84,7 +84,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	buf := make([]byte, 512)
 	n, err := file.Read(buf)
 	if err != nil && err != io.EOF {
-		writeError(w, http.StatusInternalServerError, "读取文件失败")
+		writeInternalError(w, r, err)
 		return
 	}
 	buf = buf[:n]
@@ -120,26 +120,26 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := os.MkdirAll(h.uploadDir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "创建上传目录失败")
+		writeInternalError(w, r, err)
 		return
 	}
 
 	filename := fmt.Sprintf("%d-%s%s", time.Now().UnixMilli(), uuid.New().String()[:8], ext)
 	dst, err := os.Create(filepath.Join(h.uploadDir, filename))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "创建文件失败")
+		writeInternalError(w, r, err)
 		return
 	}
 	defer dst.Close()
 
 	// Write already-read bytes first, then copy the remainder.
 	if _, err := dst.Write(buf); err != nil {
-		writeError(w, http.StatusInternalServerError, "写入文件失败")
+		writeInternalError(w, r, err)
 		return
 	}
 	written, err := io.Copy(dst, file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "写入文件失败")
+		writeInternalError(w, r, err)
 		return
 	}
 

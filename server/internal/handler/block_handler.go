@@ -21,7 +21,7 @@ func (h *BlockHandler) ListByPage(w http.ResponseWriter, r *http.Request) {
 	pageID := chi.URLParam(r, "id")
 	blocks, err := h.blocks.ListByPage(r.Context(), pageID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	if blocks == nil {
@@ -39,7 +39,7 @@ func (h *BlockHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	block.PageID = pageID
 	if err := h.blocks.Create(r.Context(), &block); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, block)
@@ -54,7 +54,7 @@ func (h *BlockHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	block.ID = id
 	if err := h.blocks.Update(r.Context(), &block); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, block)
@@ -63,7 +63,7 @@ func (h *BlockHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *BlockHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.blocks.Delete(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -76,7 +76,7 @@ func (h *BlockHandler) BatchUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.blocks.BatchUpdate(r.Context(), blocks); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

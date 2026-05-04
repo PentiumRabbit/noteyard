@@ -78,7 +78,7 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Handle data directory change.
 	if req.DataDir != nil && *req.DataDir != h.cfg.Data.Dir {
 		if err := h.onDirChange(*req.DataDir); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to migrate data directory: "+err.Error())
+			writeInternalError(w, r, err)
 			return
 		}
 		// cfg.Data.Dir already updated inside MigrateDataDir.
@@ -86,7 +86,7 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// Persist updated config.
 	if err := config.Write(h.cfg); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to write config: "+err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 

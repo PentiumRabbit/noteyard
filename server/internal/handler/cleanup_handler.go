@@ -34,7 +34,7 @@ func (h *CleanupHandler) CleanupOrphanUploads(w http.ResponseWriter, r *http.Req
 	// 1. List all files in uploadDir.
 	entries, err := os.ReadDir(h.uploadDir)
 	if err != nil && !os.IsNotExist(err) {
-		writeError(w, http.StatusInternalServerError, "读取上传目录失败: "+err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 
@@ -55,13 +55,13 @@ func (h *CleanupHandler) CleanupOrphanUploads(w http.ResponseWriter, r *http.Req
 
 	// 2a. blocks.content
 	if err := collectRefsFromColumn(h.db, "SELECT content FROM blocks", referenced); err != nil {
-		writeError(w, http.StatusInternalServerError, "查询 blocks 失败: "+err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 
 	// 2b. database_cells.value
 	if err := collectRefsFromColumn(h.db, "SELECT value FROM database_cells", referenced); err != nil {
-		writeError(w, http.StatusInternalServerError, "查询 database_cells 失败: "+err.Error())
+		writeInternalError(w, r, err)
 		return
 	}
 

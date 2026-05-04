@@ -59,7 +59,7 @@ func (h *SearchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	results, err := h.search(r.Context(), q, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
+		writeInternalError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string][]SearchResult{"results": results})
