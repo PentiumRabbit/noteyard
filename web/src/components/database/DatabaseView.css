@@ -514,6 +514,8 @@ tr:hover .row-del-btn { visibility: visible; }
   box-shadow: var(--shadow-lg);
   padding: 6px 4px;
   min-width: 200px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 .col-menu-rename {
@@ -597,6 +599,8 @@ tr:hover .row-del-btn { visibility: visible; }
   box-shadow: var(--shadow-lg);
   padding: 12px;
   width: 320px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -739,6 +743,8 @@ tr:hover .row-del-btn { visibility: visible; }
   box-shadow: var(--shadow-lg);
   padding: 12px;
   width: 300px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -965,6 +971,8 @@ tr:hover .row-del-btn { visibility: visible; }
   box-shadow: var(--shadow-md);
   padding: 4px;
   min-width: 150px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 .select-dd-item {
@@ -999,6 +1007,8 @@ tr:hover .row-del-btn { visibility: visible; }
   box-shadow: var(--shadow-md);
   padding: 10px;
   min-width: 220px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;

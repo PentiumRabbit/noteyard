@@ -328,19 +328,10 @@ export function DatabaseView({ databaseId }: Props) {
     void reload();
   };
 
-  const colMenuRef = useRef<HTMLDivElement | null>(null);
   const openColMenu = (e: React.MouseEvent, col: DBColumn) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    // ISS-020: set initial position immediately; rAF corrects it once the popover
-    // DOM is in the layout tree and its actual height is available.
-    setColMenu({ colId: col.id, x: rect.left, y: getPopoverY(rect, 200), renaming: false, draft: col.name, changingType: false });
-    requestAnimationFrame(() => {
-      const popoverEl = colMenuRef.current;
-      if (!popoverEl) return;
-      const actualHeight = popoverEl.getBoundingClientRect().height;
-      setColMenu(m => m ? { ...m, y: getPopoverY(rect, actualHeight) } : m);
-    });
+    setColMenu({ colId: col.id, x: rect.left, y: getPopoverY(rect), renaming: false, draft: col.name, changingType: false });
   };
   const closeColMenu = () => setColMenu(null);
 
@@ -375,7 +366,7 @@ export function DatabaseView({ databaseId }: Props) {
   const openAddCol = (e: React.MouseEvent) => {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setAddColPopover({ x: rect.left, y: getPopoverY(rect, 420) });
+    setAddColPopover({ x: rect.left, y: getPopoverY(rect) });
     setNewColName("");
     setNewColType("text");
     setNewColRelationDbId("");
@@ -491,7 +482,7 @@ export function DatabaseView({ databaseId }: Props) {
     const menuEl = (e.currentTarget as HTMLElement).closest(".col-menu");
     const rect = menuEl?.getBoundingClientRect() ?? (e.currentTarget as HTMLElement).getBoundingClientRect();
     setColMenu(null);
-    setRollupPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect, 320) });
+    setRollupPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect) });
   };
 
   const openSelectOptions = (e: React.MouseEvent, col: DBColumn) => {
@@ -500,7 +491,7 @@ export function DatabaseView({ databaseId }: Props) {
     const options = parseOptions(col.options);
     setColMenu(null);
     setNewOptionName("");
-    setSelectOptionsPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect, 280), options });
+    setSelectOptionsPopover({ colId: col.id, x: rect.left, y: getPopoverY(rect), options });
   };
 
   const saveSelectOptions = async (colId: string, options: SelectOption[]) => {
@@ -531,7 +522,7 @@ export function DatabaseView({ databaseId }: Props) {
     e.stopPropagation();
     const options = parseOptions(col.options);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
+    setSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, undefined, 2), options });
   };
 
   const selectOption = async (rowId: string, colId: string, value: string) => {
@@ -555,7 +546,7 @@ export function DatabaseView({ databaseId }: Props) {
     e.stopPropagation();
     const options = parseOptions(col.options);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, 180, 2), options });
+    setMultiSelectDropdown({ rowId: row.id, colId: col.id, x: rect.left, y: getPopoverY(rect, undefined, 2), options });
   };
 
   const toggleMultiSelectValue = async (rowId: string, colId: string, optValue: string, currentVal: string) => {
@@ -959,7 +950,6 @@ export function DatabaseView({ databaseId }: Props) {
         <ColumnHeaderMenu
           colMenu={colMenu}
           menuCol={menuCol}
-          menuRef={colMenuRef}
           renameInputRef={renameInputRef}
           setColMenu={setColMenu}
           closeColMenu={closeColMenu}
