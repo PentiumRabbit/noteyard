@@ -1,8 +1,8 @@
 # dev-lead 摘要
 
 > 角色: 研发负责人（dev-lead）
-> 最后更新: 2026-05-02
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）
+> 最后更新: 2026-05-04
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）
 
 ---
 
@@ -60,6 +60,23 @@
 | #38 | REQ-063 | 总负责人 → 研发负责人 | 总架构师 | ✅（CODE-REVIEW-001 已完成） |
 | #39 | REQ-064 | 研发负责人 | 前端架构师 | ✅（已交付）|
 | #40 | REQ-065 | 研发负责人 | 后端架构师 | ✅（已交付）|
+
+---
+
+## REQ-075（日志基础设施，2026-05-04）
+
+- 状态：全部完成（✅）
+- 委派链：总架构师技术评审（#144）→ N2 → eng-backend（#145）+ eng-tauri（#146）并行 → eng-frontend（#147）串行
+- 产出文件：
+  - `docs/architecture/REQ-075-review.md`（架构评审，含模块列表：log-go/log-frontend/log-tauri）
+  - `server/internal/log/log.go`（Init + lumberjack）
+  - `server/internal/handler/log_handler.go`（POST /api/log）
+  - `web/src/lib/logger.ts`（前端日志模块）
+  - `src-tauri/src/lib.rs`（tauri-plugin-log 注册 + --log-dir 传参）
+  - `ai-pro/docs/knowledge/logging-tauri-app.md`（工程规范沉淀）
+  - `ai-pro/docs/engineering/NEW-PROJECT.md`（日志检查项更新）
+- 并行执行线：Go 线（T1→T4）、Rust 线（T2）、前端线（T3→T5）
+- 沉淀：ai-pro logging-tauri-app.md + NEW-PROJECT.md 在 eng-backend 阶段同步完成
 
 ---
 
