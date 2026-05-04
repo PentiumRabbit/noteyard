@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"noteyard/server/internal/backup"
 	"noteyard/server/internal/config"
@@ -22,8 +23,14 @@ import (
 
 func main() {
 	logDirFlag := flag.String("log-dir", "", "directory for log files")
-	portFlag := flag.Int("port", 8080, "port to listen on")
+	portFlag := flag.Int("port", -1, "port to listen on (1-65535); omit for random port)")
 	flag.Parse()
+
+	port := *portFlag
+	if port != -1 && (port < 1 || port > 65535) {
+		fmt.Fprintf(os.Stderr, "invalid port %d: must be between 1 and 65535\n", port)
+		os.Exit(1)
+	}
 
 	logDir := resolveLogDir(*logDirFlag)
 	if err := applog.Init(logDir); err != nil {
@@ -73,6 +80,18 @@ func main() {
 		os.Exit(0)
 	}()
 
+	// Bind listener early to resolve the actual port (port==0 → OS picks random).
+	listenAddr := "127.0.0.1:"
+	if port != -1 {
+		listenAddr = fmt.Sprintf("127.0.0.1:%d", port)
+	}
+	ln, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		slog.Error("listen", "err", err)
+		os.Exit(1)
+	}
+	actualPort := ln.Addr().(*net.TCPAddr).Port
+
 	pages := sqlite.NewPageRepo(db)
 	blocks := sqlite.NewBlockRepo(db)
 	databases := sqlite.NewDatabaseRepo(db)
@@ -80,7 +99,7 @@ func main() {
 	bh := handler.NewBlockHandler(blocks)
 	dh := handler.NewDatabaseHandler(databases)
 	sh := handler.NewSearchHandler(db)
-	uh := handler.NewUploadHandler(uploadDir, fmt.Sprintf("http://localhost:%d", *portFlag))
+	uh := handler.NewUploadHandler(uploadDir, fmt.Sprintf("http://localhost:%d", actualPort))
 	cuh := handler.NewCleanupHandler(uploadDir, db)
 	ch := handler.NewConfigHandler(cfg, func(newDir string) error {
 		return config.MigrateDataDir(cfg, newDir)
@@ -153,9 +172,8 @@ func main() {
 		})
 	})
 
-	addr := fmt.Sprintf("127.0.0.1:%d", *portFlag)
-	slog.Info("noteyard listening", "addr", "http://"+addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	slog.Info("noteyard listening", "addr", fmt.Sprintf("http://127.0.0.1:%d", actualPort))
+	if err := http.Serve(ln, r); err != nil {
 		slog.Error("server error", "err", err)
 		os.Exit(1)
 	}
