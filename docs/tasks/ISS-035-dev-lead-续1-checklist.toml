@@ -1,0 +1,30 @@
+status = "delivered"
+delivered_at = "2026-05-05T00:00:00Z"
+summary = "ISS-035 修复完成：drop cursor 残留 bug 修复 + 竖线替换为半透明浮层"
+
+[[items]]
+role = "eng-frontend-ISS035"
+task = "T1-1: dropCursor 配置改为 color: false, class: 'bn-drop-overlay'"
+status = "done"
+file = "web/src/components/editor/Editor.tsx"
+line = 533
+
+[[items]]
+role = "eng-frontend-ISS035"
+task = "T1-2: 新增 useEffect 监听 document 级 dragend 强制清除残留 cursor"
+status = "done"
+file = "web/src/components/editor/Editor.tsx"
+line = 702
+
+[[items]]
+role = "eng-frontend-ISS035"
+task = "T1-3: Editor.css 末尾新增 .bn-drop-overlay 淡蓝色半透明样式"
+status = "done"
+file = "web/src/components/editor/Editor.css"
+line = 672
+
+[[items]]
+role = "tester-ISS035"
+task = "T2: 验证三处改动代码均存在且正确，tsc --noEmit 零错误，ISS-035 状态为「已修复」"
+status = "done"
+notes = "tsc --noEmit exit 0；所有改动验证通过；ISS-035 状态已更新为「已修复」"
