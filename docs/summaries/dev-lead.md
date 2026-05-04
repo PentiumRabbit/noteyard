@@ -2,7 +2,7 @@
 
 > 角色: 研发负责人（dev-lead）
 > 最后更新: 2026-05-05
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）, ISS-034（拖拽手柄不跟随移动）
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）, ISS-034（拖拽手柄不跟随移动）, ISS-035（drop cursor 竖线残留+浮层替换）
 
 ---
 
@@ -116,6 +116,18 @@
 - 委派链：前端架构师根因分析（#183）→ dev-lead-续1（#184，prereqs=183）→ 工程师修复 → 测试执行者回归
 - 关键排查方向：ISS-032 onDragOver 回归、SideMenuPlugin blockDragStart 调用链、Tauri WKWebView 兼容性、ISS-033 logger 动态 import 时序
 - 续任务：dev-lead-续1（#184）在根因分析完成后负责委派工程师和测试执行者
+
+---
+
+## ISS-035（drop cursor 竖线松手后未消失 + 浮层替换，2026-05-05）
+
+- 状态：统筹规划完成（#185 delivered），前端架构师根因分析 + 方案设计 pending（#186）
+- 委派链：前端架构师根因分析+方案设计（#186）→ dev-lead-续1（#187，prereqs=186）→ 工程师实现 → 测试执行者回归
+- 端属性：仅前端（Editor.tsx `dropCursor` 配置，`@blocknote/xl-multi-column` MultiColumnDropCursorPlugin）
+- 关键排查方向：
+  - dragDropEnabled:false（ISS-034 修复）后 wry 不触发 drop 事件，ProseMirror drop handler 未执行，cursor 清除逻辑未触发
+  - multiColumnDropCursor 仅支持竖线（position:absolute cursor element），需替换 setCursor 逻辑实现半边/整行浮层
+- 交付要求：松手后浮层立即消失；左/右边缘→半边浮层；上/下位置→整行浮层；tsc --noEmit 零错误
 
 ---
 
