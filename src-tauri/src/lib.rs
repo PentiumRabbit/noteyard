@@ -13,15 +13,37 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("tauri".into()),
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                ])
+                .level(if tauri::is_dev() {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .build(),
+        )
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
-            match app
+            let log_dir_str = app
+                .path()
+                .app_local_data_dir()
+                .map(|p| p.join("logs").to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let mut sidecar_cmd = app
                 .shell()
                 .sidecar("noteyard-server")
-                .expect("sidecar binary not configured")
-                .spawn()
-            {
+                .expect("sidecar binary not configured");
+            if !log_dir_str.is_empty() {
+                sidecar_cmd = sidecar_cmd.args(["--log-dir", &log_dir_str]);
+            }
+            match sidecar_cmd.spawn() {
                 Ok((rx, child)) => {
                     *app.state::<SidecarState>().0.lock().unwrap() = Some(child);
                     // Monitor sidecar exit events; notify user if it crashes unexpectedly.

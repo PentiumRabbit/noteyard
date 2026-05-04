@@ -7,6 +7,7 @@
     "core:default",
     "shell:allow-spawn",
     "shell:allow-kill",
-    "dialog:allow-message"
+    "dialog:allow-message",
+    "log:default"
   ]
 }
