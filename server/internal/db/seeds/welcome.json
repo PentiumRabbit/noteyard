@@ -17,42 +17,55 @@
       "id": "00000000-0000-0000-0001-000000000002",
       "type": "callout",
       "props": {"icon": "📝"},
-      "content": "noteyard 是一款本地优先的块编辑器笔记应用，数据存储在本机，无需联网。你可以自由组合页面、数据库和各种内容块，构建属于自己的知识体系。"
+      "content": "noteyard 是一款本地优先的块编辑器笔记应用，数据完全存储在本地，无需联网。像 Notion 一样自由组合各种内容块，构建属于自己的知识体系。"
     },
     {
       "id": "00000000-0000-0000-0001-000000000003",
-      "type": "horizontalRule",
-      "props": {}
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000004",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "文字与段落"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000005",
+      "id": "00000000-0000-0000-0001-000000000004",
       "type": "paragraph",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "这是一段普通文字。noteyard 支持丰富的内联格式，例如加粗、斜体、下划线、删除线和行内代码。"
+      "content": [
+        {"type": "text", "text": "这是一段普通文字。支持丰富的内联格式：", "styles": {}},
+        {"type": "text", "text": "加粗", "styles": {"bold": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "斜体", "styles": {"italic": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "下划线", "styles": {"underline": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "删除线", "styles": {"strike": true}},
+        {"type": "text", "text": "、", "styles": {}},
+        {"type": "text", "text": "行内代码", "styles": {"code": true}},
+        {"type": "text", "text": "。", "styles": {}}
+      ]
     },
     {
-      "id": "00000000-0000-0000-0001-000000000006",
+      "id": "00000000-0000-0000-0001-000000000005",
       "type": "heading",
       "props": {"level": 1, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "一级标题示例"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000007",
+      "id": "00000000-0000-0000-0001-000000000006",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "二级标题示例"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000008",
+      "id": "00000000-0000-0000-0001-000000000007",
       "type": "heading",
       "props": {"level": 3, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "三级标题示例"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000008",
+      "type": "quote",
+      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "「工欲善其事，必先利其器。」"
     },
     {
       "id": "00000000-0000-0000-0001-000000000009",
@@ -70,114 +83,119 @@
       "id": "00000000-0000-0000-0001-000000000011",
       "type": "bulletListItem",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "无序列表项 2"
+      "content": "无序列表项 2（可以有子项）",
+      "children": [
+        {
+          "id": "00000000-0000-0000-0001-000000000012",
+          "type": "bulletListItem",
+          "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+          "content": "这是一个缩进的子项"
+        }
+      ]
     },
     {
-      "id": "00000000-0000-0000-0001-000000000012",
+      "id": "00000000-0000-0000-0001-000000000013",
       "type": "bulletListItem",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "无序列表项 3"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000013",
+      "id": "00000000-0000-0000-0001-000000000014",
       "type": "numberedListItem",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "有序列表项 1"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000014",
+      "id": "00000000-0000-0000-0001-000000000015",
       "type": "numberedListItem",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "有序列表项 2"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000015",
+      "id": "00000000-0000-0000-0001-000000000016",
       "type": "numberedListItem",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "有序列表项 3"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000016",
-      "type": "checkListItem",
-      "props": {"checked": false, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "待办事项"
-    },
-    {
       "id": "00000000-0000-0000-0001-000000000017",
       "type": "checkListItem",
       "props": {"checked": true, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "已完成事项"
+      "content": "已完成的任务"
     },
     {
       "id": "00000000-0000-0000-0001-000000000018",
-      "type": "heading",
-      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "引用与标注"
+      "type": "checkListItem",
+      "props": {"checked": false, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "待完成的任务"
     },
     {
       "id": "00000000-0000-0000-0001-000000000019",
-      "type": "quote",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [{"type": "text", "text": "「工欲善其事，必先利其器。」", "styles": {"italic": true}}]
+      "type": "checkListItem",
+      "props": {"checked": false, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "另一个待办事项"
     },
     {
       "id": "00000000-0000-0000-0001-000000000020",
-      "type": "callout",
-      "props": {"icon": "💡"},
-      "content": "这是一个标注块，适合放提示、警告或重要说明。"
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "代码"
     },
     {
       "id": "00000000-0000-0000-0001-000000000021",
-      "type": "callout",
-      "props": {"icon": "⚠️"},
-      "content": "注意：callout 支持自定义 emoji 图标。"
+      "type": "codeBlock",
+      "props": {"language": "javascript"},
+      "content": "// 示例代码\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\nconsole.log(greet('noteyard'));"
     },
     {
       "id": "00000000-0000-0000-0001-000000000022",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "折叠块"
+      "content": "标注与分割"
     },
     {
       "id": "00000000-0000-0000-0001-000000000023",
+      "type": "callout",
+      "props": {"icon": "💡"},
+      "content": "这是一个提示型标注，适合放重要说明或小贴士。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000024",
+      "type": "callout",
+      "props": {"icon": "⚠️"},
+      "content": "这是一个警告型标注，callout 支持自定义 emoji 图标。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000025",
+      "type": "horizontalRule"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000026",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "折叠块"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000027",
       "type": "toggle",
-      "props": {"open": "false", "summary": "点击展开查看内容", "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "点击展开查看内容",
+      "props": {"open": "true", "summary": "点击展开查看详情"},
       "children": [
         {
-          "id": "00000000-0000-0000-0001-000000000024",
+          "id": "00000000-0000-0000-0001-000000000028",
           "type": "paragraph",
           "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-          "content": "这是折叠块内部的内容，可以放任意块。"
+          "content": "这是折叠块内的内容，收起后不可见。折叠块可以用来收纳不常用的信息，保持页面简洁。"
         }
       ]
     },
     {
-      "id": "00000000-0000-0000-0001-000000000025",
-      "type": "heading",
-      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "代码块"
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000026",
-      "type": "codeBlock",
-      "props": {"language": "go"},
-      "content": "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, noteyard!\")\n}"
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000027",
-      "type": "codeBlock",
-      "props": {"language": "typescript"},
-      "content": "const greet = (name: string): string => {\n    return `Hello, ${name}!`;\n};"
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000028",
+      "id": "00000000-0000-0000-0001-000000000029",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "表格"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000029",
+      "id": "00000000-0000-0000-0001-000000000030",
       "type": "table",
       "props": {},
       "content": {
@@ -185,115 +203,176 @@
         "rows": [
           {"cells": [
             [{"type": "text", "text": "姓名", "styles": {"bold": true}}],
-            [{"type": "text", "text": "职业", "styles": {"bold": true}}],
-            [{"type": "text", "text": "城市", "styles": {"bold": true}}]
+            [{"type": "text", "text": "角色", "styles": {"bold": true}}],
+            [{"type": "text", "text": "状态", "styles": {"bold": true}}]
           ]},
           {"cells": [
-            [{"type": "text", "text": "张三", "styles": {}}],
-            [{"type": "text", "text": "工程师", "styles": {}}],
-            [{"type": "text", "text": "北京", "styles": {}}]
-          ]},
-          {"cells": [
-            [{"type": "text", "text": "李四", "styles": {}}],
+            [{"type": "text", "text": "Alice", "styles": {}}],
             [{"type": "text", "text": "设计师", "styles": {}}],
-            [{"type": "text", "text": "上海", "styles": {}}]
+            [{"type": "text", "text": "在职", "styles": {}}]
           ]},
           {"cells": [
-            [{"type": "text", "text": "王五", "styles": {}}],
-            [{"type": "text", "text": "产品经理", "styles": {}}],
-            [{"type": "text", "text": "深圳", "styles": {}}]
+            [{"type": "text", "text": "Bob", "styles": {}}],
+            [{"type": "text", "text": "工程师", "styles": {}}],
+            [{"type": "text", "text": "在职", "styles": {}}]
           ]}
         ]
       }
     },
     {
-      "id": "00000000-0000-0000-0001-000000000030",
+      "id": "00000000-0000-0000-0001-000000000031",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "图片与媒体"
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000031",
-      "type": "callout",
-      "props": {"icon": "🖼️"},
-      "content": "输入 / 选择「图片」，可以上传本地图片或粘贴图片 URL。支持 JPG、PNG、GIF、WebP 格式。"
+      "content": "并排布局"
     },
     {
       "id": "00000000-0000-0000-0001-000000000032",
-      "type": "callout",
-      "props": {"icon": "🎬"},
-      "content": "输入 / 选择「嵌入」，可以嵌入网页、视频等外部内容。"
+      "type": "columnList",
+      "children": [
+        {
+          "id": "00000000-0000-0000-0001-000000000033",
+          "type": "column",
+          "children": [
+            {
+              "id": "00000000-0000-0000-0001-000000000034",
+              "type": "paragraph",
+              "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+              "content": "左列：可以放任意块类型，与右列并排显示。"
+            }
+          ]
+        },
+        {
+          "id": "00000000-0000-0000-0001-000000000035",
+          "type": "column",
+          "children": [
+            {
+              "id": "00000000-0000-0000-0001-000000000036",
+              "type": "paragraph",
+              "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+              "content": "右列：将块拖到另一块的左/右边缘即可分栏。"
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "00000000-0000-0000-0001-000000000033",
+      "id": "00000000-0000-0000-0001-000000000037",
+      "type": "callout",
+      "props": {"icon": "💡"},
+      "content": "拖动块到另一块的左侧或右侧边缘，出现蓝色分栏指示线时释放鼠标，即可创建并排布局。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000038",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "媒体块"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000039",
+      "type": "callout",
+      "props": {"icon": "📷"},
+      "content": "图片块：输入 /图片 或直接粘贴图片，可上传本地图片或粘贴图片 URL。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000040",
+      "type": "bookmark",
+      "content": {
+        "url": "https://noteyard.app",
+        "title": "noteyard — 本地优先的块编辑器",
+        "description": "像 Notion 一样组织知识，数据完全存储在本地。",
+        "favicon": ""
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000041",
+      "type": "callout",
+      "props": {"icon": "🔗"},
+      "content": "嵌入块：粘贴支持 iframe 的网址（如 YouTube、Figma 等），即可在页面中嵌入外部内容。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000042",
+      "type": "callout",
+      "props": {"icon": "📄"},
+      "content": "PDF 块：上传 PDF 文件后，可在页面中直接预览 PDF 内容。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000043",
+      "type": "callout",
+      "props": {"icon": "📎"},
+      "content": "文件附件块：上传任意文件，生成下载链接展示在页面中。"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000044",
+      "type": "heading",
+      "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
+      "content": "交互块"
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000045",
+      "type": "button",
+      "content": {
+        "label": "示例按钮",
+        "color": "blue",
+        "action": "none",
+        "url": ""
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000046",
+      "type": "button",
+      "content": {
+        "label": "访问官网",
+        "color": "green",
+        "action": "openUrl",
+        "url": "https://noteyard.app"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000047",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": "数据库"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000034",
+      "id": "00000000-0000-0000-0001-000000000048",
+      "type": "database",
+      "content": {
+        "databaseId": ""
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0001-000000000049",
       "type": "callout",
       "props": {"icon": "🗃️"},
-      "content": "输入 / 选择「数据库」，可以在页面内嵌入结构化表格，支持文本、数字、日期、勾选等字段类型。"
+      "content": "数据库块支持添加列、新建行、设置字段类型（文本、数字、日期、勾选框等）。"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000035",
+      "id": "00000000-0000-0000-0001-000000000050",
       "type": "heading",
       "props": {"level": 2, "textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": "⌨️ 常用快捷键"
+      "content": "子页面"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000036",
-      "type": "bulletListItem",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [
-        {"type": "text", "text": "⌘K", "styles": {"bold": true, "code": true}},
-        {"type": "text", "text": " — 全局搜索页面", "styles": {}}
-      ]
+      "id": "00000000-0000-0000-0001-000000000051",
+      "type": "subpage",
+      "content": {
+        "pageId": "",
+        "title": "示例子页面",
+        "icon": "📄"
+      }
     },
     {
-      "id": "00000000-0000-0000-0001-000000000037",
-      "type": "bulletListItem",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [
-        {"type": "text", "text": "/", "styles": {"bold": true, "code": true}},
-        {"type": "text", "text": " — 打开块插入菜单", "styles": {}}
-      ]
+      "id": "00000000-0000-0000-0001-000000000052",
+      "type": "callout",
+      "props": {"icon": "📂"},
+      "content": "子页面块：点击可跳转到对应子页面。在编辑器中输入 /子页面 即可插入。"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000038",
-      "type": "bulletListItem",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [
-        {"type": "text", "text": "⌘Z", "styles": {"bold": true, "code": true}},
-        {"type": "text", "text": " — 撤销", "styles": {}}
-      ]
+      "id": "00000000-0000-0000-0001-000000000053",
+      "type": "horizontalRule"
     },
     {
-      "id": "00000000-0000-0000-0001-000000000039",
-      "type": "bulletListItem",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [
-        {"type": "text", "text": "Tab", "styles": {"bold": true, "code": true}},
-        {"type": "text", "text": " — 列表缩进", "styles": {}}
-      ]
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000040",
-      "type": "bulletListItem",
-      "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
-      "content": [
-        {"type": "text", "text": "Enter", "styles": {"bold": true, "code": true}},
-        {"type": "text", "text": " — 新建块", "styles": {}}
-      ]
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000041",
-      "type": "horizontalRule",
-      "props": {}
-    },
-    {
-      "id": "00000000-0000-0000-0001-000000000042",
+      "id": "00000000-0000-0000-0001-000000000054",
       "type": "quote",
       "props": {"textColor": "default", "backgroundColor": "default", "textAlignment": "left"},
       "content": [{"type": "text", "text": "这是你的起点，也是你的空白画布。删掉这个页面，或者就从这里开始写第一篇笔记吧。", "styles": {"italic": true}}]
