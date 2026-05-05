@@ -5,7 +5,7 @@
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
 | 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046 |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1 |
 
 ---
 
@@ -13,6 +13,16 @@
 
 - 负责：BlockNote 编辑器自定义块定义（`ButtonBlock` 等）和相关 CSS 样式
 - 不负责：后端接口、`api/client.ts`、`App.tsx` 级别状态、其他组件文件
+
+## REQ-084 新增结构概览
+
+`ButtonBlock` 在 REQ-084 T1 新增了规则引擎数据结构和纯执行函数（无 UI）：
+- `ButtonAction` 枚举增加 `run_rules`；`ButtonRule` 联合类型（4种规则）定义在 `Editor.tsx` 模块顶层
+- `propSchema` 新增 `rules` 字段（JSON 序列化的 `ButtonRule[]`，默认 `"[]"`）
+- `buttonBlockCtxRef` 新增 `pageTitle` 字段，用于变量替换
+- 新增 4 个模块级函数：`parseRules`（解析/校验规则串）、`resolveVariables`（占位符替换）、`executeSingleRule`（单条规则执行）、`executeRules`（顺序执行 + btn 防重）
+- `append_content` 规则使用 `editor.insertBlocks([block], lastBlock, "after")` 追加至文档末尾（非 `insertOrUpdateBlock`）
+- 执行期间通过 `btn.disabled` 直接操作 DOM 防重，不走 React state（与 mainBtnRef handler 渲染周期解耦）
 
 ## 核心数据流
 
@@ -65,6 +75,11 @@
 
 - `Editor.tsx`：`ButtonAction` 类型扩展为包含 `"new_subpage"` / `"edit_page_props"`；新增模块级 `buttonBlockCtxRef`；Editor 组件新增 `useEffect` 同步 ctxRef；`mainBtnRef` handler 新增 `new_subpage` 分支（pageId 守卫 + create + insertOrUpdateBlock + onSelectPage）；设置面板动作下拉新增「新建子页面」选项；action 有效性校验数组同步扩展
 - `tsc --noEmit` 零错误
+
+## 变更记录（REQ-084 T1，2026-05-05，dispatch #223）
+
+- `Editor.tsx`：`ButtonAction` 枚举扩展含 `"run_rules"`；新增 `ButtonRule` 联合类型（4种）；`propSchema` 新增 `rules`（default: `"[]"`）；`buttonBlockCtxRef` 新增 `pageTitle`（初始值空字符串）；新增模块级函数 `parseRules` / `resolveVariables` / `executeSingleRule` / `executeRules`；顶部新增 `import toast from "react-hot-toast"`；action 有效性校验数组同步扩展含 `"run_rules"`
+- `tsc --noEmit` 零错误，不含 UI 改动，不修改 mainBtnRef handler
 
 ## 变更记录（REQ-083 T4 / FR-4，2026-05-05，dispatch #216）
 
