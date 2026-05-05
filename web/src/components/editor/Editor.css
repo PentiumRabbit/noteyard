@@ -313,11 +313,6 @@
   line-height: 1.3;
 }
 
-/* Override BlockNote's em-based heading sizes with px */
-.editor-wrap .bn-block-outer:not([data-prev-type]) > .bn-block > .bn-block-content[data-content-type="heading"] {
-  font-size: inherit;
-  font-weight: 700;
-}
 
 .editor-wrap [data-content-type="heading"][data-level="1"],
 .editor-wrap .bn-block-outer[data-prev-type="heading"][data-prev-level="1"] > .bn-block > .bn-block-content {
