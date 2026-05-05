@@ -140,6 +140,28 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 
 ---
 
+## REQ-084 按钮块触发自动化规则引擎评审摘要（2026-05-05，dispatch #222）
+
+**变更模块**：`web/src/components/editor/`（`editor` 模块，仅此一个模块）
+
+**架构决策**：
+- `propSchema` 新增 `rules` 字段（JSON string，默认 `"[]"`）；`ButtonAction` 枚举扩展含 `"run_rules"`；新增 `ButtonRule` 联合类型（4 种规则）
+- `rules` 字段序列化为 JSON string（BlockNote propSchema 不支持数组/对象类型），`parseRules` 解析时区分 `null`（格式非法）和 `[]`（空数组）
+- 执行逻辑提取为模块级函数 `executeRules`/`executeSingleRule`，通过 `btn.disabled` 直接操作 DOM 实现防重（不走 React state）
+- `resolveVariables` 为模块级纯函数，支持 `{{date}}`/`{{time}}`/`{{page_title}}` 三个占位符；`buttonBlockCtxRef` 新增 `pageTitle` 字段
+- `append_content` 须用 `editor.insertBlocks([...], lastBlock, "after")` 追加末尾，不可用 `insertOrUpdateBlock`（后者插在光标位置）
+- 规则编辑 UI 嵌入现有 `button-block-panel`，不新建文件；面板内交互约束对齐 ISS-044 方案（`onClick` 不用 `onMouseDown`）
+- `notify` 规则用 `toast()`（`react-hot-toast`），须在 `Editor.tsx` 新增 `import toast`
+
+**关键约束**：
+- `rulesDraft` 须在 `panelOpen` 变为 `true` 时从 `block.props.rules` 回填（不能只用 mount 时的 lazy initializer）
+- 有效性校验数组须同步扩展含 `"run_rules"`，否则保存后读取会 fallback 到 `"none"`
+- `append_content` 末尾插入 API 选择须严格按评审结论（`editor.insertBlocks`）
+
+*由前端架构师（arch-frontend）生成，dispatch #222 / REQ-084。*
+
+---
+
 ## ISS-016 修复摘要（2026-05-03，dispatch #121–#123）
 
 **问题**：数据库单选/多选交互不符合 Notion 预期行为（三处缺陷）。
