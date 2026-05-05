@@ -30,6 +30,7 @@
 - `new_subpage` handler 入口须检查 `buttonBlockCtxRef.pageId` 非空，为空则 `console.warn` 并 return（防御 HMR 等边界场景）
 - `.button-block-btn.bg-*:hover` 规则须在 `.button-block-btn:hover` 之后定义，才能覆盖通用 hover 背景色（CSS specificity 相等，后定义优先）
 - `PagePropsPanel` 标题更新通过 `CustomEvent("page-props-updated")` 通知 App 层，不直接修改 App state
+- 面板内原生 mousedown handler 调用 stopPropagation() 会阻断事件到达 React root，导致面板内所有子组件的 React 合成 onMouseDown 失效；面板内交互组件若需响应点击，须改用 onClick（click 事件不受 mousedown 拦截影响，ISS-044 根因）
 
 ## 关键文件路径
 
@@ -38,6 +39,11 @@
 | `web/src/components/editor/Editor.tsx` | ButtonBlock 定义（含 mainBtnRef effect、buttonBlockCtxRef、PagePropsPanel、ctxRef sync useEffect） |
 | `web/src/components/editor/Editor.css` | ButtonBlock 背景色变体（.bg-*）、PagePropsPanel 面板样式 |
 | `web/src/utils/urlUtils.ts` | isSafeUrl 工具函数 |
+
+## 变更记录（ISS-044，2026-05-05，dispatch #219）
+
+- `web/src/components/common/CustomSelect.tsx`：选项 div 的 `onMouseDown` 仅保留 `e.preventDefault()`（防焦点抢占），选值逻辑从 `onMouseDown` 移至 `onClick`，解决动作下拉在 ProseMirror 面板内无响应问题
+- `tsc --noEmit` 零错误，向后兼容（其他 CustomSelect 使用场景行为不变）
 
 ## 变更记录（REQ-083 T1 / ISS-043，2026-05-05，dispatch #213）
 
