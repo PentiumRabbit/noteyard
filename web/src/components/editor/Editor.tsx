@@ -429,6 +429,24 @@ const ButtonBlock = createReactBlockSpec(
       const [actionDraft, setActionDraft] = React.useState<ButtonAction>(action);
       const [urlDraft,    setUrlDraft]    = React.useState(url);
       const panelRef = React.useRef<HTMLDivElement>(null);
+      const settingsBtnRef = React.useRef<HTMLButtonElement>(null);
+
+      // ISS-041: Native mousedown handler on the ⚙ settings button — same reason as the
+      // panel handler below: ProseMirror registers a native mousedown listener on view.dom
+      // and calls stopPropagation(), which prevents the event from reaching document where
+      // React's synthetic event delegation listens. Using addEventListener directly on the
+      // button element intercepts the event before it reaches view.dom.
+      React.useEffect(() => {
+        const btn = settingsBtnRef.current;
+        if (!btn) return;
+        const handler = (e: MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setPanelOpen(v => !v);
+        };
+        btn.addEventListener("mousedown", handler);
+        return () => btn.removeEventListener("mousedown", handler);
+      }, []);
 
       // Native mousedown handler on panel div — must be registered via addEventListener
       // (not React onMouseDown) because React uses event delegation: by the time React
@@ -455,6 +473,10 @@ const ButtonBlock = createReactBlockSpec(
       React.useEffect(() => {
         if (!panelOpen) return;
         const handler = (e: MouseEvent) => {
+          // Ignore clicks on the settings button itself — its own handler already
+          // toggles panelOpen; without this guard the document handler would also
+          // fire commitPanel() and immediately re-open the panel.
+          if (settingsBtnRef.current && settingsBtnRef.current.contains(e.target as Node)) return;
           if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
             commitPanel();
           }
@@ -490,9 +512,9 @@ const ButtonBlock = createReactBlockSpec(
             {label}
           </button>
           <button
+            ref={settingsBtnRef}
             className="button-block-settings-btn"
             title="设置"
-            onMouseDown={ev => { ev.preventDefault(); setPanelOpen(v => !v); }}
           >
             ⚙
           </button>
