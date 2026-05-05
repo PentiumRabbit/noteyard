@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 |
+| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 / ISS-042 |
 
 ---
 
@@ -48,7 +48,13 @@
 
 ---
 
-## 上次变更摘要（ISS-035 v2）
+## 上次变更摘要（ISS-042）
+
+- `web/src/components/editor/Editor.tsx`：`ButtonBlock` 新增 `wrapRef`（定位锚点）、`panelPos` state（固定坐标）；⚙ 按钮 mousedown 处理器改为打开时调用 `getBoundingClientRect()` 计算 `top/left`（含翻转逻辑）；新增 scroll 监听 useEffect（capture 阶段）在滚动时关闭面板；面板 div 添加 `ref={wrapRef}` 及 `style={{ position: "fixed", top, left }}`。
+- `web/src/components/editor/Editor.css`：`.button-block-panel` 删除 `position: absolute; top: calc(100% + 6px); left: 0`，改由 inline style 控制；保留 `z-index: 60` 及全部视觉样式。
+- commit: `fix(editor)[eng#206]: ISS-042 修复 ButtonBlock 面板被滚动容器裁剪`（`6a76fb3`）
+
+## 历史变更摘要（ISS-035 v2）
 
 - `web/src/components/editor/dropOverlayPlugin.ts`：新建 ProseMirror Plugin（方案D）。dragover 时用 `getNearestBlockPos` 定位目标块，调用 `getBoundingClientRect()` 获取视口坐标，按 clientX 判断 left/right/regular，用 `position: fixed` 的 overlay div 覆盖目标块完整区域（或左/右半边）；dragend/drop/dragleave 清除 overlay。
 - `web/src/components/editor/Editor.tsx`：保留 `multiColumnDropCursor` 负责 handleDrop 逻辑（columnList 创建），但将 `color: false, width: 0` 抑制其视觉输出；通过 `useMemo` + `useEffect` 在 `_tiptapEditor` 上注册/注销 `dropOverlayPlugin`；移除 ISS-035 v1 的 document dragend 兜底 useEffect。
