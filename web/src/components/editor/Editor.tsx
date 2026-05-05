@@ -475,7 +475,11 @@ const ButtonBlock = createReactBlockSpec(
             ⚙
           </button>
           {panelOpen && (
-            <div className="button-block-panel" ref={panelRef}>
+            <div
+              className="button-block-panel"
+              ref={panelRef}
+              onMouseDown={e => e.stopPropagation()}
+            >
               <label>
                 标签文案
                 <input
