@@ -83,7 +83,7 @@ const HorizontalRuleBlock = createReactBlockSpec(
   },
   {
     render: () => (
-      <hr style={{ border: "none", borderTop: "1px solid #e9e9e7", margin: "4px 0" }} />
+      <hr style={{ border: "none", borderTop: "1px solid #e9e9e7", margin: "4px 0", width: "100%", display: "block" }} />
     ),
   },
 );
