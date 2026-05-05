@@ -5,7 +5,7 @@
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
 | 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-083 T1/T2/T3/T4 |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046 |
 
 ---
 
@@ -39,6 +39,11 @@
 | `web/src/components/editor/Editor.tsx` | ButtonBlock 定义（含 mainBtnRef effect、buttonBlockCtxRef、PagePropsPanel、ctxRef sync useEffect） |
 | `web/src/components/editor/Editor.css` | ButtonBlock 背景色变体（.bg-*）、PagePropsPanel 面板样式 |
 | `web/src/utils/urlUtils.ts` | isSafeUrl 工具函数 |
+
+## 变更记录（ISS-045/ISS-046，2026-05-05，dispatch #220）
+
+- `Editor.tsx`：设置面板「确认」按钮从 `onMouseDown` 改为 `onClick`，解决 ISS-045（commitPanel 未执行、面板未关闭）；ISS-046（action=new_subpage 主按钮无响应）根因为 ISS-045 导致动作无法保存，ISS-045 修复后 new_subpage 分支正常执行
+- `tsc --noEmit` 零错误，向后兼容（其他面板功能和主按钮 action 类型不受影响）
 
 ## 变更记录（ISS-044，2026-05-05，dispatch #219）
 

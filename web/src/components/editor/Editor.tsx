@@ -826,7 +826,7 @@ const ButtonBlock = createReactBlockSpec(
               )}
               <button
                 style={{ alignSelf: "flex-end", padding: "4px 10px", fontSize: 12, cursor: "pointer", borderRadius: 4, border: "1px solid var(--color-border)", background: "var(--color-accent)", color: "#fff" }}
-                onMouseDown={ev => { ev.preventDefault(); commitPanel(); }}
+                onClick={() => commitPanel()}
               >
                 确认
               </button>
