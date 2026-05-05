@@ -16,29 +16,39 @@
 
 ## 核心数据流
 
-`ButtonBlock` 是 BlockNote atom 节点（`content: "none"`），主按钮点击事件通过原生 `addEventListener("mousedown")` 注册在 `mainBtnRef` 上，绕过 ProseMirror 的事件拦截；handler 内直接读 `block.props` 获取最新 `action`/`url`，避免闭包快照过期。
+`ButtonBlock` 是 BlockNote atom 节点（`content: "none"`），主按钮点击事件通过原生 `addEventListener("mousedown")` 注册在 `mainBtnRef` 上，绕过 ProseMirror 的事件拦截；handler 内直接读 `block.props` 获取最新 `action`/`url`/`bgColor`，避免闭包快照过期。
 
-`new_subpage` 动作需要 Editor 组件的 `pageId` / `onSelectPage` prop，通过模块级 `buttonBlockCtxRef` 对象传递（ButtonBlock 定义在 Editor 组件外，无法直接接收 props）；Editor 组件通过 `useEffect` 在每次 `pageId`/`onSelectPage` 变化时同步该对象。
+背景色（`bgColor`）通过 `propSchema` 持久化到 `block.props`，经 `buildDtosRecursive` 的 `button` 分支序列化为 JSON 写入后端，无需修改序列化逻辑。
+
+`new_subpage` / `edit_page_props` 动作需要 Editor 组件的 `pageId` / `onSelectPage` prop，通过模块级 `buttonBlockCtxRef` 对象传递（ButtonBlock 定义在 Editor 组件外，无法直接接收 props）；Editor 组件通过 `useEffect` 在每次 `pageId`/`onSelectPage` 变化时同步该对象。
 
 ## 关键约束
 
 - atom 节点的交互事件必须用原生 `addEventListener("mousedown")` + `e.stopPropagation()`，不可用 React 合成 `onClick`（ISS-043 根因）
-- mousedown handler 内须读 `block.props.action`/`block.props.url`，不可读 render 时的闭包变量（闭包快照在 mount 后不更新）
-- URL 合法性校验复用 `isSafeUrl`（`web/src/utils/urlUtils.ts`），已在 Editor.tsx L39 import
+- mousedown handler 内须读 `block.props.*`，不可读 render 时的闭包变量（闭包快照在 mount 后不更新）
+- URL 合法性校验复用 `isSafeUrl`（`web/src/utils/urlUtils.ts`），已在 Editor.tsx 顶部 import
 - `new_subpage` handler 入口须检查 `buttonBlockCtxRef.pageId` 非空，为空则 `console.warn` 并 return（防御 HMR 等边界场景）
-- `api.pages.create` 失败时 `console.error`，不插入 subpage 块，不抛出到上层
+- `.button-block-btn.bg-*:hover` 规则须在 `.button-block-btn:hover` 之后定义，才能覆盖通用 hover 背景色（CSS specificity 相等，后定义优先）
+- `PagePropsPanel` 标题更新通过 `CustomEvent("page-props-updated")` 通知 App 层，不直接修改 App state
 
 ## 关键文件路径
 
 | 文件 | 职责 |
 |------|------|
-| `web/src/components/editor/Editor.tsx` | ButtonBlock 定义（含 mainBtnRef effect、buttonBlockCtxRef、ctxRef sync useEffect） |
+| `web/src/components/editor/Editor.tsx` | ButtonBlock 定义（含 mainBtnRef effect、buttonBlockCtxRef、PagePropsPanel、ctxRef sync useEffect） |
+| `web/src/components/editor/Editor.css` | ButtonBlock 背景色变体（.bg-*）、PagePropsPanel 面板样式 |
 | `web/src/utils/urlUtils.ts` | isSafeUrl 工具函数 |
 
 ## 变更记录（REQ-083 T1 / ISS-043，2026-05-05，dispatch #213）
 
 - `Editor.tsx`：新增 `mainBtnRef`（`useRef<HTMLButtonElement>`）及原生 mousedown effect；删除 `handleClick`；主按钮 JSX 移除 `onClick`，添加 `ref={mainBtnRef}`
 - `tsc --noEmit` 零错误，向后兼容（action=none 无副作用，设置面板行为不变）
+
+## 变更记录（REQ-083 T2 / FR-1，2026-05-05，dispatch #214）
+
+- `Editor.tsx`：新增 `ButtonBgColor` 类型 + `BUTTON_BG_COLORS` 常量（10种背景色含 hoverHex）；propSchema 新增 `bgColor`（default: "default"）；render 层新增 `bgColor` 解析 + `bgColorDraft` state；`commitPanel` 写入 `bgColor: bgColorDraft`；主按钮 className 追加 `bg-${bgColor}`；设置面板新增「背景色」区块（10色 swatch 点选）
+- `Editor.css`：新增 `.button-block-btn.bg-*` 背景色变体（亮色 + hover 覆盖）和 `.dark .button-block-btn.bg-*`（暗色 + hover 覆盖）
+- `tsc --noEmit` 零错误，`bgColor=default` 向后兼容
 
 ## 变更记录（REQ-083 T3 / FR-3，2026-05-05，dispatch #215）
 
