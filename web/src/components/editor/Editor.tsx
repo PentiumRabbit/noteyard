@@ -765,16 +765,23 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   );
 });
 
-// Suggestion menu floating options: flip to top when bottom space < 240px
+// Suggestion menu floating options: flip to top when viewport bottom space is insufficient
 const suggestionMenuFloatingOptions = {
   placement: "bottom-start" as const,
   middleware: [
     offset(10),
-    flip({ padding: 240 }),
-    shift(),
+    flip({
+      boundary: document.documentElement,
+      fallbackAxisSideDirection: "start" as const,
+      padding: 10,
+    }),
+    shift({ boundary: document.documentElement }),
     size({
+      boundary: document.documentElement,
       apply({ availableHeight, elements }: { availableHeight: number; elements: { floating: HTMLElement } }) {
-        Object.assign(elements.floating.style, { maxHeight: `${availableHeight - 10}px` });
+        Object.assign(elements.floating.style, {
+          maxHeight: `${Math.max(availableHeight - 10, 80)}px`,
+        });
       },
     }),
   ],
