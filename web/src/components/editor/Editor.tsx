@@ -432,7 +432,35 @@ const ButtonBlock = createReactBlockSpec(
       const [panelPos, setPanelPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
       const panelRef = React.useRef<HTMLDivElement>(null);
       const settingsBtnRef = React.useRef<HTMLButtonElement>(null);
+      const mainBtnRef = React.useRef<HTMLButtonElement>(null);
       const wrapRef = React.useRef<HTMLDivElement>(null);
+
+      // ISS-043: Native mousedown handler on the main button — same atom-node
+      // interception issue as ISS-041 for the ⚙ button. ProseMirror's mousedown
+      // listener on view.dom swallows the event before React's synthetic onClick
+      // fires. Registering directly on the element intercepts it first.
+      // Read action/url from block.props (not closure) to avoid stale-capture.
+      React.useEffect(() => {
+        const btn = mainBtnRef.current;
+        if (!btn) return;
+        const handler = (e: MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentAction = block.props.action as ButtonAction;
+          const currentUrl = (block.props.url ?? "") as string;
+          if (currentAction === "open_url") {
+            if (!isSafeUrl(currentUrl)) {
+              alert("URL 不合法：必须以 http:// 或 https:// 开头");
+              return;
+            }
+            window.open(currentUrl, "_blank", "noopener,noreferrer");
+          }
+        };
+        btn.addEventListener("mousedown", handler);
+        return () => btn.removeEventListener("mousedown", handler);
+      // block.props is accessed by reference inside handler — effect runs once at mount
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
 
       // ISS-041: Native mousedown handler on the ⚙ settings button — same reason as the
       // panel handler below: ProseMirror registers a native mousedown listener on view.dom
@@ -516,21 +544,11 @@ const ButtonBlock = createReactBlockSpec(
         setPanelOpen(false);
       };
 
-      const handleClick = () => {
-        if (action === "open_url") {
-          if (!isSafeUrl(url)) {
-            alert("URL 不合法：必须以 http:// 或 https:// 开头");
-            return;
-          }
-          window.open(url, "_blank", "noopener,noreferrer");
-        }
-      };
-
       return (
         <div className="button-block" ref={wrapRef}>
           <button
+            ref={mainBtnRef}
             className={`button-block-btn color-${color}`}
-            onClick={handleClick}
             title={action === "open_url" ? url : undefined}
           >
             {label}
