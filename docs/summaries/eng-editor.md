@@ -5,7 +5,7 @@
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
 | 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1 |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2 |
 
 ---
 
@@ -16,13 +16,14 @@
 
 ## REQ-084 新增结构概览
 
-`ButtonBlock` 在 REQ-084 T1 新增了规则引擎数据结构和纯执行函数（无 UI）：
+`ButtonBlock` 在 REQ-084 T1/T2 新增了规则引擎数据结构、执行函数和编辑 UI：
 - `ButtonAction` 枚举增加 `run_rules`；`ButtonRule` 联合类型（4种规则）定义在 `Editor.tsx` 模块顶层
 - `propSchema` 新增 `rules` 字段（JSON 序列化的 `ButtonRule[]`，默认 `"[]"`）
 - `buttonBlockCtxRef` 新增 `pageTitle` 字段，用于变量替换
 - 新增 4 个模块级函数：`parseRules`（解析/校验规则串）、`resolveVariables`（占位符替换）、`executeSingleRule`（单条规则执行）、`executeRules`（顺序执行 + btn 防重）
 - `append_content` 规则使用 `editor.insertBlocks([block], lastBlock, "after")` 追加至文档末尾（非 `insertOrUpdateBlock`）
 - 执行期间通过 `btn.disabled` 直接操作 DOM 防重，不走 React state（与 mainBtnRef handler 渲染周期解耦）
+- T2 新增：`rulesDraft` state（lazy init）+ `panelOpen` effect 回填 + `commitPanel` 写入 rules + 规则编辑区 JSX（4种类型、CRUD、10条上限）+ CSS 样式
 
 ## 核心数据流
 
@@ -80,6 +81,12 @@
 
 - `Editor.tsx`：`ButtonAction` 枚举扩展含 `"run_rules"`；新增 `ButtonRule` 联合类型（4种）；`propSchema` 新增 `rules`（default: `"[]"`）；`buttonBlockCtxRef` 新增 `pageTitle`（初始值空字符串）；新增模块级函数 `parseRules` / `resolveVariables` / `executeSingleRule` / `executeRules`；顶部新增 `import toast from "react-hot-toast"`；action 有效性校验数组同步扩展含 `"run_rules"`
 - `tsc --noEmit` 零错误，不含 UI 改动，不修改 mainBtnRef handler
+
+## 变更记录（REQ-084 T2，2026-05-05，dispatch #224）
+
+- `Editor.tsx`：ButtonBlock 新增 `rulesDraft` state（lazy init）和 `showRuleTypeMenu` state；`panelOpen` effect 回填 rulesDraft + reset showRuleTypeMenu；`commitPanel` 写入 `rules: JSON.stringify(rulesDraft)`；PanelSelect 新增「运行规则」选项；新增规则编辑区 JSX（`actionDraft=run_rules` 条件渲染，支持 4 种规则类型 CRUD + 参数输入 + 10 条上限禁用）；document mousedown effect 依赖数组新增 rulesDraft
+- `Editor.css`：新增规则编辑区全套样式（`.button-rules-editor`、`.button-rule-row`、`.button-rule-header`、`.button-rule-params`、`.button-rules-add`、`.button-rule-type-menu` 等）
+- `tsc --noEmit` 零错误，不含执行逻辑（mainBtnRef handler 的 run_rules 分支在 T3 实现）
 
 ## 变更记录（REQ-083 T4 / FR-4，2026-05-05，dispatch #216）
 
