@@ -225,14 +225,14 @@ const FileAttachBlock = createReactBlockSpec(
         editor.updateBlock(block, { props: { url, name: file.name, size: String(Math.round(file.size / 1024)) + " KB" } } as any);
       };
       if (!hasFile) {
-        return <FileUploadField label="📎 上传文件" maxSizeMB={2} onUpload={handleUpload} />;
+        return <FileUploadField label="📎 上传文件" onUpload={handleUpload} />;
       }
       return (
         <div className="file-attach-block">
           <span className="file-attach-icon">📎</span>
           <a href={block.props.url} download={block.props.name} className="file-attach-name">{block.props.name}</a>
           <span className="file-attach-size">{block.props.size}</span>
-          <FileUploadField label="重新上传" maxSizeMB={2} onUpload={handleUpload} />
+          <FileUploadField label="重新上传" onUpload={handleUpload} />
         </div>
       );
     },
@@ -355,7 +355,7 @@ const PdfBlock = createReactBlockSpec(
       };
 
       if (!block.props.url) {
-        return <FileUploadField label="📄 上传 PDF" maxSizeMB={10} accept=".pdf" onUpload={handleUpload} />;
+        return <FileUploadField label="📄 上传 PDF" onUpload={handleUpload} />;
       }
 
       return (

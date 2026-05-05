@@ -1,20 +1,20 @@
 import React from "react";
 import { api } from "../../api/client";
 
+const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+
 interface FileUploadFieldProps {
-  accept?: string;
-  maxSizeMB: number;
   label: string;
   onUpload: (file: File, url: string) => void;
   uploading?: boolean;
 }
 
-export function FileUploadField({ accept, maxSizeMB, label, onUpload, uploading }: FileUploadFieldProps) {
+export function FileUploadField({ label, onUpload, uploading }: FileUploadFieldProps) {
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      alert(`文件不超过 ${maxSizeMB}MB`);
+    if (file.size > MAX_SIZE) {
+      alert("文件不超过 100MB");
       return;
     }
     try {
@@ -26,7 +26,7 @@ export function FileUploadField({ accept, maxSizeMB, label, onUpload, uploading 
   return (
     <label className="file-attach-upload">
       <span>{uploading ? "上传中…" : label}</span>
-      <input type="file" accept={accept} style={{ display: "none" }} onChange={e => void handleChange(e)} />
+      <input type="file" style={{ display: "none" }} onChange={e => void handleChange(e)} />
     </label>
   );
 }
