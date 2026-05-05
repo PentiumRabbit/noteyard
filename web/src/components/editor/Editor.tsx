@@ -695,6 +695,14 @@ const ButtonBlock = createReactBlockSpec(
       const [bgColorDraft,  setBgColorDraft]  = React.useState<ButtonBgColor>(bgColor);
       const [actionDraft,   setActionDraft]   = React.useState<ButtonAction>(action);
       const [urlDraft,      setUrlDraft]      = React.useState(url);
+      // REQ-084: rules draft state — lazy init from block.props.rules
+      const [rulesDraft, setRulesDraft] = React.useState<ButtonRule[]>(() => {
+        try {
+          const parsed = JSON.parse(block.props.rules ?? "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
+      });
+      const [showRuleTypeMenu, setShowRuleTypeMenu] = React.useState(false);
       // ISS-042: track fixed-position coordinates for the panel
       const [panelPos, setPanelPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
       // REQ-083 FR-4: page props panel state
@@ -837,11 +845,23 @@ const ButtonBlock = createReactBlockSpec(
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [panelOpen, labelDraft, colorDraft, bgColorDraft, actionDraft, urlDraft]);
+      }, [panelOpen, labelDraft, colorDraft, bgColorDraft, actionDraft, urlDraft, rulesDraft]);
+
+      // REQ-084: sync rulesDraft from block.props when panel opens
+      React.useEffect(() => {
+        if (panelOpen) {
+          try {
+            const parsed = JSON.parse(block.props.rules ?? "[]");
+            setRulesDraft(Array.isArray(parsed) ? parsed : []);
+          } catch { setRulesDraft([]); }
+          setShowRuleTypeMenu(false);
+        }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [panelOpen]);
 
       const commitPanel = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { label: labelDraft, color: colorDraft, bgColor: bgColorDraft, action: actionDraft, url: urlDraft } } as any);
+        editor.updateBlock(block, { props: { label: labelDraft, color: colorDraft, bgColor: bgColorDraft, action: actionDraft, url: urlDraft, rules: JSON.stringify(rulesDraft) } } as any);
         setPanelOpen(false);
       };
 
@@ -912,6 +932,7 @@ const ButtonBlock = createReactBlockSpec(
                   { value: "open_url", label: "打开链接" },
                   { value: "new_subpage", label: "新建子页面" },
                   { value: "edit_page_props", label: "编辑页面属性" },
+                  { value: "run_rules", label: "运行规则" },
                 ]}
               />
               {actionDraft === "open_url" && (
@@ -923,6 +944,183 @@ const ButtonBlock = createReactBlockSpec(
                     placeholder="https://..."
                   />
                 </label>
+              )}
+              {actionDraft === "run_rules" && (
+                <div className="button-rules-editor">
+                  {rulesDraft.length === 0 && (
+                    <div className="button-rules-empty">暂无规则，点击添加</div>
+                  )}
+                  {rulesDraft.map((rule, idx) => (
+                    <div key={idx} className="button-rule-row">
+                      <div className="button-rule-header">
+                        <span className="button-rule-type-label">
+                          {idx + 1}. {
+                            rule.type === "create_page" ? "创建页面" :
+                            rule.type === "append_content" ? "追加内容" :
+                            rule.type === "set_page_prop" ? "修改页面属性" :
+                            "发送通知"
+                          }
+                        </span>
+                        <div className="button-rule-actions">
+                          <button
+                            className="button-rule-btn"
+                            disabled={idx === 0}
+                            onMouseDown={ev => ev.preventDefault()}
+                            onClick={() => {
+                              if (idx === 0) return;
+                              setRulesDraft(prev => {
+                                const next = [...prev];
+                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                                return next;
+                              });
+                            }}
+                          >↑</button>
+                          <button
+                            className="button-rule-btn"
+                            disabled={idx === rulesDraft.length - 1}
+                            onMouseDown={ev => ev.preventDefault()}
+                            onClick={() => {
+                              if (idx === rulesDraft.length - 1) return;
+                              setRulesDraft(prev => {
+                                const next = [...prev];
+                                [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                                return next;
+                              });
+                            }}
+                          >↓</button>
+                          <button
+                            className="button-rule-btn button-rule-delete"
+                            onMouseDown={ev => ev.preventDefault()}
+                            onClick={() => setRulesDraft(prev => prev.filter((_, i) => i !== idx))}
+                          >×</button>
+                        </div>
+                      </div>
+                      {rule.type === "create_page" && (
+                        <div className="button-rule-params">
+                          <label>标题</label>
+                          <input
+                            type="text"
+                            value={rule.title}
+                            placeholder="Untitled"
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], title: ev.target.value } as ButtonRule;
+                              return next;
+                            })}
+                          />
+                          <label>父级</label>
+                          <select
+                            value={rule.parent}
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], parent: ev.target.value as "current" | "root" } as ButtonRule;
+                              return next;
+                            })}
+                          >
+                            <option value="current">当前页面</option>
+                            <option value="root">工作区根目录</option>
+                          </select>
+                        </div>
+                      )}
+                      {rule.type === "append_content" && (
+                        <div className="button-rule-params">
+                          <label>内容</label>
+                          <input
+                            type="text"
+                            value={rule.text}
+                            placeholder="支持 {{date}} {{time}} {{page_title}}"
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], text: ev.target.value } as ButtonRule;
+                              return next;
+                            })}
+                          />
+                        </div>
+                      )}
+                      {rule.type === "set_page_prop" && (
+                        <div className="button-rule-params">
+                          <label>属性</label>
+                          <select
+                            value={rule.prop}
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], prop: ev.target.value as "title" | "icon" | "cover" } as ButtonRule;
+                              return next;
+                            })}
+                          >
+                            <option value="title">标题</option>
+                            <option value="icon">图标</option>
+                            <option value="cover">封面</option>
+                          </select>
+                          <label>值</label>
+                          <input
+                            type="text"
+                            value={rule.value}
+                            placeholder="支持 {{date}} {{time}} {{page_title}}"
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], value: ev.target.value } as ButtonRule;
+                              return next;
+                            })}
+                          />
+                        </div>
+                      )}
+                      {rule.type === "notify" && (
+                        <div className="button-rule-params">
+                          <label>消息</label>
+                          <input
+                            type="text"
+                            value={rule.message}
+                            placeholder="支持 {{date}} {{time}} {{page_title}}"
+                            onChange={ev => setRulesDraft(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], message: ev.target.value } as ButtonRule;
+                              return next;
+                            })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    className="button-rules-add"
+                    disabled={rulesDraft.length >= 10}
+                    title={rulesDraft.length >= 10 ? "最多 10 条" : undefined}
+                    onMouseDown={ev => ev.preventDefault()}
+                    onClick={() => setShowRuleTypeMenu(true)}
+                  >
+                    + 添加规则
+                  </button>
+                  {showRuleTypeMenu && (
+                    <div className="button-rule-type-menu">
+                      {([
+                        { type: "create_page" as const, label: "创建页面", defaults: { title: "", parent: "current" as const } },
+                        { type: "append_content" as const, label: "追加内容", defaults: { text: "" } },
+                        { type: "set_page_prop" as const, label: "修改页面属性", defaults: { prop: "title" as const, value: "" } },
+                        { type: "notify" as const, label: "发送通知", defaults: { message: "" } },
+                      ]).map(({ type, label: optLabel, defaults }) => (
+                        <button
+                          key={type}
+                          className="button-rule-type-option"
+                          onMouseDown={ev => ev.preventDefault()}
+                          onClick={() => {
+                            setRulesDraft(prev => [...prev, { type, ...defaults } as ButtonRule]);
+                            setShowRuleTypeMenu(false);
+                          }}
+                        >
+                          {optLabel}
+                        </button>
+                      ))}
+                      <button
+                        className="button-rule-type-cancel"
+                        onMouseDown={ev => ev.preventDefault()}
+                        onClick={() => setShowRuleTypeMenu(false)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               <button
                 style={{ alignSelf: "flex-end", padding: "4px 10px", fontSize: 12, cursor: "pointer", borderRadius: 4, border: "1px solid var(--color-border)", background: "var(--color-accent)", color: "#fff" }}
