@@ -224,12 +224,13 @@
   padding-inline: 0;
 }
 
-/* Custom blocks: constrain bn-block-content so children can't overflow */
+/* Custom blocks: constrain bn-block-content so children can't overflow.
+   Use overflow:clip instead of hidden so outline/box-shadow aren't clipped. */
 .editor-wrap .bn-block-content[data-content-type="fileAttach"],
 .editor-wrap .bn-block-content[data-content-type="subpage"],
 .editor-wrap .bn-block-content[data-content-type="button"],
 .editor-wrap .bn-block-content[data-content-type="bookmark"] {
-  overflow: hidden;
+  overflow: clip;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
