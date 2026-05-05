@@ -428,21 +428,36 @@ const ButtonBlock = createReactBlockSpec(
       const [colorDraft,  setColorDraft]  = React.useState<ButtonColor>(color);
       const [actionDraft, setActionDraft] = React.useState<ButtonAction>(action);
       const [urlDraft,    setUrlDraft]    = React.useState(url);
+      // ISS-042: track fixed-position coordinates for the panel
+      const [panelPos, setPanelPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
       const panelRef = React.useRef<HTMLDivElement>(null);
       const settingsBtnRef = React.useRef<HTMLButtonElement>(null);
+      const wrapRef = React.useRef<HTMLDivElement>(null);
 
       // ISS-041: Native mousedown handler on the ⚙ settings button — same reason as the
       // panel handler below: ProseMirror registers a native mousedown listener on view.dom
       // and calls stopPropagation(), which prevents the event from reaching document where
       // React's synthetic event delegation listens. Using addEventListener directly on the
       // button element intercepts the event before it reaches view.dom.
+      // ISS-042: compute viewport-relative position for position:fixed panel when opening.
       React.useEffect(() => {
         const btn = settingsBtnRef.current;
         if (!btn) return;
         const handler = (e: MouseEvent) => {
           e.preventDefault();
           e.stopPropagation();
-          setPanelOpen(v => !v);
+          setPanelOpen(v => {
+            if (!v && wrapRef.current) {
+              const rect = wrapRef.current.getBoundingClientRect();
+              const panelHeight = 260; // estimated; flip logic recalculates after mount
+              const spaceBelow = window.innerHeight - (rect.bottom + 6);
+              const top = spaceBelow >= panelHeight
+                ? rect.bottom + 6
+                : rect.top - panelHeight - 6;
+              setPanelPos({ top, left: rect.left });
+            }
+            return !v;
+          });
         };
         btn.addEventListener("mousedown", handler);
         return () => btn.removeEventListener("mousedown", handler);
@@ -468,6 +483,15 @@ const ButtonBlock = createReactBlockSpec(
         };
         panel.addEventListener("mousedown", blockMousedown);
         return () => panel.removeEventListener("mousedown", blockMousedown);
+      }, [panelOpen]);
+
+      // ISS-042: close panel on any scroll so the fixed-position panel doesn't drift
+      // from its anchor button. Capture phase catches all scroll containers including .main.
+      React.useEffect(() => {
+        if (!panelOpen) return;
+        const close = () => setPanelOpen(false);
+        window.addEventListener("scroll", close, true);
+        return () => window.removeEventListener("scroll", close, true);
       }, [panelOpen]);
 
       React.useEffect(() => {
@@ -503,7 +527,7 @@ const ButtonBlock = createReactBlockSpec(
       };
 
       return (
-        <div className="button-block">
+        <div className="button-block" ref={wrapRef}>
           <button
             className={`button-block-btn color-${color}`}
             onClick={handleClick}
@@ -522,6 +546,7 @@ const ButtonBlock = createReactBlockSpec(
             <div
               className="button-block-panel"
               ref={panelRef}
+              style={{ position: "fixed", top: panelPos.top, left: panelPos.left }}
             >
               <label>
                 标签文案

@@ -633,9 +633,7 @@
 .button-block-settings-btn:hover { background: var(--color-hover-bg-medium); color: var(--color-text-primary); }
 
 .button-block-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  /* ISS-042: position/top/left controlled via inline style (position:fixed + JS coords) */
   z-index: 60;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border-medium);
