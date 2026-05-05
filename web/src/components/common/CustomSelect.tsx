@@ -68,7 +68,20 @@ export default function CustomSelect({
               key={opt.value}
               className={`custom-select-option${opt.value === value ? " selected" : ""}`}
               onMouseDown={(e) => {
+                // Prevent focus theft from other inputs in the same panel.
+                // NOTE: stopPropagation is intentionally omitted here — the surrounding
+                // panel (button-block-panel) already registers a native mousedown handler
+                // that calls stopPropagation(), so this synthetic handler only fires in
+                // contexts where the panel's native listener is NOT present (e.g. standalone
+                // usage outside the ButtonBlock panel).
                 e.preventDefault();
+              }}
+              onClick={() => {
+                // ISS-044: use onClick (not onMouseDown) for value selection so that the
+                // event reaches this handler even when a parent's native mousedown listener
+                // calls stopPropagation() (which would swallow the synthetic onMouseDown
+                // before it fires). The click event is never intercepted by the panel's
+                // native mousedown handler.
                 onChange(opt.value);
                 setOpen(false);
               }}
