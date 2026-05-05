@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 import "@blocknote/mantine/style.css";
 import "@blocknote/react/style.css";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -382,16 +383,114 @@ const PdfBlock = createReactBlockSpec(
 
 // REQ-054 — Button 块
 type ButtonColor = "default" | "blue" | "green" | "red" | "orange" | "purple" | "pink" | "gray";
-// REQ-083 FR-3/FR-4: extend action enum
-type ButtonAction = "none" | "open_url" | "new_subpage" | "edit_page_props";
+// REQ-083 FR-3/FR-4: extend action enum; REQ-084: add run_rules
+type ButtonAction = "none" | "open_url" | "new_subpage" | "edit_page_props" | "run_rules";
+
+// REQ-084 — ButtonRule union type
+type ButtonRule =
+  | { type: "create_page"; title: string; parent: "current" | "root" }
+  | { type: "append_content"; text: string }
+  | { type: "set_page_prop"; prop: "title" | "icon" | "cover"; value: string }
+  | { type: "notify"; message: string };
 
 // REQ-083 FR-3: module-level ref so ButtonBlock (defined outside Editor component) can
 // access the current pageId and onSelectPage without a factory-function refactor.
 // Editor's useEffect keeps this in sync on every render cycle.
+// REQ-084: pageTitle added for resolveVariables ({{page_title}} placeholder support)
 const buttonBlockCtxRef: {
   pageId: string;
+  pageTitle: string;
   onSelectPage: ((id: string) => void) | undefined;
-} = { pageId: "", onSelectPage: undefined };
+} = { pageId: "", pageTitle: "", onSelectPage: undefined };
+
+// REQ-084 — parseRules: returns ButtonRule[] or null (null = format invalid)
+function parseRules(raw: string): ButtonRule[] | null {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return null; // null = format invalid, distinct from empty array
+  }
+}
+
+// REQ-084 — resolveVariables: replaces {{date}}, {{time}}, {{page_title}} in template
+function resolveVariables(
+  template: string,
+  ctxRef: { pageTitle: string },
+): string {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const time = now.toTimeString().slice(0, 5);
+  return template
+    .replace(/\{\{date\}\}/g, date)
+    .replace(/\{\{time\}\}/g, time)
+    .replace(/\{\{page_title\}\}/g, ctxRef.pageTitle ?? "");
+}
+
+// REQ-084 — executeSingleRule: executes one rule, throws on failure
+async function executeSingleRule(
+  rule: ButtonRule,
+  ctxRef: typeof buttonBlockCtxRef,
+  editor: BlockNoteEditor<typeof schema>,
+): Promise<void> {
+  switch (rule.type) {
+    case "create_page": {
+      const parentId = rule.parent === "current" ? ctxRef.pageId : null;
+      await api.pages.create({ parent_id: parentId, title: rule.title || "Untitled", order_index: 9999 });
+      break;
+    }
+    case "append_content": {
+      const resolved = resolveVariables(rule.text, ctxRef);
+      const lastBlock = editor.document[editor.document.length - 1];
+      editor.insertBlocks(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [{ type: "paragraph", content: [{ type: "text", text: resolved, styles: {} }] } as any],
+        lastBlock,
+        "after"
+      );
+      break;
+    }
+    case "set_page_prop": {
+      const resolved = resolveVariables(rule.value, ctxRef);
+      await api.pages.update(ctxRef.pageId, { [rule.prop]: resolved });
+      break;
+    }
+    case "notify": {
+      const resolved = resolveVariables(rule.message, ctxRef);
+      toast(resolved);
+      break;
+    }
+  }
+}
+
+// REQ-084 — executeRules: runs all rules sequentially, disables btn during execution
+async function executeRules(
+  rules: ButtonRule[],
+  ctxRef: typeof buttonBlockCtxRef,
+  editor: BlockNoteEditor<typeof schema>,
+  btn: HTMLButtonElement,
+): Promise<void> {
+  btn.disabled = true;
+  try {
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      try {
+        await executeSingleRule(rule, ctxRef, editor);
+      } catch (err) {
+        const ruleNames: Record<ButtonRule["type"], string> = {
+          create_page: "创建页面",
+          append_content: "追加内容",
+          set_page_prop: "修改页面属性",
+          notify: "发送通知",
+        };
+        toast.error(`规则 ${i + 1}（${ruleNames[rule.type]}）执行失败：${(err as Error).message}`);
+        return;
+      }
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // REQ-083 FR-4: common emoji list (inline copy — no import dependency on App.tsx)
 const EMOJI_COMMON = [
@@ -568,6 +667,7 @@ const ButtonBlock = createReactBlockSpec(
       bgColor: { default: "default" },   // REQ-083 FR-1
       action:  { default: "none" },
       url:     { default: "" },
+      rules:   { default: "[]" },        // REQ-084: JSON string of ButtonRule[]
     },
     content: "none",
   },
@@ -585,7 +685,7 @@ const ButtonBlock = createReactBlockSpec(
         const bg = block.props.bgColor as ButtonBgColor;
         bgColor = ALL_BUTTON_BG_COLORS.includes(bg) ? bg : "default";
         const a = block.props.action as ButtonAction;
-        action = (["none","open_url","new_subpage","edit_page_props"] as ButtonAction[]).includes(a) ? a : "none";
+        action = (["none","open_url","new_subpage","edit_page_props","run_rules"] as ButtonAction[]).includes(a) ? a : "none";
         url    = block.props.url ?? "";
       } catch { /* fallback to defaults */ }
 
