@@ -224,6 +224,17 @@
   padding-inline: 0;
 }
 
+/* Custom blocks: constrain bn-block-content so children can't overflow */
+.editor-wrap .bn-block-content[data-content-type="fileAttach"],
+.editor-wrap .bn-block-content[data-content-type="subpage"],
+.editor-wrap .bn-block-content[data-content-type="button"],
+.editor-wrap .bn-block-content[data-content-type="bookmark"] {
+  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Database block: remove blue focus outline/border from BlockNote */
 .editor-wrap .bn-block-content[data-content-type="database"] {
   outline: none;
@@ -231,6 +242,13 @@
 .editor-wrap [data-node-type="blockContainer"]:has([data-content-type="database"]) .bn-block-content {
   outline: none;
   box-shadow: none;
+}
+
+/* Thin down BlockNote's 4px blue selection outline to 1px */
+.editor-wrap .bn-block-content.ProseMirror-selectednode > *,
+.editor-wrap .ProseMirror-selectednode > .bn-block-content > * {
+  outline: 1px solid rgba(100, 160, 255, 0.8) !important;
+  border-radius: 4px;
 }
 
 /* Override BlockNote's hardcoded background colors */
