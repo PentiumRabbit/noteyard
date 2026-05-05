@@ -2,7 +2,7 @@
 
 > 角色: 研发负责人（dev-lead）
 > 最后更新: 2026-05-05
-> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）, ISS-034（拖拽手柄不跟随移动）, ISS-035（drop cursor 竖线残留+浮层替换）
+> 覆盖需求: REQ-064, REQ-065（CODE-REVIEW-001 修复规划）, REQ-075（本地化日志能力）, ISS-018（动态端口改造）, REQ-080（Go server 固定端口支持）, ISS-034（拖拽手柄不跟随移动）, ISS-035（drop cursor 竖线残留+浮层替换）, ISS-041（⚙ 按钮点击无响应）
 
 ---
 
@@ -131,6 +131,18 @@
 
 ---
 
-## 上次变更摘要（2026-05-02）
+## ISS-041（⚙ 设置按钮点击无响应，2026-05-05）
 
-基于 CODE-REVIEW-001（22 条问题），按前后端拆分创建 REQ-064/REQ-065，并行委派前后端架构师产出技术方案。技术方案产出后，下一步将根据方案拆分具体实现任务委派给工程师。
+- 状态：已修复（✅）
+- 模块：frontend/editor
+- 根因：ProseMirror 在 view.dom 注册原生 mousedown 并调用 stopPropagation()，React 合成事件未收到，⚙ 按钮 onMouseDown 不触发；ISS-040 修复了面板内交互但未覆盖触发按钮本身
+- 修复：settingsBtnRef + native addEventListener 拦截 mousedown；outside-click 守卫排除按钮自身点击防止面板重开
+- 产出文件：`web/src/components/editor/Editor.tsx`
+- Commit：`816acb8`（fix）、`5e52613`（docs）
+- Dispatch：#202（delivered）
+
+---
+
+## 上次变更摘要（2026-05-05）
+
+ISS-041 直接修复（P1，无需架构评审）：按钮块 ⚙ 图标改用 native addEventListener，与 ISS-040 面板修复对称。
