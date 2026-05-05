@@ -13,5 +13,7 @@
 5. ai-pro/docs/engineering/DELEGATION.md         ← 委派流程细则
 ```
 
-角色标签对照：`[lead]` `[pm]` `[arch]` `[rd]` `[eng]` `[te]` `[td]`  
+角色标签对照：`[lead]` `[pm]` `[arch-module]` `[dev-lead]` `[mod-lead]` `[eng]` `[te]` `[td]` `[test-lead]`
 规则文件位于：`ai-pro/docs/engineering/rules/{role}.md`
+
+模块角色分配：`noteyard/docs/engineering/MODULE-ROLES.md`
