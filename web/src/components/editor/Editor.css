@@ -597,6 +597,49 @@
 .button-block-btn.color-pink    { color: #c9306a; }
 .button-block-btn.color-gray    { color: var(--color-text-secondary); }
 
+/* ── REQ-083 FR-1: background color variants (light mode) ── */
+/* bg-default: falls through to the base background: var(--color-bg-surface) set above */
+.button-block-btn.bg-gray   { background: #f1f1ef; }
+.button-block-btn.bg-brown  { background: #f4eeee; }
+.button-block-btn.bg-orange { background: #fbecdd; }
+.button-block-btn.bg-yellow { background: #fef9c3; }
+.button-block-btn.bg-green  { background: #e8f5e8; }
+.button-block-btn.bg-blue   { background: #e7f0fd; }
+.button-block-btn.bg-purple { background: #f3eef8; }
+.button-block-btn.bg-pink   { background: #fbe8f3; }
+.button-block-btn.bg-red    { background: #fde8e8; }
+/* hover overrides — must come after the bg-* rules to win on equal specificity */
+.button-block-btn.bg-gray:hover   { background: #e4e4e1; }
+.button-block-btn.bg-brown:hover  { background: #ede5e5; }
+.button-block-btn.bg-orange:hover { background: #f3e0cc; }
+.button-block-btn.bg-yellow:hover { background: #f9f0a8; }
+.button-block-btn.bg-green:hover  { background: #d4ecd4; }
+.button-block-btn.bg-blue:hover   { background: #d0e3f9; }
+.button-block-btn.bg-purple:hover { background: #e8dff0; }
+.button-block-btn.bg-pink:hover   { background: #f3d5e8; }
+.button-block-btn.bg-red:hover    { background: #f5d5d5; }
+
+/* dark mode background color variants */
+.dark .button-block-btn.bg-gray   { background: #3b3b39; }
+.dark .button-block-btn.bg-brown  { background: #4a3b3b; }
+.dark .button-block-btn.bg-orange { background: #4d3a27; }
+.dark .button-block-btn.bg-yellow { background: #3d3a18; }
+.dark .button-block-btn.bg-green  { background: #1e3b1e; }
+.dark .button-block-btn.bg-blue   { background: #1a2e4a; }
+.dark .button-block-btn.bg-purple { background: #2d2340; }
+.dark .button-block-btn.bg-pink   { background: #3d1a2e; }
+.dark .button-block-btn.bg-red    { background: #3d1a1a; }
+/* dark mode hover overrides */
+.dark .button-block-btn.bg-gray:hover   { background: #4a4a47; }
+.dark .button-block-btn.bg-brown:hover  { background: #5a4a4a; }
+.dark .button-block-btn.bg-orange:hover { background: #5d4a34; }
+.dark .button-block-btn.bg-yellow:hover { background: #4d4a25; }
+.dark .button-block-btn.bg-green:hover  { background: #2b4d2b; }
+.dark .button-block-btn.bg-blue:hover   { background: #253d5c; }
+.dark .button-block-btn.bg-purple:hover { background: #3a2f50; }
+.dark .button-block-btn.bg-pink:hover   { background: #4d263d; }
+.dark .button-block-btn.bg-red:hover    { background: #4d2626; }
+
 /* ── color swatch picker ── */
 .color-swatch-row {
   display: flex;
@@ -725,3 +768,73 @@
   border: 1.5px solid rgba(59, 130, 246, 0.4);
   transition: none;
 }
+
+/* ── REQ-083 FR-4: page props panel ── */
+.page-props-panel {
+  /* position/top/left controlled via inline style (position:fixed + JS coords) */
+  z-index: 60;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: 6px;
+  box-shadow: rgba(0,0,0,.15) 0 4px 12px;
+  padding: 12px 14px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.page-props-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.page-props-panel-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.page-props-emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 200px;
+}
+.page-props-emoji-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 3px;
+  border-radius: 3px;
+}
+.page-props-emoji-btn:hover,
+.page-props-emoji-btn.selected { background: var(--color-hover-bg-medium); }
+.page-props-cover-row {
+  display: flex;
+  gap: 6px;
+}
+.page-props-cover-btn {
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+.page-props-cover-btn:hover { background: var(--color-hover-bg-medium); }
+.page-props-title-input {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.page-props-title-input:focus { border-color: var(--color-accent); }

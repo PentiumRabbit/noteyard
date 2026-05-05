@@ -382,7 +382,151 @@ const PdfBlock = createReactBlockSpec(
 
 // REQ-054 — Button 块
 type ButtonColor = "default" | "blue" | "green" | "red" | "orange" | "purple" | "pink" | "gray";
-type ButtonAction = "none" | "open_url";
+// REQ-083 FR-3/FR-4: extend action enum
+type ButtonAction = "none" | "open_url" | "new_subpage" | "edit_page_props";
+
+// REQ-083 FR-3: module-level ref so ButtonBlock (defined outside Editor component) can
+// access the current pageId and onSelectPage without a factory-function refactor.
+// Editor's useEffect keeps this in sync on every render cycle.
+const buttonBlockCtxRef: {
+  pageId: string;
+  onSelectPage: ((id: string) => void) | undefined;
+} = { pageId: "", onSelectPage: undefined };
+
+// REQ-083 FR-4: common emoji list (inline copy — no import dependency on App.tsx)
+const EMOJI_COMMON = [
+  "😀","😂","😍","🤔","😎","🥳","😴","😭","😡","🤯",
+  "❤️","🔥","✅","⭐","🎉","🚀","💡","📌","⚠️","💬",
+  "🐶","🐱","🦊","🦁","🐻","🦄","🐼","🐧","🦋","🌸",
+];
+
+// REQ-083 FR-4: page properties panel
+interface PagePropsPanelProps {
+  pageId: string;
+  anchorRect: DOMRect;
+  onClose: () => void;
+}
+
+function PagePropsPanel({ pageId, anchorRect, onClose }: PagePropsPanelProps) {
+  const [icon, setIcon] = React.useState("");
+  const [cover, setCover] = React.useState<string | null>(null);
+  const [title, setTitle] = React.useState("");
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  const panelHeight = 320;
+  const spaceBelow = window.innerHeight - (anchorRect.bottom + 6);
+  const top = spaceBelow >= panelHeight ? anchorRect.bottom + 6 : anchorRect.top - panelHeight - 6;
+  const left = anchorRect.left;
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const page = await api.pages.get(pageId);
+        if (page) {
+          setIcon(page.icon ?? "");
+          setCover(page.cover ?? null);
+          setTitle(page.title ?? "");
+        }
+      } catch { /* degrade to empty */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const blockMousedown = (e: MouseEvent) => {
+      if (!["INPUT","BUTTON","SELECT","TEXTAREA"].includes((e.target as HTMLElement).tagName)) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    };
+    panel.addEventListener("mousedown", blockMousedown);
+    return () => panel.removeEventListener("mousedown", blockMousedown);
+  }, []);
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    window.addEventListener("scroll", onClose, true);
+    return () => window.removeEventListener("scroll", onClose, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleIconSelect = async (emoji: string) => {
+    setIcon(emoji);
+    try { await api.pages.update(pageId, { icon: emoji }); } catch { /* ignore */ }
+  };
+
+  const handleAddCover = async () => {
+    const gradient = "linear-gradient(135deg,#667eea 0%,#764ba2 100%)";
+    setCover(gradient);
+    try { await api.pages.update(pageId, { cover: gradient }); } catch { /* ignore */ }
+  };
+
+  const handleRemoveCover = async () => {
+    setCover(null);
+    try { await api.pages.update(pageId, { cover: "" }); } catch { /* ignore */ }
+  };
+
+  const handleTitleSave = async () => {
+    try {
+      await api.pages.update(pageId, { title });
+      window.dispatchEvent(new CustomEvent("page-props-updated", { detail: { pageId, title } }));
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div ref={panelRef} className="page-props-panel" style={{ position: "fixed", top, left }}>
+      <div className="page-props-panel-section">
+        <div className="page-props-panel-label">图标</div>
+        <div className="page-props-emoji-grid">
+          {EMOJI_COMMON.map(e => (
+            <button key={e} className={`page-props-emoji-btn${icon === e ? " selected" : ""}`}
+              onMouseDown={ev => { ev.preventDefault(); void handleIconSelect(e); }}>{e}</button>
+          ))}
+        </div>
+      </div>
+      <div className="page-props-panel-section">
+        <div className="page-props-panel-label">封面</div>
+        <div className="page-props-cover-row">
+          <button className="page-props-cover-btn" onMouseDown={ev => { ev.preventDefault(); void handleAddCover(); }}>
+            {cover ? "更换封面" : "添加封面"}
+          </button>
+          {cover && (
+            <button className="page-props-cover-btn" onMouseDown={ev => { ev.preventDefault(); void handleRemoveCover(); }}>
+              删除封面
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="page-props-panel-section">
+        <div className="page-props-panel-label">标题</div>
+        <input className="page-props-title-input" value={title}
+          onChange={e => setTitle(e.target.value)}
+          onBlur={() => void handleTitleSave()}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleTitleSave(); } }}
+          placeholder="页面标题"
+        />
+      </div>
+    </div>
+  );
+}
+
 
 const BUTTON_COLORS: { value: ButtonColor; hex: string; label: string }[] = [
   { value: "default", hex: "#37352f", label: "默认" },
@@ -397,14 +541,33 @@ const BUTTON_COLORS: { value: ButtonColor; hex: string; label: string }[] = [
 
 const ALL_BUTTON_COLORS = BUTTON_COLORS.map(c => c.value);
 
+// REQ-083 FR-1 — background color
+type ButtonBgColor = "default" | "gray" | "brown" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red";
+
+const BUTTON_BG_COLORS: { value: ButtonBgColor; hex: string; hoverHex: string; label: string }[] = [
+  { value: "default", hex: "var(--color-bg-surface)",          hoverHex: "var(--color-hover-bg-medium)", label: "默认" },
+  { value: "gray",    hex: "#f1f1ef", hoverHex: "#e4e4e1", label: "灰色" },
+  { value: "brown",   hex: "#f4eeee", hoverHex: "#ede5e5", label: "棕色" },
+  { value: "orange",  hex: "#fbecdd", hoverHex: "#f3e0cc", label: "橙色" },
+  { value: "yellow",  hex: "#fef9c3", hoverHex: "#f9f0a8", label: "黄色" },
+  { value: "green",   hex: "#e8f5e8", hoverHex: "#d4ecd4", label: "绿色" },
+  { value: "blue",    hex: "#e7f0fd", hoverHex: "#d0e3f9", label: "蓝色" },
+  { value: "purple",  hex: "#f3eef8", hoverHex: "#e8dff0", label: "紫色" },
+  { value: "pink",    hex: "#fbe8f3", hoverHex: "#f3d5e8", label: "粉色" },
+  { value: "red",     hex: "#fde8e8", hoverHex: "#f5d5d5", label: "红色" },
+];
+
+const ALL_BUTTON_BG_COLORS = BUTTON_BG_COLORS.map(c => c.value);
+
 const ButtonBlock = createReactBlockSpec(
   {
     type: "button" as const,
     propSchema: {
-      label:  { default: "点击" },
-      color:  { default: "default" },
-      action: { default: "none" },
-      url:    { default: "" },
+      label:   { default: "点击" },
+      color:   { default: "default" },
+      bgColor: { default: "default" },   // REQ-083 FR-1
+      action:  { default: "none" },
+      url:     { default: "" },
     },
     content: "none",
   },
@@ -412,24 +575,31 @@ const ButtonBlock = createReactBlockSpec(
     render: ({ block, editor }) => {
       let label  = "点击";
       let color: ButtonColor  = "default";
+      let bgColor: ButtonBgColor = "default";
       let action: ButtonAction = "none";
       let url = "";
       try {
         label  = block.props.label  ?? "点击";
         const c = block.props.color as ButtonColor;
         color  = ALL_BUTTON_COLORS.includes(c) ? c : "default";
+        const bg = block.props.bgColor as ButtonBgColor;
+        bgColor = ALL_BUTTON_BG_COLORS.includes(bg) ? bg : "default";
         const a = block.props.action as ButtonAction;
-        action = (["none","open_url"] as ButtonAction[]).includes(a) ? a : "none";
+        action = (["none","open_url","new_subpage","edit_page_props"] as ButtonAction[]).includes(a) ? a : "none";
         url    = block.props.url ?? "";
       } catch { /* fallback to defaults */ }
 
       const [panelOpen, setPanelOpen] = React.useState(false);
-      const [labelDraft,  setLabelDraft]  = React.useState(label);
-      const [colorDraft,  setColorDraft]  = React.useState<ButtonColor>(color);
-      const [actionDraft, setActionDraft] = React.useState<ButtonAction>(action);
-      const [urlDraft,    setUrlDraft]    = React.useState(url);
+      const [labelDraft,    setLabelDraft]    = React.useState(label);
+      const [colorDraft,    setColorDraft]    = React.useState<ButtonColor>(color);
+      const [bgColorDraft,  setBgColorDraft]  = React.useState<ButtonBgColor>(bgColor);
+      const [actionDraft,   setActionDraft]   = React.useState<ButtonAction>(action);
+      const [urlDraft,      setUrlDraft]      = React.useState(url);
       // ISS-042: track fixed-position coordinates for the panel
       const [panelPos, setPanelPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+      // REQ-083 FR-4: page props panel state
+      const [pagePropsPanelOpen, setPagePropsPanelOpen] = React.useState(false);
+      const [pagePropsPanelAnchorRect, setPagePropsPanelAnchorRect] = React.useState<DOMRect | null>(null);
       const panelRef = React.useRef<HTMLDivElement>(null);
       const settingsBtnRef = React.useRef<HTMLButtonElement>(null);
       const mainBtnRef = React.useRef<HTMLButtonElement>(null);
@@ -454,6 +624,37 @@ const ButtonBlock = createReactBlockSpec(
               return;
             }
             window.open(currentUrl, "_blank", "noopener,noreferrer");
+          } else if (currentAction === "new_subpage") {
+            // REQ-083 FR-3: guard against ctxRef not yet populated (e.g. HMR edge case)
+            const ctxRef = buttonBlockCtxRef;
+            if (!ctxRef.pageId) {
+              console.warn("[ButtonBlock] new_subpage: pageId not available yet, ignoring click");
+              return;
+            }
+            void (async () => {
+              try {
+                const newPage = await api.pages.create({
+                  parent_id: ctxRef.pageId,
+                  title: "Untitled",
+                  order_index: 9999,
+                });
+                insertOrUpdateBlock(editor, {
+                  type: "subpage",
+                  props: { pageId: newPage.id, title: newPage.title || "Untitled", icon: "📄" },
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any);
+                ctxRef.onSelectPage?.(newPage.id);
+              } catch (err) {
+                console.error("[ButtonBlock] new_subpage failed:", err);
+              }
+            })();
+          } else if (currentAction === "edit_page_props") {
+            // REQ-083 FR-4: close settings panel first (arch §7.3), then open props panel
+            setPanelOpen(false);
+            if (btn) {
+              setPagePropsPanelAnchorRect(btn.getBoundingClientRect());
+            }
+            setPagePropsPanelOpen(true);
           }
         };
         btn.addEventListener("mousedown", handler);
@@ -536,11 +737,11 @@ const ButtonBlock = createReactBlockSpec(
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [panelOpen, labelDraft, colorDraft, actionDraft, urlDraft]);
+      }, [panelOpen, labelDraft, colorDraft, bgColorDraft, actionDraft, urlDraft]);
 
       const commitPanel = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        editor.updateBlock(block, { props: { label: labelDraft, color: colorDraft, action: actionDraft, url: urlDraft } } as any);
+        editor.updateBlock(block, { props: { label: labelDraft, color: colorDraft, bgColor: bgColorDraft, action: actionDraft, url: urlDraft } } as any);
         setPanelOpen(false);
       };
 
@@ -548,7 +749,7 @@ const ButtonBlock = createReactBlockSpec(
         <div className="button-block" ref={wrapRef}>
           <button
             ref={mainBtnRef}
-            className={`button-block-btn color-${color}`}
+            className={`button-block-btn color-${color} bg-${bgColor}`}
             title={action === "open_url" ? url : undefined}
           >
             {label}
@@ -588,6 +789,20 @@ const ButtonBlock = createReactBlockSpec(
                   ))}
                 </div>
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>背景色</span>
+                <div className="color-swatch-row">
+                  {BUTTON_BG_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      className={`color-swatch${bgColorDraft === c.value ? " selected" : ""}`}
+                      style={{ background: c.hex }}
+                      title={c.label}
+                      onMouseDown={ev => { ev.preventDefault(); setBgColorDraft(c.value); }}
+                    />
+                  ))}
+                </div>
+              </div>
               <PanelSelect
                 label="点击动作"
                 value={actionDraft}
@@ -595,6 +810,8 @@ const ButtonBlock = createReactBlockSpec(
                 options={[
                   { value: "none", label: "无动作" },
                   { value: "open_url", label: "打开链接" },
+                  { value: "new_subpage", label: "新建子页面" },
+                  { value: "edit_page_props", label: "编辑页面属性" },
                 ]}
               />
               {actionDraft === "open_url" && (
@@ -614,6 +831,13 @@ const ButtonBlock = createReactBlockSpec(
                 确认
               </button>
             </div>
+          )}
+          {pagePropsPanelOpen && pagePropsPanelAnchorRect && (
+            <PagePropsPanel
+              pageId={buttonBlockCtxRef.pageId}
+              anchorRect={pagePropsPanelAnchorRect}
+              onClose={() => setPagePropsPanelOpen(false)}
+            />
           )}
         </div>
       );
@@ -687,6 +911,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const readyRef = useRef(false);
   const pageIdRef = useRef(pageId);
   pageIdRef.current = pageId;
+
+  // REQ-083 FR-3: keep module-level ctxRef in sync so ButtonBlock's mousedown handler
+  // (registered once at mount, outside Editor's render scope) can read the latest values.
+  useEffect(() => {
+    buttonBlockCtxRef.pageId = pageId;
+    buttonBlockCtxRef.onSelectPage = onSelectPage;
+  }, [pageId, onSelectPage]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildDtosRecursive = (blocks: any[], pid: string, parentBlockId: string | null): Partial<Block>[] =>
