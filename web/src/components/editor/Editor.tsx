@@ -381,15 +381,28 @@ const PdfBlock = createReactBlockSpec(
 );
 
 // REQ-054 — Button 块
-type ButtonColor = "blue" | "green" | "red" | "gray";
+type ButtonColor = "default" | "blue" | "green" | "red" | "orange" | "purple" | "pink" | "gray";
 type ButtonAction = "none" | "open_url";
+
+const BUTTON_COLORS: { value: ButtonColor; hex: string; label: string }[] = [
+  { value: "default", hex: "#37352f", label: "默认" },
+  { value: "blue",    hex: "#2383e2", label: "蓝色" },
+  { value: "green",   hex: "#0f9d58", label: "绿色" },
+  { value: "red",     hex: "#e53935", label: "红色" },
+  { value: "orange",  hex: "#d9730d", label: "橙色" },
+  { value: "purple",  hex: "#9065b0", label: "紫色" },
+  { value: "pink",    hex: "#c9306a", label: "粉色" },
+  { value: "gray",    hex: "#9b9a97", label: "灰色" },
+];
+
+const ALL_BUTTON_COLORS = BUTTON_COLORS.map(c => c.value);
 
 const ButtonBlock = createReactBlockSpec(
   {
     type: "button" as const,
     propSchema: {
       label:  { default: "点击" },
-      color:  { default: "blue" },
+      color:  { default: "default" },
       action: { default: "none" },
       url:    { default: "" },
     },
@@ -397,15 +410,14 @@ const ButtonBlock = createReactBlockSpec(
   },
   {
     render: ({ block, editor }) => {
-      // Defensive: normalise props so corrupted data never throws
       let label  = "点击";
-      let color: ButtonColor  = "blue";
+      let color: ButtonColor  = "default";
       let action: ButtonAction = "none";
       let url = "";
       try {
         label  = block.props.label  ?? "点击";
         const c = block.props.color as ButtonColor;
-        color  = (["blue","green","red","gray"] as ButtonColor[]).includes(c) ? c : "blue";
+        color  = ALL_BUTTON_COLORS.includes(c) ? c : "default";
         const a = block.props.action as ButtonAction;
         action = (["none","open_url"] as ButtonAction[]).includes(a) ? a : "none";
         url    = block.props.url ?? "";
@@ -416,6 +428,19 @@ const ButtonBlock = createReactBlockSpec(
       const [colorDraft,  setColorDraft]  = React.useState<ButtonColor>(color);
       const [actionDraft, setActionDraft] = React.useState<ButtonAction>(action);
       const [urlDraft,    setUrlDraft]    = React.useState(url);
+      const panelRef = React.useRef<HTMLDivElement>(null);
+
+      React.useEffect(() => {
+        if (!panelOpen) return;
+        const handler = (e: MouseEvent) => {
+          if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+            commitPanel();
+          }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [panelOpen, labelDraft, colorDraft, actionDraft, urlDraft]);
 
       const commitPanel = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -450,7 +475,7 @@ const ButtonBlock = createReactBlockSpec(
             ⚙
           </button>
           {panelOpen && (
-            <div className="button-block-panel">
+            <div className="button-block-panel" ref={panelRef}>
               <label>
                 标签文案
                 <input
@@ -459,17 +484,20 @@ const ButtonBlock = createReactBlockSpec(
                   placeholder="按钮文案"
                 />
               </label>
-              <PanelSelect
-                label="颜色"
-                value={colorDraft}
-                onChange={v => setColorDraft(v as ButtonColor)}
-                options={[
-                  { value: "blue", label: "文字颜色蓝" },
-                  { value: "green", label: "文字颜色绿" },
-                  { value: "red", label: "文字颜色红" },
-                  { value: "gray", label: "文字颜色灰" },
-                ]}
-              />
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>颜色</span>
+                <div className="color-swatch-row">
+                  {BUTTON_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      className={`color-swatch${colorDraft === c.value ? " selected" : ""}`}
+                      style={{ background: c.hex }}
+                      title={c.label}
+                      onMouseDown={ev => { ev.preventDefault(); setColorDraft(c.value); }}
+                    />
+                  ))}
+                </div>
+              </div>
               <PanelSelect
                 label="点击动作"
                 value={actionDraft}

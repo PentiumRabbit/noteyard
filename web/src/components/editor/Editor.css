@@ -225,16 +225,15 @@
 }
 
 /* Custom blocks: constrain bn-block-content so children can't overflow.
-   Use overflow:clip instead of hidden so outline/box-shadow aren't clipped. */
+   Use overflow:clip instead of hidden so outline/box-shadow aren't clipped.
+   Exclude button: its panel is absolutely positioned and must not be clipped. */
 .editor-wrap .bn-block-content[data-content-type="fileAttach"],
 .editor-wrap .bn-block-content[data-content-type="subpage"],
-.editor-wrap .bn-block-content[data-content-type="button"],
 .editor-wrap .bn-block-content[data-content-type="bookmark"] {
   overflow: clip;
   min-width: 0;
   width: 100%;
-  box-sizing: border-box;
-}
+  box-sizing: border-box;}
 
 /* Database block: remove blue focus outline/border from BlockNote */
 .editor-wrap .bn-block-content[data-content-type="database"] {
@@ -589,10 +588,33 @@
   background: var(--color-hover-bg-medium);
   filter: none;
 }
-.button-block-btn.color-blue  { color: #2383e2; }
-.button-block-btn.color-green { color: #0f9d58; }
-.button-block-btn.color-red   { color: #e53935; }
-.button-block-btn.color-gray  { color: var(--color-text-secondary); }
+.button-block-btn.color-default { color: var(--color-text-primary); }
+.button-block-btn.color-blue    { color: #2383e2; }
+.button-block-btn.color-green   { color: #0f9d58; }
+.button-block-btn.color-red     { color: #e53935; }
+.button-block-btn.color-orange  { color: #d9730d; }
+.button-block-btn.color-purple  { color: #9065b0; }
+.button-block-btn.color-pink    { color: #c9306a; }
+.button-block-btn.color-gray    { color: var(--color-text-secondary); }
+
+/* ── color swatch picker ── */
+.color-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: var(--color-accent); }
 
 .button-block-settings-btn {
   background: none;
