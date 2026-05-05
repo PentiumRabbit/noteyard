@@ -99,11 +99,13 @@ const QuoteBlock = createReactBlockSpec(
     render: ({ contentRef }) => (
       <div
         style={{
-          borderLeft: "3px solid #d3d3d3",
-          paddingLeft: "12px",
+          borderLeft: "3px solid var(--color-text-tertiary)",
+          paddingLeft: "14px",
           paddingTop: "2px",
           paddingBottom: "2px",
-          color: "inherit",
+          color: "var(--color-text-secondary)",
+          width: "100%",
+          boxSizing: "border-box",
         }}
         ref={contentRef}
       />
