@@ -763,6 +763,20 @@ const ButtonBlock = createReactBlockSpec(
               setPagePropsPanelAnchorRect(btn.getBoundingClientRect());
             }
             setPagePropsPanelOpen(true);
+          } else if (currentAction === "run_rules") {
+            // REQ-084 T3: execute configured rules sequentially
+            if (!buttonBlockCtxRef.pageId) {
+              alert("页面未就绪，请稍后重试");
+              return;
+            }
+            const rawRules = (block.props.rules as string) ?? "[]";
+            const rules = parseRules(rawRules);
+            if (rules === null) {
+              alert("规则配置格式错误，请重新配置");
+              return;
+            }
+            if (rules.length === 0) return;
+            void executeRules(rules, buttonBlockCtxRef, editor, e.currentTarget as HTMLButtonElement);
           }
         };
         btn.addEventListener("mousedown", handler);
@@ -1212,8 +1226,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
 
   // REQ-083 FR-3: keep module-level ctxRef in sync so ButtonBlock's mousedown handler
   // (registered once at mount, outside Editor's render scope) can read the latest values.
+  // REQ-084 T3: pageTitle is not in Editor Props; degraded to "" per arch spec §3.4
+  // ({{page_title}} resolves to empty string when pageMeta is unavailable — acceptable per REQ-084).
   useEffect(() => {
     buttonBlockCtxRef.pageId = pageId;
+    buttonBlockCtxRef.pageTitle = "";
     buttonBlockCtxRef.onSelectPage = onSelectPage;
   }, [pageId, onSelectPage]);
 

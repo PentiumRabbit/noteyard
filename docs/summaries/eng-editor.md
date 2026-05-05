@@ -5,7 +5,7 @@
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
 | 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2 |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3 |
 
 ---
 
@@ -87,6 +87,11 @@
 - `Editor.tsx`：ButtonBlock 新增 `rulesDraft` state（lazy init）和 `showRuleTypeMenu` state；`panelOpen` effect 回填 rulesDraft + reset showRuleTypeMenu；`commitPanel` 写入 `rules: JSON.stringify(rulesDraft)`；PanelSelect 新增「运行规则」选项；新增规则编辑区 JSX（`actionDraft=run_rules` 条件渲染，支持 4 种规则类型 CRUD + 参数输入 + 10 条上限禁用）；document mousedown effect 依赖数组新增 rulesDraft
 - `Editor.css`：新增规则编辑区全套样式（`.button-rules-editor`、`.button-rule-row`、`.button-rule-header`、`.button-rule-params`、`.button-rules-add`、`.button-rule-type-menu` 等）
 - `tsc --noEmit` 零错误，不含执行逻辑（mainBtnRef handler 的 run_rules 分支在 T3 实现）
+
+## 变更记录（REQ-084 T3，2026-05-05，dispatch #225）
+
+- `Editor.tsx`：`mainBtnRef` handler 新增 `run_rules` 分支（pageId 守卫 + parseRules 校验 + void executeRules 调用）；Editor useEffect 新增 `buttonBlockCtxRef.pageTitle = ""` 同步（降级处理：pageMeta 不在 Props 中，pageTitle 固定为空字符串）
+- `tsc --noEmit` 零错误；现有 open_url / new_subpage / edit_page_props / none 行为不变
 
 ## 变更记录（REQ-083 T4 / FR-4，2026-05-05，dispatch #216）
 
