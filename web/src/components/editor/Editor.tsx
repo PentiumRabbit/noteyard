@@ -39,6 +39,7 @@ import { blocksToMarkdown } from "../../utils/markdownUtils";
 import { isSafeUrl } from "../../utils/urlUtils";
 import "./Editor.css";
 import { dropOverlayPlugin } from "./dropOverlayPlugin";
+import { flip, offset, shift, size } from "@floating-ui/react";
 import { PanelSelect } from "../common/PanelSelect";
 import { FileUploadField } from "./FileUploadField";
 import { UrlInputField } from "./UrlInputField";
@@ -764,6 +765,21 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   );
 });
 
+// Suggestion menu floating options: flip to top when bottom space < 240px
+const suggestionMenuFloatingOptions = {
+  placement: "bottom-start" as const,
+  middleware: [
+    offset(10),
+    flip({ padding: 240 }),
+    shift(),
+    size({
+      apply({ availableHeight, elements }: { availableHeight: number; elements: { floating: HTMLElement } }) {
+        Object.assign(elements.floating.style, { maxHeight: `${availableHeight - 10}px` });
+      },
+    }),
+  ],
+};
+
 // 斜杠菜单：默认项 + database + divider + quote
 function DatabaseSlashItem({
   editor,
@@ -776,6 +792,7 @@ function DatabaseSlashItem({
   return (
     <SuggestionMenuController
       triggerCharacter="/"
+      floatingOptions={suggestionMenuFloatingOptions}
       getItems={async (query) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const defaults = getDefaultReactSlashMenuItems(editor as any);
@@ -934,6 +951,7 @@ function MentionMenu({
   return (
     <SuggestionMenuController
       triggerCharacter="@"
+      floatingOptions={suggestionMenuFloatingOptions}
       getItems={async (query) => {
         const pages = await api.pages.search(query || " ");
         return (pages ?? []).map(page => ({
