@@ -119,6 +119,27 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 
 ---
 
+## REQ-083 ButtonBlock 能力增强评审摘要（2026-05-05，dispatch #211）
+
+**变更模块**：`web/src/components/editor/`（`editor` 模块，仅此一个模块）
+
+**架构决策**：
+- `ButtonBlock` propSchema 新增 `bgColor`（`ButtonBgColor` 类型，10 值），`action` 枚举扩展为 4 值（新增 `new_subpage`、`edit_page_props`）
+- ISS-043 修复：主按钮从 React 合成 `onClick` 改为原生 `addEventListener("mousedown")` + `mainBtnRef` effect，对齐已验证的 `settingsBtnRef` 模式
+- FR-3/FR-4 需要访问 `pageId` 和 `onSelectPage`（Editor Props），通过模块级 `buttonBlockCtxRef` 对象传递，不修改 schema 定义位置
+- FR-4 新增内联组件 `PagePropsPanel`（`position:fixed` + `getBoundingClientRect()`，ISS-042 方案），mount 时拉取 `api.pages.get(pageId)`，支持图标/封面/标题编辑
+- 封面操作仅支持默认渐变色（不支持自定义图片上传），与需求文档一致
+
+**关键约束**：
+- `buttonBlockCtxRef` 在 Editor mount 后才填充，handler 入口须检查 `pageId` 非空
+- 属性面板标题更新不自动同步 App.tsx `pageMeta`，如需同步须通过 CustomEvent 通知（可选）
+- CSS hover 覆盖需在 `.bg-*` 规则后补充 `.bg-X:hover`，不用 `!important`
+- 旧数据完全向后兼容（`bgColor` 默认值 `"default"` 外观不变，未知 `action` 值 fallback 到 `"none"`）
+
+*由前端架构师（arch-frontend）生成，dispatch #211 / REQ-083。*
+
+---
+
 ## ISS-016 修复摘要（2026-05-03，dispatch #121–#123）
 
 **问题**：数据库单选/多选交互不符合 Notion 预期行为（三处缺陷）。
