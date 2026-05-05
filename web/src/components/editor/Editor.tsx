@@ -543,7 +543,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   });
 
   // Register dropOverlayPlugin once after editor mounts.
-  const overlayPlugin = useMemo(() => dropOverlayPlugin(), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const overlayPlugin = useMemo(() => dropOverlayPlugin(editor), []);
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tiptap = (editor as any)._tiptapEditor;
