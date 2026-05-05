@@ -430,6 +430,28 @@ const ButtonBlock = createReactBlockSpec(
       const [urlDraft,    setUrlDraft]    = React.useState(url);
       const panelRef = React.useRef<HTMLDivElement>(null);
 
+      // Native mousedown handler on panel div — must be registered via addEventListener
+      // (not React onMouseDown) because React uses event delegation: by the time React
+      // fires synthetic events, the native event has already bubbled past view.dom and
+      // ProseMirror's handler has run. Registering directly on the panel div intercepts
+      // the event before it reaches view.dom.
+      React.useEffect(() => {
+        if (!panelOpen || !panelRef.current) return;
+        const panel = panelRef.current;
+        const blockMousedown = (e: MouseEvent) => {
+          const tag = (e.target as HTMLElement).tagName;
+          // For non-interactive elements prevent default so PM's eventBelongsToView
+          // returns false (it checks event.defaultPrevented). For INPUT/BUTTON etc.
+          // skip preventDefault so native focus still works.
+          if (!["INPUT", "BUTTON", "SELECT", "TEXTAREA"].includes(tag)) {
+            e.preventDefault();
+          }
+          e.stopPropagation();
+        };
+        panel.addEventListener("mousedown", blockMousedown);
+        return () => panel.removeEventListener("mousedown", blockMousedown);
+      }, [panelOpen]);
+
       React.useEffect(() => {
         if (!panelOpen) return;
         const handler = (e: MouseEvent) => {
@@ -478,7 +500,6 @@ const ButtonBlock = createReactBlockSpec(
             <div
               className="button-block-panel"
               ref={panelRef}
-              onMouseDown={e => e.stopPropagation()}
             >
               <label>
                 标签文案
