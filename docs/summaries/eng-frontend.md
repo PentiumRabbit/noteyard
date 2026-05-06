@@ -4,7 +4,7 @@
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
 | 最后更新 | 2026-05-06 |
-| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 / ISS-042 / ISS-048 |
+| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 / ISS-042 / ISS-048 / REQ-085 |
 
 ---
 
@@ -42,13 +42,21 @@
 
 ### 重要约束
 
-- API 基础路径固定为 `http://localhost:8080/api`（dev 模式），生产走 Tauri sidecar
+- API 基础路径：Tauri 模式由 IPC `get_port` 动态注入；网页模式由 `VITE_API_BASE` 环境变量覆盖（REQ-085）；均未设置时默认 `http://localhost:8080`
+- Vite dev server 通过 proxy 将 `/api` 和 `/uploads` 转发到 `http://localhost:8080`（REQ-085）
 - `req<T>` catch 块已统一调用 `toast.error` 并 re-throw；调用方 `void` 前缀可保留
 - `<Toaster position="bottom-center" />` 挂载于 SettingsContext.Provider 内、`<div className="app">` 之前
 
 ---
 
-## 上次变更摘要（ISS-048 第二次修复）
+## 上次变更摘要（REQ-085）
+
+- `web/vite.config.ts`：`server` 配置扩展为对象，新增 `proxy`，将 `/api` 和 `/uploads` 代理到 `http://localhost:8080`，使浏览器直接访问 Vite dev server 时可访问后端
+- `web/src/main.tsx`：`bootstrap()` 函数开头新增 `VITE_API_BASE` 检查，若环境变量存在则立即调用 `setApiBase`，优先级高于 Tauri IPC 路径
+- `Makefile`：`server-dev` target 增加 `--port 8080` 参数，确保后端监听端口与代理目标一致
+- commit: `feat(web)[eng#242]: REQ-085 支持网页端+桌面端双模式`（`6c7a55c`）
+
+## 历史变更摘要（ISS-048 第二次修复）
 
 - `web/src/components/editor/dropOverlayPlugin.ts`（T1）：`side=regular` 分支不再使用 `nodeToBlock(slice.content.child(0))` 获取 draggedBlock（该调用返回新 ID 副本，导致 `removeBlocks` 抛出异常，`event.preventDefault` 未调用，前导空白持续）；改为从 `dataTransfer.getData("blocknote/html")` 解析 `data-id` 属性，通过递归函数在 `editor.document` 中按 ID 查找原始 block 对象。
 - `web/src/components/editor/dropOverlayPlugin.ts`（T2）：删除 `handleMultiColumnDrop` 内的局部 `const THRESHOLD = 0.1`，统一改用文件顶部 `SIDE_THRESHOLD = 0.15` 常量，消除阈值不一致导致的拖拽变并排问题。
