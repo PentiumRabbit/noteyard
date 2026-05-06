@@ -23,6 +23,10 @@ async function resolvePort(): Promise<number | null> {
 async function bootstrap() {
   initSettings();
 
+  if (import.meta.env.VITE_API_BASE) {
+    setApiBase(import.meta.env.VITE_API_BASE);
+  }
+
   const port = await resolvePort();
   if (port) {
     setApiBase(`http://localhost:${port}`);

@@ -15,7 +15,7 @@ sidecar-dev:
 	cd server && CGO_ENABLED=0 go build -o ../src-tauri/binaries/noteyard-server-aarch64-apple-darwin ./cmd/main.go
 
 server-dev:
-	cd server && go run ./cmd/main.go
+	cd server && go run ./cmd/main.go --port 8080
 
 web-dev:
 	cd web && npm run dev
