@@ -3,8 +3,8 @@
 | 字段 | 内容 |
 |------|------|
 | 角色 | 前端工程师（eng-frontend） |
-| 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 / ISS-042 |
+| 最后更新 | 2026-05-06 |
+| 对应需求 | REQ-064（含全部 P0/P1/P2）/ ISS-011 / ISS-013 / REQ-074 / REQ-073 / ISS-035 / ISS-042 / ISS-048 |
 
 ---
 
@@ -48,7 +48,12 @@
 
 ---
 
-## 上次变更摘要（ISS-042）
+## 上次变更摘要（ISS-048）
+
+- `web/src/components/editor/dropOverlayPlugin.ts`：`handleMultiColumnDrop` 的 `side=regular` 分支由返回 `false` 改为接管拖拽——提取 draggedBlock（`nodeToBlock`）、获取 targetBlock（`getNearestBlockPos` + `getBlockInfo` + `nodeToBlock`）、按 `clientY` 与目标块中线比较确定 before/after，调用 `editor.removeBlocks` + `editor.insertBlocks` 完成 block 移动，返回 `true` 跳过 ProseMirror 默认 `replaceRange` 路径，消除拖拽后前导空白字符。`side=left/right` 分栏路径不变。
+- commit: `fix(editor)[eng-frontend#233]: ISS-048 修复普通拖拽后前导空白`（`fb38304`）
+
+## 历史变更摘要（ISS-042）
 
 - `web/src/components/editor/Editor.tsx`：`ButtonBlock` 新增 `wrapRef`（定位锚点）、`panelPos` state（固定坐标）；⚙ 按钮 mousedown 处理器改为打开时调用 `getBoundingClientRect()` 计算 `top/left`（含翻转逻辑）；新增 scroll 监听 useEffect（capture 阶段）在滚动时关闭面板；面板 div 添加 `ref={wrapRef}` 及 `style={{ position: "fixed", top, left }}`。
 - `web/src/components/editor/Editor.css`：`.button-block-panel` 删除 `position: absolute; top: calc(100% + 6px); left: 0`，改由 inline style 控制；保留 `z-index: 60` 及全部视觉样式。
