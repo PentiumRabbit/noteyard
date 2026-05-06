@@ -48,10 +48,11 @@
 
 ---
 
-## 上次变更摘要（ISS-048）
+## 上次变更摘要（ISS-048 第二次修复）
 
-- `web/src/components/editor/dropOverlayPlugin.ts`：`handleMultiColumnDrop` 的 `side=regular` 分支由返回 `false` 改为接管拖拽——提取 draggedBlock（`nodeToBlock`）、获取 targetBlock（`getNearestBlockPos` + `getBlockInfo` + `nodeToBlock`）、按 `clientY` 与目标块中线比较确定 before/after，调用 `editor.removeBlocks` + `editor.insertBlocks` 完成 block 移动，返回 `true` 跳过 ProseMirror 默认 `replaceRange` 路径，消除拖拽后前导空白字符。`side=left/right` 分栏路径不变。
-- commit: `fix(editor)[eng-frontend#233]: ISS-048 修复普通拖拽后前导空白`（`fb38304`）
+- `web/src/components/editor/dropOverlayPlugin.ts`（T1）：`side=regular` 分支不再使用 `nodeToBlock(slice.content.child(0))` 获取 draggedBlock（该调用返回新 ID 副本，导致 `removeBlocks` 抛出异常，`event.preventDefault` 未调用，前导空白持续）；改为从 `dataTransfer.getData("blocknote/html")` 解析 `data-id` 属性，通过递归函数在 `editor.document` 中按 ID 查找原始 block 对象。
+- `web/src/components/editor/dropOverlayPlugin.ts`（T2）：删除 `handleMultiColumnDrop` 内的局部 `const THRESHOLD = 0.1`，统一改用文件顶部 `SIDE_THRESHOLD = 0.15` 常量，消除阈值不一致导致的拖拽变并排问题。
+- commit: `fix(editor)[eng-frontend#237]: ISS-048 修复拖拽前导空白和并排问题`（`033f1b6`）
 
 ## 历史变更摘要（ISS-042）
 
