@@ -106,29 +106,38 @@ function handleMultiColumnDrop(
   const domEl = view.nodeDOM(posBeforeNode) as HTMLElement | null;
   if (!domEl) return false;
   const rect = domEl.getBoundingClientRect();
-  const THRESHOLD = 0.1;
   let side: "left" | "right" | "regular" = "regular";
-  if (event.clientX <= rect.left + rect.width * THRESHOLD) side = "left";
-  else if (event.clientX >= rect.right - rect.width * THRESHOLD) side = "right";
+  if (event.clientX <= rect.left + rect.width * SIDE_THRESHOLD) side = "left";
+  else if (event.clientX >= rect.right - rect.width * SIDE_THRESHOLD) side = "right";
   if (side === "regular") {
     // For regular (non-column-edge) drops, use BlockNote API to move the block.
     // This avoids the ProseMirror default replaceRange path which uses BlockNote's
     // reconstructed slice (openStart=0, openEnd=0) and inserts spurious whitespace.
-    if (!slice.content.childCount) return false;
-    const schema = editor.schema;
+    // Parse the original block ID from the drag data to find the clean block object
+    // in editor.document, avoiding nodeToBlock which returns a new-ID copy that
+    // causes removeBlocks to throw and leaves event.preventDefault uncalled.
+    const html = event.dataTransfer?.getData("blocknote/html") ?? "";
+    const idMatch = html.match(/data-id="([^"]+)"/);
+    if (!idMatch) return false;
+    const draggedId = idMatch[1];
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let draggedBlock: any;
-    try {
-      draggedBlock = nodeToBlock(
-        slice.content.child(0),
-        schema.blockSchema,
-        schema.inlineContentSchema,
-        schema.styleSchema
-      );
-    } catch {
-      return false;
+    function findBlockById(blocks: any[], id: string): any {
+      for (const b of blocks) {
+        if (b.id === id) return b;
+        if (b.children?.length) {
+          const found = findBlockById(b.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const draggedBlock: any = findBlockById(editor.document as any[], draggedId);
+    if (!draggedBlock) return false;
+
+    const schema = editor.schema;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let nearestBlock: any;
     try {
