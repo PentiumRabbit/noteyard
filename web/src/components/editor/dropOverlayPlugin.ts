@@ -110,7 +110,55 @@ function handleMultiColumnDrop(
   let side: "left" | "right" | "regular" = "regular";
   if (event.clientX <= rect.left + rect.width * THRESHOLD) side = "left";
   else if (event.clientX >= rect.right - rect.width * THRESHOLD) side = "right";
-  if (side === "regular") return false;
+  if (side === "regular") {
+    // For regular (non-column-edge) drops, use BlockNote API to move the block.
+    // This avoids the ProseMirror default replaceRange path which uses BlockNote's
+    // reconstructed slice (openStart=0, openEnd=0) and inserts spurious whitespace.
+    if (!slice.content.childCount) return false;
+    const schema = editor.schema;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let draggedBlock: any;
+    try {
+      draggedBlock = nodeToBlock(
+        slice.content.child(0),
+        schema.blockSchema,
+        schema.inlineContentSchema,
+        schema.styleSchema
+      );
+    } catch {
+      return false;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let nearestBlock: any;
+    try {
+      nearestBlock = getNearestBlockPos(view.state.doc, posBeforeNode + 1);
+    } catch {
+      return false;
+    }
+    const targetInfo = getBlockInfo(nearestBlock);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let targetBlock: any;
+    try {
+      targetBlock = nodeToBlock(
+        targetInfo.bnBlock.node,
+        schema.blockSchema,
+        schema.inlineContentSchema,
+        schema.styleSchema
+      );
+    } catch {
+      return false;
+    }
+
+    if (targetBlock.id === draggedBlock.id) return true; // dragging onto itself
+
+    // Determine insert placement: above or below the target block midpoint.
+    const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+
+    editor.removeBlocks([draggedBlock]);
+    editor.insertBlocks([draggedBlock], targetBlock, placement);
+    return true;
+  }
 
   // Never create nested columnLists.
   if (node.type.name === "columnList") return false;
