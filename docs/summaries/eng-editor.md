@@ -4,14 +4,14 @@
 |------|------|
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
-| 最后更新 | 2026-05-05 |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3 |
+| 最后更新 | 2026-05-07 |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1 |
 
 ---
 
 ## 模块边界
 
-- 负责：BlockNote 编辑器自定义块定义（`ButtonBlock` 等）和相关 CSS 样式
+- 负责：BlockNote 编辑器自定义块定义（`ButtonBlock` 等）、相关 CSS 样式、拖拽引擎（`dropOverlayPlugin.ts`）
 - 不负责：后端接口、`api/client.ts`、`App.tsx` 级别状态、其他组件文件
 
 ## REQ-084 新增结构概览
@@ -97,4 +97,10 @@
 
 - `Editor.tsx`：新增 `EMOJI_COMMON` 常量（inline 30项）；新增 `PagePropsPanel` 内联组件（api.pages.get 回填 + 图标/封面/标题编辑 + 外部点击/Escape/scroll 关闭）；ButtonBlock render 新增 `pagePropsPanelOpen`/`pagePropsPanelAnchorRect` state；`mainBtnRef` handler 新增 `edit_page_props` 分支（关闭设置面板 + 锚点坐标 + 打开属性面板）；设置面板动作下拉新增「编辑页面属性」选项
 - `Editor.css`：新增 `.page-props-panel`、`.page-props-panel-section`、`.page-props-panel-label`、`.page-props-emoji-grid`、`.page-props-emoji-btn`、`.page-props-cover-*`、`.page-props-title-input` 样式
+- `tsc --noEmit` 零错误
+
+## 变更记录（REQ-086 T1，2026-05-07，dispatch #247）
+
+- `dropOverlayPlugin.ts`：`DropOverlayView` 新增 pointer events 状态（`isDragging`/`sourceBlockEl`/`sourceBlockPos`/`ghostEl`/`pointerId`/`rafId`）；新增 pointerdown 处理（drag handle 检测、blockOuter 定位、ghost 克隆创建、opacity 0.3、setPointerCapture try/catch、userSelect=none）；新增 pointermove rAF 节流框架（ghost 坐标跟随，T2 在此添加让位计算）；新增 pointerup（isDragging 保护、console.log 占位 T3 事务）和 pointercancel（不提交事务）处理；`cleanupDrag()` 统一清理 ghost/opacity/userSelect/状态；`destroy()` 移除新增监听器并清理进行中的拖拽
+- HTML5 drag 路径（ISS-048 handleMultiColumnDrop / lastDragoverSide / dragover/dragleave/drop/dragend 监听）全量保留，零修改
 - `tsc --noEmit` 零错误
