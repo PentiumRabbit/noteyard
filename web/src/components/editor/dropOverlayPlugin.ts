@@ -363,11 +363,14 @@ class DropOverlayView {
   // ── HTML5 drag handlers (ISS-048 path) ──────────────────────────────────────
   private handlers: { name: string; handler: (e: Event) => void }[];
 
-  // ── Pointer events state (REQ-086 T1) ───────────────────────────────────────
+  // ── Pointer events state (REQ-086 T1 + T2) ──────────────────────────────────
   private isDragging = false;
   private sourceBlockEl: HTMLElement | null = null;
   private sourceBlockPos = 0;
   private ghostEl: HTMLElement | null = null;
+  private dropLineEl: HTMLElement | null = null;
+  private currentTargetPos: number | null = null;
+  private currentPlacement: "before" | "after" | null = null;
   private pointerId: number | null = null;
   private rafId: number | null = null;
 
@@ -470,13 +473,133 @@ class DropOverlayView {
       this.rafId = null;
       if (!this.isDragging || !this.ghostEl) return;
 
-      // Update ghost position to follow pointer.
-      this.ghostEl.style.left = `${this.latestPointerX}px`;
-      this.ghostEl.style.top = `${this.latestPointerY}px`;
+      const clientX = this.latestPointerX;
+      const clientY = this.latestPointerY;
 
-      // T2 will add: target-block hit-test, translateY yield calculation, drop-line update.
+      // Update ghost position to follow pointer.
+      this.ghostEl.style.left = `${clientX}px`;
+      this.ghostEl.style.top = `${clientY}px`;
+
+      // ── T2: target-block hit-test ──────────────────────────────────────────
+      const targetResult = getBlockPosFromPoint(this.editorView, clientX, clientY);
+      if (!targetResult || !this.sourceBlockEl) return;
+
+      const targetPos = targetResult.posBeforeNode;
+
+      // Skip if hovering over the source block itself.
+      if (targetPos === this.sourceBlockPos) {
+        this.currentTargetPos = null;
+        this.currentPlacement = null;
+        this._clearYieldTransforms();
+        this._hideDropLine();
+        return;
+      }
+
+      // Determine upper/lower half.
+      const targetDomEl = this.editorView.nodeDOM(targetPos) as HTMLElement | null;
+      if (!targetDomEl) return;
+      const targetRect = targetDomEl.getBoundingClientRect();
+      const placement: "before" | "after" = clientY < targetRect.top + targetRect.height / 2 ? "before" : "after";
+
+      this.currentTargetPos = targetPos;
+      this.currentPlacement = placement;
+
+      // ── T2: translateY yield calculation ──────────────────────────────────
+      // Collect all blockOuter elements from the editor DOM.
+      const allBlockOuters = Array.from(
+        this.editorView.dom.querySelectorAll("[data-node-type='blockOuter']")
+      ) as HTMLElement[];
+
+      // Find source and target indices.
+      const sourceIdx = allBlockOuters.indexOf(this.sourceBlockEl);
+      if (sourceIdx === -1) return;
+
+      // Find target blockOuter: walk up from targetDomEl.
+      const targetBlockOuter = (targetDomEl.closest("[data-node-type='blockOuter']") ?? targetDomEl) as HTMLElement;
+      const targetIdx = allBlockOuters.indexOf(targetBlockOuter);
+      if (targetIdx === -1) return;
+
+      // Batch-read all rects first to avoid forced reflow during write phase.
+      const sourceBlockHeight = this.sourceBlockEl.getBoundingClientRect().height;
+      // (targetRect already read above)
+
+      // Determine which blocks need to yield and by how much.
+      // Dragging upward (sourceIdx > targetIdx): blocks from targetIdx to sourceIdx-1
+      //   shift down by +sourceBlockHeight (placement="before": target included; "after": target+1 to source-1)
+      // Dragging downward (sourceIdx < targetIdx): blocks from sourceIdx+1 to targetIdx
+      //   shift up by -sourceBlockHeight (placement="after": target included; "before": up to target-1)
+      let yieldStart: number;
+      let yieldEnd: number;
+      let yieldDelta: number;
+
+      if (sourceIdx > targetIdx) {
+        // Dragging upward.
+        yieldStart = placement === "before" ? targetIdx : targetIdx + 1;
+        yieldEnd = sourceIdx - 1;
+        yieldDelta = sourceBlockHeight;
+      } else {
+        // Dragging downward.
+        yieldStart = sourceIdx + 1;
+        yieldEnd = placement === "after" ? targetIdx : targetIdx - 1;
+        yieldDelta = -sourceBlockHeight;
+      }
+
+      // Batch-write: apply transforms.
+      for (let i = 0; i < allBlockOuters.length; i++) {
+        const el = allBlockOuters[i];
+        if (el === this.sourceBlockEl) continue; // source block stays hidden (opacity 0.3)
+        if (i >= yieldStart && i <= yieldEnd) {
+          el.style.transform = `translateY(${yieldDelta}px)`;
+          el.style.transition = "transform 150ms ease";
+        } else {
+          el.style.transform = "translateY(0)";
+          el.style.transition = "transform 150ms ease";
+        }
+      }
+
+      // ── T2: drop line indicator ────────────────────────────────────────────
+      if (!this.dropLineEl) {
+        const line = document.createElement("div");
+        line.className = "bn-drop-line";
+        document.body.appendChild(line);
+        this.dropLineEl = line;
+      }
+
+      // Align drop line with the targetBlockOuter's left/width.
+      const outerRect = targetBlockOuter.getBoundingClientRect();
+      const lineTop = placement === "before" ? targetRect.top : targetRect.bottom;
+
+      this.dropLineEl.style.cssText = [
+        `left: ${outerRect.left}px`,
+        `top: ${lineTop}px`,
+        `width: ${outerRect.width}px`,
+        "display: block",
+      ].join("; ");
     });
   }
+
+  // ── T2 helpers ──────────────────────────────────────────────────────────────
+
+  private _clearYieldTransforms() {
+    const allBlockOuters = Array.from(
+      this.editorView.dom.querySelectorAll("[data-node-type='blockOuter']")
+    ) as HTMLElement[];
+    for (const el of allBlockOuters) {
+      el.style.transform = "";
+      el.style.transition = "";
+    }
+  }
+
+  private _hideDropLine() {
+    if (this.dropLineEl) {
+      if (this.dropLineEl.isConnected) {
+        this.dropLineEl.parentNode?.removeChild(this.dropLineEl);
+      }
+      this.dropLineEl = null;
+    }
+  }
+
+  // ── Drag cleanup ─────────────────────────────────────────────────────────────
 
   private cleanupDrag() {
     // Cancel any pending rAF.
@@ -493,6 +616,10 @@ class DropOverlayView {
       this.ghostEl = null;
     }
 
+    // Clear yield transforms and drop line (T2 cleanup).
+    this._clearYieldTransforms();
+    this._hideDropLine();
+
     // Restore source block opacity.
     if (this.sourceBlockEl) {
       this.sourceBlockEl.style.opacity = "";
@@ -506,6 +633,8 @@ class DropOverlayView {
     this.isDragging = false;
     this.sourceBlockPos = 0;
     this.pointerId = null;
+    this.currentTargetPos = null;
+    this.currentPlacement = null;
   }
 
   private onPointerUp(e: PointerEvent) {
