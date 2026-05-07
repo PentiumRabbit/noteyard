@@ -4,8 +4,8 @@
 |------|------|
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
-| 最后更新 | 2026-05-07（REQ-086 T3） |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1/T2/T3 |
+| 最后更新 | 2026-05-07（REQ-087 T4） |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1/T2/T3, REQ-087 T1/T2/T3/T4 |
 
 ---
 
@@ -115,3 +115,8 @@
 
 - `dropOverlayPlugin.ts`：提取 `findBlockById` 为模块级共享函数（原位于 `handleMultiColumnDrop` 内部）；`DropOverlayView` 构造函数新增 `editor` 参数；`onPointerUp` 替换 console.log 占位为实际事务提交——在 `cleanupDrag()` 之前捕获 `currentTargetPos`/`currentPlacement`/`sourceBlockPos`，清理视觉状态后通过 `getNearestBlockPos`+`getBlockInfo`+`nodeToBlock` 解析 targetBlock，通过文档位置解析 sourceBlock，调用 `editor.removeBlocks([sourceBlock])` + `editor.insertBlocks([sourceBlock], targetBlock, placement)`，try/catch 包裹（失败时视觉已清理，不崩溃）；`isDragging` 保护确保幂等；`onPointerCancel` 只执行 `cleanupDrag()`，不提交事务（T1 已实现，T3 验证无变化）；`destroy()` 全量清理验证完整（4个 pointer 监听器均在 destroy 中移除，`cleanupDrag` 覆盖 ghost/dropLine/transform/opacity/userSelect）
 - `tsc --noEmit` 零错误；handleMultiColumnDrop 零修改
+
+## 变更记录（REQ-087 T3，2026-05-07，dispatch #258）
+
+- `dropOverlayPlugin.ts`：`onPointerUp` 中新增 columnList 目标提升逻辑——在 `cleanupDrag()` 之后、目标块解析之前，通过 `state.doc.resolve(targetPos)` 检测目标是否在 column 内部（`parent.type.name === "column"`），若是则将 `targetPos` 提升到 columnList 位置（`resolved.before(depth - 1)`），确保 `insertBlocks` 将拖拽块插入到 columnList 同级而非 column 内部
+- `tsc --noEmit` 零错误；非 column 场景拖拽排序行为不变
