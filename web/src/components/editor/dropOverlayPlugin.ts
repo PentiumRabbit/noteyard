@@ -380,12 +380,18 @@ class DropOverlayView {
   private latestPointerX = 0;
   private latestPointerY = 0;
 
+  // Ghost offset: pointer position relative to block top-left, recorded at pointerdown.
+  // Subtracted from clientX/Y in pointermove so the ghost stays at a fixed offset from the pointer.
+  private ghostOffsetX = 0;
+  private ghostOffsetY = 0;
+
   // Bound handler references for removal in destroy()
   private onPointerDownBound: (e: PointerEvent) => void;
   private onPointerMoveBound: (e: PointerEvent) => void;
   private onPointerUpBound: (e: PointerEvent) => void;
   private onPointerCancelBound: (e: PointerEvent) => void;
   private onDragStartBound!: EventListener;
+  private onKeyDownBound: (e: KeyboardEvent) => void;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private editorView: EditorView, private editor: BlockNoteEditor<any, any, any>) {
@@ -419,6 +425,15 @@ class DropOverlayView {
       }
     };
     document.addEventListener("dragstart", this.onDragStartBound as EventListener);
+
+    // ── Escape key cancels drag (REQ-087 T1) ──────────────────────────────
+    this.onKeyDownBound = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && this.isDragging) {
+        e.preventDefault();
+        this.cleanupDrag();
+      }
+    };
+    document.addEventListener("keydown", this.onKeyDownBound);
   }
 
   // ── Pointer events implementation (REQ-086 T1) ──────────────────────────────
@@ -446,6 +461,12 @@ class DropOverlayView {
     // Resolve the ProseMirror position of this block via getBlockPosFromPoint.
     // Use the center of the blockOuter rect to avoid edge-case misses.
     const rect = blockOuter.getBoundingClientRect();
+
+    // Record pointer offset relative to block top-left so ghost follows the pointer
+    // at a fixed relative position, eliminating the visual jump on first pointermove.
+    this.ghostOffsetX = e.clientX - rect.left;
+    this.ghostOffsetY = e.clientY - rect.top;
+
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const blockPos = getBlockPosFromPoint(this.editorView, cx, cy);
@@ -519,9 +540,10 @@ class DropOverlayView {
       const clientX = this.latestPointerX;
       const clientY = this.latestPointerY;
 
-      // Update ghost position to follow pointer.
-      this.ghostEl.style.left = `${clientX}px`;
-      this.ghostEl.style.top = `${clientY}px`;
+      // Update ghost position to follow pointer, subtracting the offset recorded
+      // at pointerdown so the ghost stays at a fixed relative position to the pointer.
+      this.ghostEl.style.left = `${clientX - this.ghostOffsetX}px`;
+      this.ghostEl.style.top = `${clientY - this.ghostOffsetY}px`;
 
       // ── T2: target-block hit-test ──────────────────────────────────────────
       // Use the editor's horizontal center for hit-testing so we always land
@@ -565,10 +587,24 @@ class DropOverlayView {
           if (found) {
             this.sourceBlockEl = found;
             sourceIdx = topLevelBlockOuters.indexOf(found);
+            // T4: When source block is inside a column (not in topLevelBlockOuters),
+            // re-resolve its ProseMirror position via getBlockPosFromPoint so that
+            // sourceBlockPos stays accurate after React re-renders.
+            if (sourceIdx === -1) {
+              const foundRect = found.getBoundingClientRect();
+              const cx = foundRect.left + foundRect.width / 2;
+              const cy = foundRect.top + foundRect.height / 2;
+              const newBlockPos = getBlockPosFromPoint(this.editorView, cx, cy);
+              if (newBlockPos) {
+                this.sourceBlockPos = newBlockPos.posBeforeNode;
+              }
+            }
           }
         }
       }
-      if (sourceIdx === -1) return;
+      // T4: sourceIdx may be -1 when source block is inside a column.
+      // Only abort if sourceBlockEl is null (couldn't find it anywhere).
+      if (!this.sourceBlockEl) return;
 
       // Resolve target blockOuter from the pre-built allBlockOuters snapshot using data-id
       // to avoid React re-render reference mismatches between nodeDOM and querySelectorAll results.
@@ -718,7 +754,7 @@ class DropOverlayView {
     if (!this.isDragging) return;
 
     // Capture commit targets before cleanupDrag() resets state.
-    const targetPos = this.currentTargetPos;
+    let targetPos = this.currentTargetPos;
     const placement = this.currentPlacement;
     const sourceBlockPos = this.sourceBlockPos;
 
@@ -727,6 +763,17 @@ class DropOverlayView {
 
     // No valid drop target — nothing to commit.
     if (targetPos === null || placement === null) return;
+
+    // ── T3: ColumnList target lift ─────────────────────────────────────────
+    // If the hit-test target is inside a column, lift to the columnList level
+    // so that insertBlocks places the block as a sibling of columnList, not
+    // inside the column.
+    try {
+      const resolved = this.editorView.state.doc.resolve(targetPos);
+      if (resolved.parent.type.name === "column" && resolved.depth >= 1) {
+        targetPos = resolved.before(resolved.depth - 1);
+      }
+    } catch { /* keep original targetPos */ }
 
     // Resolve source block from the editor document.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -883,6 +930,7 @@ class DropOverlayView {
     document.removeEventListener("pointerup", this.onPointerUpBound);
     document.removeEventListener("pointercancel", this.onPointerCancelBound);
     document.removeEventListener("dragstart", this.onDragStartBound);
+    document.removeEventListener("keydown", this.onKeyDownBound);
 
     // Full cleanup of any in-progress drag.
     if (this.isDragging) {
