@@ -4,8 +4,8 @@
 |------|------|
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
-| 最后更新 | 2026-05-07 |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1 |
+| 最后更新 | 2026-05-07（REQ-086 T2） |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1/T2 |
 
 ---
 
@@ -104,3 +104,9 @@
 - `dropOverlayPlugin.ts`：`DropOverlayView` 新增 pointer events 状态（`isDragging`/`sourceBlockEl`/`sourceBlockPos`/`ghostEl`/`pointerId`/`rafId`）；新增 pointerdown 处理（drag handle 检测、blockOuter 定位、ghost 克隆创建、opacity 0.3、setPointerCapture try/catch、userSelect=none）；新增 pointermove rAF 节流框架（ghost 坐标跟随，T2 在此添加让位计算）；新增 pointerup（isDragging 保护、console.log 占位 T3 事务）和 pointercancel（不提交事务）处理；`cleanupDrag()` 统一清理 ghost/opacity/userSelect/状态；`destroy()` 移除新增监听器并清理进行中的拖拽
 - HTML5 drag 路径（ISS-048 handleMultiColumnDrop / lastDragoverSide / dragover/dragleave/drop/dragend 监听）全量保留，零修改
 - `tsc --noEmit` 零错误
+
+## 变更记录（REQ-086 T2，2026-05-07，dispatch #248）
+
+- `dropOverlayPlugin.ts`：新增 `dropLineEl`/`currentTargetPos`/`currentPlacement` 状态；pointermove rAF 回调实现命中目标块计算（复用 `getBlockPosFromPoint`）、上/下半区判断（placement before/after）、批量读取所有 blockOuter rects 后批量写 translateY（± sourceBlockHeight，150ms ease 过渡），以及 `.bn-drop-line` 元素实时跟随目标块上/下边缘；新增 `_clearYieldTransforms()` / `_hideDropLine()` 辅助方法；`cleanupDrag()` 补充清除所有 blockOuter transform/transition 及移除 dropLineEl
+- `Editor.css`：新增 `.bn-drag-ghost`（position: fixed, pointer-events: none, opacity: 0.6, z-index: 100）和 `.bn-drop-line`（position: fixed, height: 2px, background: rgba(59,130,246,0.9), z-index: 100）样式
+- `tsc --noEmit` 零错误；handleMultiColumnDrop 零修改
