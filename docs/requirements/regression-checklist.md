@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-05-07 · REQ-086
+
+| 回归点 | 受影响模块 | 结果 | 来源 |
+|--------|----------|------|------|
+| 普通块拖拽排序（向上/向下，上/下半区命中） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+| 拖拽后文本无前导空白（ISS-048 回归） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+| 分栏创建：left/right drop → columnList（ISS-048 核心路径） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+| pointercancel 后块回原位，无残留 DOM | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+| 编辑器卸载时无内存泄漏（ghost/transform 清理） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+| tsc --noEmit 零错误 | `web/src/components/editor/` | ✅ 通过 | REQ-086 / docs/architecture/REQ-086-review.md |
+
+---
+
 ## 2026-05-06 · ISS-048
 
 | 回归点 | 受影响模块 | 结果 | 来源 |
