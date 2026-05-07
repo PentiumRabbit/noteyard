@@ -546,19 +546,25 @@ class DropOverlayView {
 
       // ── T2: translateY yield calculation ──────────────────────────────────
       // Collect all blockOuter elements first (before any DOM mutation).
+      // Include all blockOuters for index-based lookup, but yield only top-level ones.
       const allBlockOuters = Array.from(
         this.editorView.dom.querySelectorAll("[data-node-type='blockOuter']")
       ) as HTMLElement[];
+      // Top-level blockOuters (not inside a column) are the ones we animate.
+      const topLevelBlockOuters = allBlockOuters.filter(
+        b => !b.closest("[data-node-type='column']")
+      );
 
-      // Find source index — if not found, try to re-find by data-id.
-      let sourceIdx = allBlockOuters.indexOf(this.sourceBlockEl);
+      // Find source in topLevel list; re-find by data-id if React re-rendered the DOM.
+      let sourceIdx = topLevelBlockOuters.indexOf(this.sourceBlockEl);
       if (sourceIdx === -1 && this.sourceBlockEl) {
         const sourceId = this.sourceBlockEl.getAttribute("data-id");
         if (sourceId) {
-          const found = allBlockOuters.find(b => b.getAttribute("data-id") === sourceId);
+          const found = topLevelBlockOuters.find(b => b.getAttribute("data-id") === sourceId)
+                     || allBlockOuters.find(b => b.getAttribute("data-id") === sourceId);
           if (found) {
             this.sourceBlockEl = found;
-            sourceIdx = allBlockOuters.indexOf(found);
+            sourceIdx = topLevelBlockOuters.indexOf(found);
           }
         }
       }
@@ -585,49 +591,44 @@ class DropOverlayView {
       }
       if (!targetBlockOuter) return;
 
-      const targetIdx = allBlockOuters.indexOf(targetBlockOuter);
-      if (targetIdx === -1) return;
-
       const targetRect = targetBlockOuter.getBoundingClientRect();
       const placement: "before" | "after" = clientY < targetRect.top + targetRect.height / 2 ? "before" : "after";
 
       this.currentTargetPos = targetPos;
       this.currentPlacement = placement;
 
-      // Batch-read all rects first to avoid forced reflow during write phase.
-      const sourceBlockHeight = this.sourceBlockEl.getBoundingClientRect().height;
-      // (targetRect already read above)
+      // Yield animation: use Y-coordinate comparison so we don't depend on
+      // snapshot indices that can become stale after React re-renders.
+      const sourceRect = this.sourceBlockEl.getBoundingClientRect();
+      const sourceTop = sourceRect.top;
+      const sourceHeight = sourceRect.height;
+      const targetTop = targetRect.top;
+      const draggingDown = targetTop > sourceTop;
 
-      // Determine which blocks need to yield and by how much.
-      // Dragging upward (sourceIdx > targetIdx): blocks from targetIdx to sourceIdx-1
-      //   shift down by +sourceBlockHeight (placement="before": target included; "after": target+1 to source-1)
-      // Dragging downward (sourceIdx < targetIdx): blocks from sourceIdx+1 to targetIdx
-      //   shift up by -sourceBlockHeight (placement="after": target included; "before": up to target-1)
-      let yieldStart: number;
-      let yieldEnd: number;
-      let yieldDelta: number;
+      // Threshold Y values for yield range
+      const yieldAbove = draggingDown ? sourceTop : (placement === "before" ? targetTop : targetTop + targetRect.height);
+      const yieldBelow = draggingDown ? (placement === "after" ? targetTop + targetRect.height : targetTop) : sourceTop;
 
-      if (sourceIdx > targetIdx) {
-        // Dragging upward.
-        yieldStart = placement === "before" ? targetIdx : targetIdx + 1;
-        yieldEnd = sourceIdx - 1;
-        yieldDelta = sourceBlockHeight;
-      } else {
-        // Dragging downward.
-        yieldStart = sourceIdx + 1;
-        yieldEnd = placement === "after" ? targetIdx : targetIdx - 1;
-        yieldDelta = -sourceBlockHeight;
-      }
+      // Re-query current DOM to get fresh top-level blockOuters
+      const currentTopLevel = Array.from(
+        this.editorView.dom.querySelectorAll("[data-node-type='blockOuter']")
+      ).filter(b => !b.closest("[data-node-type='column']")) as HTMLElement[];
 
-      // Batch-write: apply transforms.
-      for (let i = 0; i < allBlockOuters.length; i++) {
-        const el = allBlockOuters[i];
-        if (el === this.sourceBlockEl) continue; // source block stays hidden (opacity 0.3)
-        if (i >= yieldStart && i <= yieldEnd) {
-          el.style.transform = `translateY(${yieldDelta}px)`;
+      for (const el of currentTopLevel) {
+        if (el === this.sourceBlockEl) continue;
+        const elId = el.getAttribute("data-id");
+        if (elId && this.sourceBlockEl.getAttribute("data-id") === elId) continue;
+        const elRect = el.getBoundingClientRect();
+        const elMid = elRect.top + elRect.height / 2;
+        const shouldYield = draggingDown
+          ? (elMid > sourceTop && elMid <= yieldBelow)
+          : (elMid < sourceTop && elMid >= yieldAbove);
+        const delta = draggingDown ? -sourceHeight : sourceHeight;
+        if (shouldYield) {
+          el.style.transform = `translateY(${delta}px)`;
           el.style.transition = "transform 150ms ease";
         } else {
-          el.style.transform = "translateY(0)";
+          el.style.transform = "translateY(0px)";
           el.style.transition = "transform 150ms ease";
         }
       }
