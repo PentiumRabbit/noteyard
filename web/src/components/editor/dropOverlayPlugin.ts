@@ -73,6 +73,19 @@ function getBlockPosFromPoint(
   return null;
 }
 
+// ── Shared helper: find a block by ID in the BlockNote document tree ─────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findBlockById(blocks: any[], id: string): any {
+  for (const b of blocks) {
+    if (b.id === id) return b;
+    if (b.children?.length) {
+      const found = findBlockById(b.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // ── ISS-038: full multiColumn drop handler ───────────────────────────────────
 // Replicates xl-multi-column's handleDrop logic but uses getBlockPosFromPoint
 // instead of posAtCoords so it works for content:"none" blocks.
@@ -112,18 +125,6 @@ function handleMultiColumnDrop(
   const idMatch = html.match(/data-id="([^"]+)"/);
   if (!idMatch) return false;
   const draggedId = idMatch[1];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function findBlockById(blocks: any[], id: string): any {
-    for (const b of blocks) {
-      if (b.id === id) return b;
-      if (b.children?.length) {
-        const found = findBlockById(b.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const draggedBlock: any = findBlockById(editor.document as any[], draggedId);
@@ -384,7 +385,8 @@ class DropOverlayView {
   private onPointerUpBound: (e: PointerEvent) => void;
   private onPointerCancelBound: (e: PointerEvent) => void;
 
-  constructor(private editorView: EditorView) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(private editorView: EditorView, private editor: BlockNoteEditor<any, any, any>) {
     // ── HTML5 drag listeners (ISS-048 path, preserved) ───────────────────────
     const names = ["dragover", "dragend", "drop", "dragleave"] as const;
     this.handlers = names.map((name) => {
@@ -637,17 +639,61 @@ class DropOverlayView {
     this.currentPlacement = null;
   }
 
-  private onPointerUp(e: PointerEvent) {
+  private onPointerUp(_e: PointerEvent) {
     if (!this.isDragging) return;
 
-    // T3 will implement the ProseMirror transaction here.
-    console.log("[REQ-086 T1] pointerup — transaction commit placeholder", {
-      sourceBlockPos: this.sourceBlockPos,
-      clientX: e.clientX,
-      clientY: e.clientY,
-    });
+    // Capture commit targets before cleanupDrag() resets state.
+    const targetPos = this.currentTargetPos;
+    const placement = this.currentPlacement;
+    const sourceBlockPos = this.sourceBlockPos;
 
+    // Clean up all visual state first (ghost, transforms, opacity, userSelect).
     this.cleanupDrag();
+
+    // No valid drop target — nothing to commit.
+    if (targetPos === null || placement === null) return;
+
+    // Resolve source block from the editor document.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let sourceBlock: any = null;
+    try {
+      const $src = this.editorView.state.doc.resolve(sourceBlockPos + 1);
+      for (let d = $src.depth; d >= 0; d--) {
+        const node = $src.node(d);
+        if (node.attrs?.id) {
+          sourceBlock = findBlockById(this.editor.document as any[], node.attrs.id as string);
+          if (sourceBlock) break;
+        }
+      }
+    } catch { /* fall through */ }
+    if (!sourceBlock) return;
+
+    // Resolve target block from the editor document.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let targetBlock: any = null;
+    try {
+      const nearestBlock = getNearestBlockPos(this.editorView.state.doc, targetPos + 1);
+      const targetInfo = getBlockInfo(nearestBlock);
+      targetBlock = nodeToBlock(
+        targetInfo.bnBlock.node,
+        this.editor.schema.blockSchema,
+        this.editor.schema.inlineContentSchema,
+        this.editor.schema.styleSchema
+      );
+    } catch { /* fall through */ }
+    if (!targetBlock) return;
+
+    // Guard: no-op if source and target are the same block.
+    if (sourceBlock.id === targetBlock.id) return;
+
+    // Commit the ProseMirror transaction via BlockNote API.
+    try {
+      this.editor.removeBlocks([sourceBlock]);
+      this.editor.insertBlocks([sourceBlock], targetBlock, placement);
+    } catch {
+      // Transaction failed — visual state is already cleaned up by cleanupDrag().
+      // No further action needed; the block stays in its original position.
+    }
   }
 
   private onPointerCancel(_e: PointerEvent) {
@@ -776,7 +822,7 @@ export function dropOverlayPlugin(editor: BlockNoteEditor<any, any, any>): Plugi
   return new Plugin({
     key: dropOverlayKey,
     view(editorView) {
-      return new DropOverlayView(editorView);
+      return new DropOverlayView(editorView, editor);
     },
     props: {
       handleDrop(view, event, slice, _moved) {
