@@ -4,6 +4,8 @@ import type { Slice } from "prosemirror-model";
 import { getNearestBlockPos, getBlockInfo, nodeToBlock, UniqueID } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 
+// ISS-048: side is determined from dragover (not drop) coordinates to avoid
+// the drag handle's left-edge X position triggering unintended column creation.
 const SIDE_THRESHOLD = 0.15;
 const OVERLAY_ID = "bn-drop-overlay-el";
 
@@ -90,103 +92,96 @@ function handleMultiColumnDrop(
   let { posBeforeNode, node } = blockPos;
   if (!node) return false;
 
-  // If the hit block is inside a column, lift up to the column level.
+  // If the hit block is inside a column, lift up to the columnList level so that
+  // side detection uses the full row width and regular drops exit the column structure.
   try {
     const resolved = view.state.doc.resolve(posBeforeNode);
-    if (resolved.parent.type.name === "column") {
-      const colResolved = view.state.doc.resolve(resolved.before());
-      posBeforeNode = colResolved.pos;
-      node = colResolved.nodeAfter ?? node;
+    if (resolved.parent.type.name === "column" && resolved.depth >= 1) {
+      const colListPos = resolved.before(resolved.depth - 1);
+      const colListResolved = view.state.doc.resolve(colListPos);
+      posBeforeNode = colListResolved.pos;
+      node = colListResolved.nodeAfter ?? node;
     }
   } catch {
     return false;
   }
 
-  // Determine drop side via bounding rect.
+  // Resolve the dragged block by ID from editor.document — shared by all drop paths.
+  // nodeToBlock(slice...) returns a new-ID copy that causes removeBlocks to throw.
+  const html = event.dataTransfer?.getData("blocknote/html") ?? "";
+  const idMatch = html.match(/data-id="([^"]+)"/);
+  if (!idMatch) return false;
+  const draggedId = idMatch[1];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function findBlockById(blocks: any[], id: string): any {
+    for (const b of blocks) {
+      if (b.id === id) return b;
+      if (b.children?.length) {
+        const found = findBlockById(b.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const draggedBlock: any = findBlockById(editor.document as any[], draggedId);
+  if (!draggedBlock) return false;
+
+  const schema = editor.schema;
+
+  // Use the side recorded during the last dragover event, not the drop coordinate.
+  // The drag handle sits on the left edge so the drop X always lands near rectLeft,
+  // which would falsely trigger "left" (column creation) on every regular drag.
+  const side = lastDragoverSide;
+  lastDragoverSide = "regular"; // reset for next drag
+
   const domEl = view.nodeDOM(posBeforeNode) as HTMLElement | null;
   if (!domEl) return false;
   const rect = domEl.getBoundingClientRect();
-  let side: "left" | "right" | "regular" = "regular";
-  if (event.clientX <= rect.left + rect.width * SIDE_THRESHOLD) side = "left";
-  else if (event.clientX >= rect.right - rect.width * SIDE_THRESHOLD) side = "right";
   if (side === "regular") {
-    // For regular (non-column-edge) drops, use BlockNote API to move the block.
-    // This avoids the ProseMirror default replaceRange path which uses BlockNote's
-    // reconstructed slice (openStart=0, openEnd=0) and inserts spurious whitespace.
-    // Parse the original block ID from the drag data to find the clean block object
-    // in editor.document, avoiding nodeToBlock which returns a new-ID copy that
-    // causes removeBlocks to throw and leaves event.preventDefault uncalled.
-    const html = event.dataTransfer?.getData("blocknote/html") ?? "";
-    const idMatch = html.match(/data-id="([^"]+)"/);
-    if (!idMatch) return false;
-    const draggedId = idMatch[1];
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findBlockById(blocks: any[], id: string): any {
-      for (const b of blocks) {
-        if (b.id === id) return b;
-        if (b.children?.length) {
-          const found = findBlockById(b.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const draggedBlock: any = findBlockById(editor.document as any[], draggedId);
-    if (!draggedBlock) return false;
-
-    const schema = editor.schema;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let nearestBlock: any;
-    try {
-      nearestBlock = getNearestBlockPos(view.state.doc, posBeforeNode + 1);
-    } catch {
-      return false;
-    }
-    const targetInfo = getBlockInfo(nearestBlock);
+    // Resolve the target block. When the drop lands on a columnList node, use the
+    // columnList itself as the target (via its ID from the node attrs) so that we
+    // move blocks relative to the whole columnList, not a block inside a column.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let targetBlock: any;
-    try {
-      targetBlock = nodeToBlock(
-        targetInfo.bnBlock.node,
-        schema.blockSchema,
-        schema.inlineContentSchema,
-        schema.styleSchema
-      );
-    } catch {
-      return false;
+    if (node.type.name === "columnList") {
+      const colListId = node.attrs?.id as string | undefined;
+      if (!colListId) return false;
+      targetBlock = findBlockById(editor.document as any[], colListId);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let nearestBlock: any;
+      try {
+        nearestBlock = getNearestBlockPos(view.state.doc, posBeforeNode + 1);
+      } catch {
+        return false;
+      }
+      const targetInfo = getBlockInfo(nearestBlock);
+      try {
+        targetBlock = nodeToBlock(
+          targetInfo.bnBlock.node,
+          schema.blockSchema,
+          schema.inlineContentSchema,
+          schema.styleSchema
+        );
+      } catch {
+        return false;
+      }
+    }
+    if (!targetBlock) return false;
+
+    if (targetBlock.id === draggedBlock.id) {
+      event.preventDefault();
+      return true;
     }
 
-    if (targetBlock.id === draggedBlock.id) return true; // dragging onto itself
-
-    // Determine insert placement: above or below the target block midpoint.
     const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-
+    event.preventDefault();
     editor.removeBlocks([draggedBlock]);
     editor.insertBlocks([draggedBlock], targetBlock, placement);
     return true;
-  }
-
-  // Never create nested columnLists.
-  if (node.type.name === "columnList") return false;
-
-  // Extract the dragged block from the slice.
-  if (!slice.content.childCount) return false;
-  const draggedPmNode = slice.content.child(0);
-  const schema = editor.schema;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let draggedBlock: any;
-  try {
-    draggedBlock = nodeToBlock(
-      draggedPmNode,
-      schema.blockSchema,
-      schema.inlineContentSchema,
-      schema.styleSchema
-    );
-  } catch {
-    return false;
   }
 
   // Gather block info for the target.
@@ -198,6 +193,34 @@ function handleMultiColumnDrop(
     return false;
   }
   const blockInfo = getBlockInfo(nearestBlock);
+
+  // If drop lands on a columnList itself (not inside a column), add a new column.
+  if (node.type.name === "columnList") {
+    const colListId = node.attrs?.id as string | undefined;
+    if (!colListId) return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const columnListBlock: any = findBlockById(editor.document as any[], colListId);
+    if (!columnListBlock) return false;
+    if (columnListBlock.id === draggedBlock.id) return false;
+    const insertIdx = side === "left" ? 0 : columnListBlock.children.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newChildren = columnListBlock.children.filter((col: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      !col.children.some((b: any) => b.id === draggedBlock.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ).filter((col: any) => col.children.length > 0);
+    newChildren.splice(insertIdx, 0, {
+      type: "column",
+      children: [draggedBlock],
+      props: { width: 1 },
+      content: undefined,
+      id: UniqueID.options.generateID(),
+    });
+    event.preventDefault();
+    editor.removeBlocks([draggedBlock]);
+    editor.updateBlock(columnListBlock, { children: newChildren });
+    return true;
+  }
 
   if (blockInfo.blockNoteType === "column") {
     // Target is already inside a column — append a new column to the columnList.
@@ -332,17 +355,179 @@ function showOverlay(rect: DOMRect, position: "left" | "right" | "regular") {
   el.className = "bn-drop-overlay";
 }
 
+// Shared state: dragover sets this so handleDrop reads the intent from hover position,
+// not from the drop coordinate (which can land on the drag handle edge unintentionally).
+let lastDragoverSide: "left" | "right" | "regular" = "regular";
+
 class DropOverlayView {
+  // ── HTML5 drag handlers (ISS-048 path) ──────────────────────────────────────
   private handlers: { name: string; handler: (e: Event) => void }[];
 
+  // ── Pointer events state (REQ-086 T1) ───────────────────────────────────────
+  private isDragging = false;
+  private sourceBlockEl: HTMLElement | null = null;
+  private sourceBlockPos = 0;
+  private ghostEl: HTMLElement | null = null;
+  private pointerId: number | null = null;
+  private rafId: number | null = null;
+
+  // Latest pointer coordinates for rAF callback
+  private latestPointerX = 0;
+  private latestPointerY = 0;
+
+  // Bound handler references for removal in destroy()
+  private onPointerDownBound: (e: PointerEvent) => void;
+  private onPointerMoveBound: (e: PointerEvent) => void;
+  private onPointerUpBound: (e: PointerEvent) => void;
+  private onPointerCancelBound: (e: PointerEvent) => void;
+
   constructor(private editorView: EditorView) {
+    // ── HTML5 drag listeners (ISS-048 path, preserved) ───────────────────────
     const names = ["dragover", "dragend", "drop", "dragleave"] as const;
     this.handlers = names.map((name) => {
       const handler = (e: Event) => this.handleEvent(name, e as DragEvent);
       editorView.dom.addEventListener(name, handler);
       return { name, handler };
     });
+
+    // ── Pointer event listeners (REQ-086 path) ───────────────────────────────
+    this.onPointerDownBound = (e) => this.onPointerDown(e);
+    this.onPointerMoveBound = (e) => this.onPointerMove(e);
+    this.onPointerUpBound = (e) => this.onPointerUp(e);
+    this.onPointerCancelBound = (e) => this.onPointerCancel(e);
+
+    editorView.dom.addEventListener("pointerdown", this.onPointerDownBound);
+    editorView.dom.addEventListener("pointermove", this.onPointerMoveBound);
+    editorView.dom.addEventListener("pointerup", this.onPointerUpBound);
+    editorView.dom.addEventListener("pointercancel", this.onPointerCancelBound);
   }
+
+  // ── Pointer events implementation (REQ-086 T1) ──────────────────────────────
+
+  private onPointerDown(e: PointerEvent) {
+    // Only activate on the BlockNote drag handle button.
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const handle = target.closest('[data-test="dragHandle"]') as HTMLElement | null;
+    if (!handle) return;
+
+    // Find the blockOuter wrapper from the handle's position.
+    const blockOuter = target.closest("[data-node-type='blockOuter']") as HTMLElement | null;
+    if (!blockOuter) return;
+
+    // Resolve the ProseMirror position of this block via getBlockPosFromPoint.
+    // Use the center of the blockOuter rect to avoid edge-case misses.
+    const rect = blockOuter.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const blockPos = getBlockPosFromPoint(this.editorView, cx, cy);
+    if (!blockPos) return;
+
+    this.sourceBlockEl = blockOuter;
+    this.sourceBlockPos = blockPos.posBeforeNode;
+    this.isDragging = true;
+    this.pointerId = e.pointerId;
+
+    // Create ghost element: clone of the source block, fixed-positioned.
+    const ghost = blockOuter.cloneNode(true) as HTMLElement;
+    ghost.className = (ghost.className ? ghost.className + " " : "") + "bn-drag-ghost";
+    ghost.style.cssText = [
+      "position: fixed",
+      "pointer-events: none",
+      "opacity: 0.6",
+      "z-index: 100",
+      `left: ${rect.left}px`,
+      `top: ${rect.top}px`,
+      `width: ${rect.width}px`,
+    ].join("; ");
+    document.body.appendChild(ghost);
+    this.ghostEl = ghost;
+
+    // Dim source block.
+    blockOuter.style.opacity = "0.3";
+
+    // Prevent text selection during drag.
+    document.body.style.userSelect = "none";
+
+    // Capture pointer so we receive pointermove/pointerup even outside the element.
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Degraded gracefully: pointermove may be lost at edges, but no crash.
+    }
+  }
+
+  private onPointerMove(e: PointerEvent) {
+    if (!this.isDragging) return;
+
+    // Record latest coordinates; actual DOM update is throttled via rAF.
+    this.latestPointerX = e.clientX;
+    this.latestPointerY = e.clientY;
+
+    if (this.rafId !== null) return; // already scheduled
+
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      if (!this.isDragging || !this.ghostEl) return;
+
+      // Update ghost position to follow pointer.
+      this.ghostEl.style.left = `${this.latestPointerX}px`;
+      this.ghostEl.style.top = `${this.latestPointerY}px`;
+
+      // T2 will add: target-block hit-test, translateY yield calculation, drop-line update.
+    });
+  }
+
+  private cleanupDrag() {
+    // Cancel any pending rAF.
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    // Remove ghost from DOM.
+    if (this.ghostEl) {
+      if (this.ghostEl.isConnected) {
+        this.ghostEl.parentNode?.removeChild(this.ghostEl);
+      }
+      this.ghostEl = null;
+    }
+
+    // Restore source block opacity.
+    if (this.sourceBlockEl) {
+      this.sourceBlockEl.style.opacity = "";
+      this.sourceBlockEl = null;
+    }
+
+    // Restore text selection.
+    document.body.style.userSelect = "";
+
+    // Reset state.
+    this.isDragging = false;
+    this.sourceBlockPos = 0;
+    this.pointerId = null;
+  }
+
+  private onPointerUp(e: PointerEvent) {
+    if (!this.isDragging) return;
+
+    // T3 will implement the ProseMirror transaction here.
+    console.log("[REQ-086 T1] pointerup — transaction commit placeholder", {
+      sourceBlockPos: this.sourceBlockPos,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
+
+    this.cleanupDrag();
+  }
+
+  private onPointerCancel(_e: PointerEvent) {
+    if (!this.isDragging) return;
+    // Cancel: clean up without committing any transaction.
+    this.cleanupDrag();
+  }
+
+  // ── HTML5 drag event handler (ISS-048 path, preserved) ──────────────────────
 
   private handleEvent(
     name: "dragover" | "dragend" | "drop" | "dragleave",
@@ -367,14 +552,18 @@ class DropOverlayView {
     if (!pos) return;
 
     let blockPos: number;
+    let colListPos: number | null = null;
+    let nodeType = "unknown";
     try {
       const info = getNearestBlockPos(this.editorView.state.doc, pos.pos);
       let resolved = this.editorView.state.doc.resolve(info.posBeforeNode);
-      // If inside a column, use the column's position (same logic as multiColumnDropCursor)
-      if (resolved.parent.type.name === "column") {
-        resolved = this.editorView.state.doc.resolve(resolved.before());
+      if (resolved.parent.type.name === "column" && resolved.depth >= 1) {
+        // Remember the column pos for side detection, lift to columnList for overlay.
+        colListPos = resolved.before(resolved.depth - 1);
+        resolved = this.editorView.state.doc.resolve(colListPos);
       }
       blockPos = resolved.pos;
+      nodeType = resolved.nodeAfter?.type.name ?? "unknown";
     } catch {
       return;
     }
@@ -385,23 +574,69 @@ class DropOverlayView {
     const rect = blockEl.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
+    // For side detection: when inside a column use the column's DOM rect so that
+    // dragging to the edge of a column correctly reads as left/right.
+    // Use ProseMirror node DOM instead of elementFromPoint (which is blocked by drag image).
+    let sideRect = rect;
+    if (colListPos !== null) {
+      try {
+        const $pos = this.editorView.state.doc.resolve(colListPos);
+        // colListPos is before the columnList; walk into the column that contains the cursor.
+        // Find the column child whose DOM contains the x coordinate.
+        const colListNode = $pos.nodeAfter;
+        if (colListNode) {
+          let colOffset = $pos.pos + 1; // start of columnList content
+          for (let ci = 0; ci < colListNode.childCount; ci++) {
+            const colNode = colListNode.child(ci);
+            const colDom = this.editorView.nodeDOM(colOffset) as HTMLElement | null;
+            if (colDom) {
+              const cr = colDom.getBoundingClientRect();
+              if (e.clientX >= cr.left && e.clientX <= cr.right) {
+                if (cr.width > 0) sideRect = cr;
+                break;
+              }
+            }
+            colOffset += colNode.nodeSize;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     let position: "left" | "right" | "regular";
-    if (e.clientX <= rect.left + rect.width * SIDE_THRESHOLD) {
+    if (e.clientX <= sideRect.left + sideRect.width * SIDE_THRESHOLD) {
       position = "left";
-    } else if (e.clientX >= rect.right - rect.width * SIDE_THRESHOLD) {
+    } else if (e.clientX >= sideRect.right - sideRect.width * SIDE_THRESHOLD) {
       position = "right";
     } else {
       position = "regular";
     }
 
+    // Can't nest columnLists — treat left/right on a columnList as regular.
+    if ((position === "left" || position === "right") && nodeType === "columnList") {
+      position = "regular";
+    }
+
+    lastDragoverSide = position;
     showOverlay(rect, position);
   }
 
   destroy() {
+    // Remove HTML5 drag listeners (ISS-048 path).
     this.handlers.forEach(({ name, handler }) =>
       this.editorView.dom.removeEventListener(name, handler)
     );
     removeOverlay();
+
+    // Remove pointer event listeners (REQ-086 path).
+    this.editorView.dom.removeEventListener("pointerdown", this.onPointerDownBound);
+    this.editorView.dom.removeEventListener("pointermove", this.onPointerMoveBound);
+    this.editorView.dom.removeEventListener("pointerup", this.onPointerUpBound);
+    this.editorView.dom.removeEventListener("pointercancel", this.onPointerCancelBound);
+
+    // Full cleanup of any in-progress drag.
+    if (this.isDragging) {
+      this.cleanupDrag();
+    }
   }
 }
 
