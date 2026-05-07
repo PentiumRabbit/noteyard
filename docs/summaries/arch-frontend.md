@@ -216,3 +216,25 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 - rAF 节流：`cancelAnimationFrame` + 重新 `requestAnimationFrame`，避免 50+ 块场景卡顿
 
 *由前端架构师（arch-frontend）生成，dispatch #246 / REQ-086。*
+
+---
+
+## REQ-087 编辑器内块拖拽视觉增强评审摘要（2026-05-07，dispatch #253）
+
+**变更模块**：`web/src/components/editor/`（`editor` 模块，仅此一个模块）
+
+**架构决策**：
+- REQ-086 pointer events 实现已覆盖 FR-1~FR-5 主体逻辑；REQ-087 评审识别 4 个待补齐项
+- Ghost 偏移优化：`pointerdown` 时记录 `ghostOffsetX/Y`，后续 ghost 定位使用 `(clientX - offsetX, clientY - offsetY)`，消除首次 pointermove 跳变
+- Escape 键取消：`DropOverlayView` 注册 `keydown` 监听器，`Escape` 按下且 `isDragging` 时调用 `cleanupDrag()`（不提交事务）
+- ColumnList 目标命中：`onPointerUp` 中检测目标块是否在 column 内部，若是则提升 `placement` 到 columnList 级别
+- 源块 column 内重查找：扩展 `data-id` 重查找范围至 `allBlockOuters`，同步更新 `sourceBlockPos`
+- ISS-048 修复（`handleMultiColumnDrop` regular 分支使用 BlockNote API）已实现且与 pointer events 路径完全兼容
+
+**关键约束**：
+- 4 个工程师任务可完全并行，总改动量约 50–80 行，均在 `dropOverlayPlugin.ts` 单文件内
+- `dropOverlayPlugin` 工厂函数签名不变，CSS 类不变
+- `handleMultiColumnDrop` 零修改，`lastDragoverSide` 保留
+- `destroy()` 须包含 `keydown` 监听器移除
+
+*由前端架构师（arch-frontend）生成，dispatch #253 / REQ-087。*
