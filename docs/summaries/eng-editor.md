@@ -4,8 +4,8 @@
 |------|------|
 | 角色 | 前端工程师（eng） |
 | 模块 | editor（`web/src/components/editor/`） |
-| 最后更新 | 2026-05-07（REQ-086 T2） |
-| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1/T2 |
+| 最后更新 | 2026-05-07（REQ-086 T3） |
+| 对应需求 | REQ-083 T1/T2/T3/T4, ISS-045, ISS-046, REQ-084 T1/T2/T3, REQ-086 T1/T2/T3 |
 
 ---
 
@@ -109,4 +109,9 @@
 
 - `dropOverlayPlugin.ts`：新增 `dropLineEl`/`currentTargetPos`/`currentPlacement` 状态；pointermove rAF 回调实现命中目标块计算（复用 `getBlockPosFromPoint`）、上/下半区判断（placement before/after）、批量读取所有 blockOuter rects 后批量写 translateY（± sourceBlockHeight，150ms ease 过渡），以及 `.bn-drop-line` 元素实时跟随目标块上/下边缘；新增 `_clearYieldTransforms()` / `_hideDropLine()` 辅助方法；`cleanupDrag()` 补充清除所有 blockOuter transform/transition 及移除 dropLineEl
 - `Editor.css`：新增 `.bn-drag-ghost`（position: fixed, pointer-events: none, opacity: 0.6, z-index: 100）和 `.bn-drop-line`（position: fixed, height: 2px, background: rgba(59,130,246,0.9), z-index: 100）样式
+- `tsc --noEmit` 零错误；handleMultiColumnDrop 零修改
+
+## 变更记录（REQ-086 T3，2026-05-07，dispatch #249）
+
+- `dropOverlayPlugin.ts`：提取 `findBlockById` 为模块级共享函数（原位于 `handleMultiColumnDrop` 内部）；`DropOverlayView` 构造函数新增 `editor` 参数；`onPointerUp` 替换 console.log 占位为实际事务提交——在 `cleanupDrag()` 之前捕获 `currentTargetPos`/`currentPlacement`/`sourceBlockPos`，清理视觉状态后通过 `getNearestBlockPos`+`getBlockInfo`+`nodeToBlock` 解析 targetBlock，通过文档位置解析 sourceBlock，调用 `editor.removeBlocks([sourceBlock])` + `editor.insertBlocks([sourceBlock], targetBlock, placement)`，try/catch 包裹（失败时视觉已清理，不崩溃）；`isDragging` 保护确保幂等；`onPointerCancel` 只执行 `cleanupDrag()`，不提交事务（T1 已实现，T3 验证无变化）；`destroy()` 全量清理验证完整（4个 pointer 监听器均在 destroy 中移除，`cleanupDrag` 覆盖 ghost/dropLine/transform/opacity/userSelect）
 - `tsc --noEmit` 零错误；handleMultiColumnDrop 零修改
