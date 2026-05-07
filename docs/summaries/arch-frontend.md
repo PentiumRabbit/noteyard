@@ -195,3 +195,24 @@ App.tsx                          — 全局状态中枢（selectedPageId, pageMe
 - `web/src/components/database/DatabaseView.tsx`
 - `web/src/components/database/DatabaseView.css`
 - `web/src/api/client.ts`
+
+---
+
+## REQ-086 拖拽系统重写评审摘要（2026-05-07，dispatch #246）
+
+**变更模块**：`web/src/components/editor/`（`editor` 模块，仅此一个模块）
+
+**架构决策**：
+- 完全放弃 HTML5 drag-and-drop API，改用 pointer events（pointerdown/pointermove/pointerup/pointercancel）手动实现拖拽系统
+- `DropOverlayView` 重写：移除 drag 事件监听，新增 pointer 事件监听；ghost 元素（position:fixed，opacity:0.6）跟随指针；其他块通过 `transform: translateY` 实时让位（rAF 节流，150ms ease）；蓝色横线（`.bn-drop-line`，2px，rgba(59,130,246,0.9)）指示插入位置
+- ISS-048 `handleMultiColumnDrop` 函数**零修改**：left/right drop → columnList 分栏创建路径完整保留；pointer events 路径与 HTML5 drag 路径共存，通过 `isDragging` 状态隔离
+- 事务提交通过 BlockNote API（`removeBlocks` + `insertBlocks`），不走 ProseMirror 原生 drop 路径（规避 ISS-048 根因中的 Slice 空白字符问题）
+- `dropOverlayPlugin` 工厂函数签名不变，与 `Editor.tsx` 接口无变更
+
+**关键约束**：
+- `lastDragoverSide` 模块级变量和 `dragover` 事件监听必须保留（供 `handleMultiColumnDrop` 读取分栏意图）
+- `setPointerCapture` 失败时降级处理（不崩溃）
+- `destroy()` 必须清理 ghost、dropLine、所有 transform、opacity、userSelect、事件监听器
+- rAF 节流：`cancelAnimationFrame` + 重新 `requestAnimationFrame`，避免 50+ 块场景卡顿
+
+*由前端架构师（arch-frontend）生成，dispatch #246 / REQ-086。*
