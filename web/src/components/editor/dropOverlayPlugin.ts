@@ -368,6 +368,7 @@ class DropOverlayView {
   private isDragging = false;
   private sourceBlockEl: HTMLElement | null = null;
   private sourceBlockPos = 0;
+  private sourceOverlayEl: HTMLElement | null = null; // dim overlay over source block
   private ghostEl: HTMLElement | null = null;
   private dropLineEl: HTMLElement | null = null;
   private currentTargetPos: number | null = null;
@@ -384,6 +385,7 @@ class DropOverlayView {
   private onPointerMoveBound: (e: PointerEvent) => void;
   private onPointerUpBound: (e: PointerEvent) => void;
   private onPointerCancelBound: (e: PointerEvent) => void;
+  private onDragStartBound!: EventListener;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private editorView: EditorView, private editor: BlockNoteEditor<any, any, any>) {
@@ -401,10 +403,22 @@ class DropOverlayView {
     this.onPointerUpBound = (e) => this.onPointerUp(e);
     this.onPointerCancelBound = (e) => this.onPointerCancel(e);
 
-    editorView.dom.addEventListener("pointerdown", this.onPointerDownBound);
-    editorView.dom.addEventListener("pointermove", this.onPointerMoveBound);
-    editorView.dom.addEventListener("pointerup", this.onPointerUpBound);
-    editorView.dom.addEventListener("pointercancel", this.onPointerCancelBound);
+    // pointerdown must be on document because BlockNote's side menu (drag handle)
+    // is rendered outside editorView.dom.
+    document.addEventListener("pointerdown", this.onPointerDownBound);
+    // pointermove/up/cancel on document so we keep receiving events during drag.
+    document.addEventListener("pointermove", this.onPointerMoveBound);
+    document.addEventListener("pointerup", this.onPointerUpBound);
+    document.addEventListener("pointercancel", this.onPointerCancelBound);
+
+    // Block dragstart on the drag handle so the browser doesn't take over HTML5 drag.
+    this.onDragStartBound = (e: DragEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[draggable="true"]')?.closest(".bn-side-menu")) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("dragstart", this.onDragStartBound as EventListener);
   }
 
   // ── Pointer events implementation (REQ-086 T1) ──────────────────────────────
@@ -413,11 +427,20 @@ class DropOverlayView {
     // Only activate on the BlockNote drag handle button.
     const target = e.target as HTMLElement | null;
     if (!target) return;
-    const handle = target.closest('[data-test="dragHandle"]') as HTMLElement | null;
+    // BlockNote's drag handle is the draggable="true" button inside .bn-side-menu.
+    // It does not have a stable data attribute, so we detect it by draggable + side menu parent.
+    const handle = target.closest('[draggable="true"]') as HTMLElement | null;
     if (!handle) return;
+    if (!handle.closest(".bn-side-menu")) return;
 
-    // Find the blockOuter wrapper from the handle's position.
-    const blockOuter = target.closest("[data-node-type='blockOuter']") as HTMLElement | null;
+    // Find the blockOuter wrapper: side menu sits outside blockOuter, use posAtCoords.
+    const sideMenuEl = handle.closest(".bn-side-menu") as HTMLElement | null;
+    const sideMenuRect = sideMenuEl?.getBoundingClientRect();
+    // blockOuter is to the right of the side menu at the same Y level
+    const probeX = sideMenuRect ? sideMenuRect.right + 20 : e.clientX + 40;
+    const probeY = e.clientY;
+    const blockOuter = (document.elementFromPoint(probeX, probeY) as HTMLElement | null)
+      ?.closest("[data-node-type='blockOuter']") as HTMLElement | null;
     if (!blockOuter) return;
 
     // Resolve the ProseMirror position of this block via getBlockPosFromPoint.
@@ -427,6 +450,11 @@ class DropOverlayView {
     const cy = rect.top + rect.height / 2;
     const blockPos = getBlockPosFromPoint(this.editorView, cx, cy);
     if (!blockPos) return;
+
+    // Prevent the browser from taking over with HTML5 drag-and-drop.
+    // Without this, draggable="true" causes the browser to fire dragstart and
+    // stop delivering pointermove events to us.
+    e.preventDefault();
 
     this.sourceBlockEl = blockOuter;
     this.sourceBlockPos = blockPos.posBeforeNode;
@@ -448,8 +476,21 @@ class DropOverlayView {
     document.body.appendChild(ghost);
     this.ghostEl = ghost;
 
-    // Dim source block.
-    blockOuter.style.opacity = "0.3";
+    // Overlay a semi-transparent div over the source block to dim it.
+    // Using a separate DOM element avoids React re-render resets on BlockNote's managed DOM.
+    const overlay = document.createElement("div");
+    overlay.style.cssText = [
+      "position: fixed",
+      "pointer-events: none",
+      "z-index: 99",
+      "background: rgba(255,255,255,0.55)",
+      `left: ${rect.left}px`,
+      `top: ${rect.top}px`,
+      `width: ${rect.width}px`,
+      `height: ${rect.height}px`,
+    ].join("; ");
+    document.body.appendChild(overlay);
+    this.sourceOverlayEl = overlay;
 
     // Prevent text selection during drag.
     document.body.style.userSelect = "none";
@@ -483,7 +524,13 @@ class DropOverlayView {
       this.ghostEl.style.top = `${clientY}px`;
 
       // ── T2: target-block hit-test ──────────────────────────────────────────
-      const targetResult = getBlockPosFromPoint(this.editorView, clientX, clientY);
+      // Use the editor's horizontal center for hit-testing so we always land
+      // inside the editor regardless of where the drag handle is (left of editor).
+      // Also clamp Y to editor bounds so we don't miss blocks when dragging past edges.
+      const editorRect = this.editorView.dom.getBoundingClientRect();
+      const hitX = editorRect.left + editorRect.width / 2;
+      const hitY = Math.max(editorRect.top + 1, Math.min(editorRect.bottom - 1, clientY));
+      const targetResult = getBlockPosFromPoint(this.editorView, hitX, hitY);
       if (!targetResult || !this.sourceBlockEl) return;
 
       const targetPos = targetResult.posBeforeNode;
@@ -497,29 +544,55 @@ class DropOverlayView {
         return;
       }
 
-      // Determine upper/lower half.
-      const targetDomEl = this.editorView.nodeDOM(targetPos) as HTMLElement | null;
-      if (!targetDomEl) return;
-      const targetRect = targetDomEl.getBoundingClientRect();
-      const placement: "before" | "after" = clientY < targetRect.top + targetRect.height / 2 ? "before" : "after";
-
-      this.currentTargetPos = targetPos;
-      this.currentPlacement = placement;
-
       // ── T2: translateY yield calculation ──────────────────────────────────
-      // Collect all blockOuter elements from the editor DOM.
+      // Collect all blockOuter elements first (before any DOM mutation).
       const allBlockOuters = Array.from(
         this.editorView.dom.querySelectorAll("[data-node-type='blockOuter']")
       ) as HTMLElement[];
 
-      // Find source and target indices.
-      const sourceIdx = allBlockOuters.indexOf(this.sourceBlockEl);
+      // Find source index — if not found, try to re-find by data-id.
+      let sourceIdx = allBlockOuters.indexOf(this.sourceBlockEl);
+      if (sourceIdx === -1 && this.sourceBlockEl) {
+        const sourceId = this.sourceBlockEl.getAttribute("data-id");
+        if (sourceId) {
+          const found = allBlockOuters.find(b => b.getAttribute("data-id") === sourceId);
+          if (found) {
+            this.sourceBlockEl = found;
+            sourceIdx = allBlockOuters.indexOf(found);
+          }
+        }
+      }
       if (sourceIdx === -1) return;
 
-      // Find target blockOuter: walk up from targetDomEl.
-      const targetBlockOuter = (targetDomEl.closest("[data-node-type='blockOuter']") ?? targetDomEl) as HTMLElement;
+      // Resolve target blockOuter from the pre-built allBlockOuters snapshot using data-id
+      // to avoid React re-render reference mismatches between nodeDOM and querySelectorAll results.
+      function findBoInSnapshot(raw: Element | null): HTMLElement | null {
+        if (!raw) return null;
+        const boEl = raw.closest("[data-node-type='blockOuter']") as HTMLElement | null;
+        if (!boEl) return null;
+        const id = boEl.getAttribute("data-id");
+        if (id) {
+          return allBlockOuters.find(b => b.getAttribute("data-id") === id) ?? null;
+        }
+        return allBlockOuters.find(b => b === boEl) ?? null;
+      }
+
+      const rawDom = this.editorView.nodeDOM(targetPos);
+      let targetBlockOuter = findBoInSnapshot(rawDom instanceof Element ? rawDom : null);
+      if (!targetBlockOuter) {
+        const elAtHit = document.elementFromPoint(hitX, hitY) as HTMLElement | null;
+        targetBlockOuter = findBoInSnapshot(elAtHit);
+      }
+      if (!targetBlockOuter) return;
+
       const targetIdx = allBlockOuters.indexOf(targetBlockOuter);
       if (targetIdx === -1) return;
+
+      const targetRect = targetBlockOuter.getBoundingClientRect();
+      const placement: "before" | "after" = clientY < targetRect.top + targetRect.height / 2 ? "before" : "after";
+
+      this.currentTargetPos = targetPos;
+      this.currentPlacement = placement;
 
       // Batch-read all rects first to avoid forced reflow during write phase.
       const sourceBlockHeight = this.sourceBlockEl.getBoundingClientRect().height;
@@ -622,11 +695,12 @@ class DropOverlayView {
     this._clearYieldTransforms();
     this._hideDropLine();
 
-    // Restore source block opacity.
-    if (this.sourceBlockEl) {
-      this.sourceBlockEl.style.opacity = "";
-      this.sourceBlockEl = null;
+    // Remove source dim overlay.
+    if (this.sourceOverlayEl) {
+      if (this.sourceOverlayEl.isConnected) this.sourceOverlayEl.parentNode?.removeChild(this.sourceOverlayEl);
+      this.sourceOverlayEl = null;
     }
+    this.sourceBlockEl = null;
 
     // Restore text selection.
     document.body.style.userSelect = "";
@@ -803,10 +877,11 @@ class DropOverlayView {
     removeOverlay();
 
     // Remove pointer event listeners (REQ-086 path).
-    this.editorView.dom.removeEventListener("pointerdown", this.onPointerDownBound);
-    this.editorView.dom.removeEventListener("pointermove", this.onPointerMoveBound);
-    this.editorView.dom.removeEventListener("pointerup", this.onPointerUpBound);
-    this.editorView.dom.removeEventListener("pointercancel", this.onPointerCancelBound);
+    document.removeEventListener("pointerdown", this.onPointerDownBound);
+    document.removeEventListener("pointermove", this.onPointerMoveBound);
+    document.removeEventListener("pointerup", this.onPointerUpBound);
+    document.removeEventListener("pointercancel", this.onPointerCancelBound);
+    document.removeEventListener("dragstart", this.onDragStartBound);
 
     // Full cleanup of any in-progress drag.
     if (this.isDragging) {

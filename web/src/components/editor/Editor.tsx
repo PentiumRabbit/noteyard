@@ -1188,9 +1188,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
   const editor = useCreateBlockNote({
     schema,
     dictionary: { ...locales.zh, multi_column: multiColumnLocales.zh },
-    // Keep multiColumnDropCursor for handleDrop logic (columnList creation).
-    // Visual overlay is suppressed (width: 0, color: false); dropOverlayPlugin handles rendering.
-    dropCursor: (opts) => multiColumnDropCursor({ ...opts, color: false, width: 0 }),
+    // dropOverlayPlugin handles all drop logic (regular moves + columnList creation).
+    // Pass multiColumnDropCursor for visual cursor only; its handleDrop is bypassed because
+    // our dropOverlayPlugin is registered later and we return true for all BlockNote drags,
+    // but multiColumnDropCursor runs first — so we wrap it to strip its handleDrop.
+    dropCursor: (opts) => {
+      const plugin = multiColumnDropCursor({ ...opts, color: false, width: 0 });
+      // Remove handleDrop so our dropOverlayPlugin gets every drop event first.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const spec = (plugin as any).spec;
+      if (spec?.props?.handleDrop) {
+        spec.props.handleDrop = () => false;
+      }
+      return plugin;
+    },
     uploadFile: async (file: File) => {
       const data = await api.uploads.upload(file);
       // 后端返回相对路径后需拼接 API_BASE；startsWith("http") 保持过渡期兼容
@@ -1206,7 +1217,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor({ pageId, 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tiptap = (editor as any)._tiptapEditor;
     if (tiptap) {
-      tiptap.registerPlugin(overlayPlugin);
+      // Insert at front so our handleDrop runs before multiColumnDropCursor's.
+      tiptap.registerPlugin(overlayPlugin, (plugin: unknown, plugins: unknown[]) => [plugin, ...plugins]);
     }
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

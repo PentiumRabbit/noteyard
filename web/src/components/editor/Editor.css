@@ -753,6 +753,11 @@
 .toggle-arrow.open { transform: rotate(90deg); }
 .toggle-summary { flex: 1; min-width: 0; }
 
+/* ── drag source dim (REQ-086) ── */
+.bn-drag-source {
+  opacity: 0.3;
+}
+
 /* ── multi-column layout: match columnList spacing to normal block spacing ── */
 .editor-wrap .bn-block-column {
   padding-block: 0 !important;
