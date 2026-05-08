@@ -1,0 +1,25 @@
+[meta]
+dispatch_id = 222
+assignee    = "arch-frontend-REQ084"
+role_key    = "arch-frontend"
+created_at  = "2026-05-05"
+
+[delivery]
+status       = "delivered"
+delivered_at = "2026-05-05"
+
+[items]
+review_doc_created            = true   # docs/architecture/REQ-084-review.md 已创建
+module_list_defined           = true   # §一 模块列表已定义（editor 模块）
+propSchema_extension          = true   # §3.1 rules 字段类型 + 序列化策略完整说明
+rules_editor_ui               = true   # §3.2 状态管理/草稿/面板内交互约束完整说明
+handler_integration           = true   # §3.3 run_rules 分支整合方案完整说明
+variable_replacer_design      = true   # §3.4 resolveVariables 接口 + ctxRef 扩展完整说明
+risks_identified              = true   # §3.5 6 项风险识别（面板交互/末尾插入/模块函数/toast import/state回填/TS类型）
+regression_analysis           = true   # §3.6 回归影响分析 + 6 项回归验证点
+task_split                    = true   # §3.7 T1/T2/T3/T4 拆分建议（边界清晰，顺序依赖标注）
+interface_contracts           = true   # §四 接口契约完整（propSchema/类型/工具函数/API 调用）
+no_backend_modification       = true   # 未涉及后端文件
+
+[summary]
+text = "REQ-084 前端架构评审完成。7 个评审要点全部覆盖：propSchema 新增 rules 字段（JSON string）；规则编辑 UI 嵌入现有面板（不新建文件）；executeRules 为模块级函数通过 btn.disabled 防重；resolveVariables 为模块级工具函数；识别 6 项风险（面板 onClick 约束、append_content 末尾插入 API、toast import、rulesDraft 回填 effect、TS 穷举检查、ctxRef.pageTitle 来源）；回归影响分析覆盖 6 项现有功能；T1–T4 任务拆分顺序依赖明确。"

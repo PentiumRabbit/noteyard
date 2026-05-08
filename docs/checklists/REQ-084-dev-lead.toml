@@ -1,0 +1,17 @@
+[checklist]
+role       = "dev-lead"
+req        = "REQ-084"
+dispatch   = 221
+created_at = "2026-05-05"
+
+[items]
+req_doc_read            = { done = true,  note = "已读 REQ-084.md，理解需求全文" }
+module_tree_checked     = { done = true,  note = "MODULE-TREE.md 确认，变更范围属 frontend/editor 模块" }
+arch_dispatch_inserted  = { done = true,  note = "dispatch 行 #222 已写入，assignee=arch-frontend-REQ084" }
+arch_role_correct       = { done = true,  note = "REQ-084 只涉及前端 editor 模块，委派 arch-frontend，正确" }
+no_agent_called         = { done = true,  note = "未直接调用 Agent，仅写 dispatch 行" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-05"
+note         = "已委派 arch-frontend-REQ084（dispatch #222）完成架构评审，等待评审结果后执行 N2"

@@ -1,0 +1,26 @@
+status = "delivered"
+delivered_at = "2026-05-05"
+dispatch_id = 210
+assignee = "dev-lead-REQ083"
+
+summary = "REQ-083 统筹规划完成。需求文档已确认（FR-1背景色/FR-2修复ISS-043/FR-3新建子页面/FR-4编辑页面属性），MODULE-TREE确认为 frontend/editor 单模块需求。已委派 arch-frontend-editor-REQ083（#211）进行架构评审；dev-lead-REQ083-续1（#212）在架构评审完成后接续委派工程师和测试。"
+
+[[items]]
+id = "read-req"
+description = "读取并确认 REQ-083.md 需求文档（FR-1/FR-2/FR-3/FR-4）及 ISS-043.md"
+status = "done"
+
+[[items]]
+id = "check-module-tree"
+description = "确认 MODULE-TREE.md：需求仅涉及 frontend/editor 单模块"
+status = "done"
+
+[[items]]
+id = "delegate-arch"
+description = "委派 arch-frontend-editor-REQ083 (#211) 进行架构评审，产出 REQ-083-review.md"
+status = "done"
+
+[[items]]
+id = "delegate-续1"
+description = "委派 dev-lead-REQ083-续1 (#212, blocked_by #211)，等架构评审后接续委派工程师和测试"
+status = "done"

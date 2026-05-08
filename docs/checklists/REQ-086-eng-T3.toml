@@ -1,0 +1,48 @@
+[delivery]
+status = "delivered"
+delivered_at = "2026-05-07T00:00:00Z"
+dispatch_id = 249
+assignee = "eng-frontend-REQ086-T3"
+
+[[items]]
+check = "onPointerUp 事务提交实现（removeBlocks + insertBlocks）"
+result = "pass"
+
+[[items]]
+check = "isDragging 保护幂等（第二次 pointerup 直接 return）"
+result = "pass"
+
+[[items]]
+check = "cleanupDrag() 前捕获 targetPos/placement/sourceBlockPos"
+result = "pass"
+
+[[items]]
+check = "try/catch 包裹事务，失败时视觉已清理不崩溃"
+result = "pass"
+
+[[items]]
+check = "pointercancel 只执行 cleanupDrag()，不提交事务"
+result = "pass"
+
+[[items]]
+check = "destroy() 移除全部 4 个 pointer 监听器"
+result = "pass"
+
+[[items]]
+check = "cleanupDrag() 覆盖：ghost/dropLine/transform/opacity/userSelect"
+result = "pass"
+
+[[items]]
+check = "删除 T1 console.log 占位"
+result = "pass"
+
+[[items]]
+check = "handleMultiColumnDrop 零修改"
+result = "pass"
+
+[[items]]
+check = "tsc --noEmit 零错误"
+result = "pass"
+
+[summary]
+text = "T3 完成：pointerup 实现 ProseMirror 事务提交（findBlockById 提取为模块级函数，editor 注入 DropOverlayView，removeBlocks+insertBlocks+try/catch 回滚）；pointercancel 无事务（已验证）；destroy() 全量清理完整；调试代码已删除；tsc 零错误；handleMultiColumnDrop 零修改。"

@@ -1,0 +1,61 @@
+status = "delivered"
+delivered_at = "2026-05-07"
+dispatch_id = 251
+assignee = "pm-REQ087"
+
+summary = "REQ-087 需求文档编写完成。覆盖编辑器内块拖拽视觉增强的 5 个功能需求：FR-1 条目跟随（ghost element 半透明跟随鼠标）、FR-2 挤压效果（translateY 动画实时让位）、FR-3 落点指示线、FR-4 水平分栏保持、FR-5 ISS-048 修复。场景矩阵 12 行，覆盖五维度框架（来源/优先级维度不适用已说明）；验收标准含可量化条目（连续 10 次拖拽无 DOM 泄漏、150ms ease 动画）。明确前端改动范围仅限 web/src/components/editor/dropOverlayPlugin.ts，无需后端变更。"
+
+[[items]]
+id = "read-rules-all"
+description = "读取 all.md 全角色强制规则"
+status = "done"
+
+[[items]]
+id = "read-rules-pm"
+description = "读取 pm.md PM 强制规则"
+status = "done"
+
+[[items]]
+id = "read-iss-048"
+description = "读取 docs/issues/ISS-048.md 了解 bug 现象和修复记录"
+status = "done"
+
+[[items]]
+id = "read-iss-048-review"
+description = "读取 docs/architecture/ISS-048-review.md 了解根因分析和修复方案"
+status = "done"
+
+[[items]]
+id = "read-req-064"
+description = "读取 docs/requirements/tech/REQ-064.md 参考需求文档格式"
+status = "done"
+
+[[items]]
+id = "read-dropoverlay"
+description = "读取 web/src/components/editor/dropOverlayPlugin.ts 了解当前拖拽实现"
+status = "done"
+
+[[items]]
+id = "write-req-087"
+description = "编写 docs/requirements/tech/REQ-087.md，覆盖 FR-1 至 FR-5、场景矩阵（≥6行）、验收标准（含可量化条目）、前端改动范围、不在范围"
+status = "done"
+
+[[items]]
+id = "verify-scenario-matrix"
+description = "确认场景矩阵 12 行 ≥ 6，覆盖五维度框架，来源/优先级维度不适用已说明"
+status = "done"
+
+[[items]]
+id = "verify-acceptance-criteria"
+description = "确认验收标准含可量化条目（连续10次拖拽无DOM泄漏、150ms ease动画）"
+status = "done"
+
+[[items]]
+id = "verify-frontend-scope"
+description = "确认前端改动范围明确（web/src/components/editor/dropOverlayPlugin.ts），后端无需变更"
+status = "done"
+
+[[items]]
+id = "verify-priority"
+description = "确认优先级 P1 合理（用户可见的交互体验增强）"
+status = "done"

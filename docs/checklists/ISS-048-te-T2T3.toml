@@ -1,0 +1,21 @@
+[checklist]
+role       = "te"
+req        = "ISS-048"
+dispatch   = 234
+created_at = "2026-05-06"
+
+[items]
+rules_read         = { done = true, note = "读取 all.md 和 te.md" }
+review_read        = { done = true, note = "读取 ISS-048-review.md §四" }
+t2_side_regular    = { done = true, note = "side=regular 分支已改用 BlockNote API（removeBlocks+insertBlocks），返回 true" }
+t2_tsc             = { done = true, note = "npx tsc --noEmit 无报错" }
+t2_logic_review    = { done = true, note = "removeBlocks+insertBlocks 逻辑正确，自身拖拽保护通过" }
+t3_column_paths    = { done = true, note = "side=left/right 分栏路径代码未改动" }
+t3_structure       = { done = true, note = "handleMultiColumnDrop 整体结构完整" }
+report_created     = { done = true, note = "docs/tests/ISS-048-regression.md 已创建" }
+regression_updated = { done = true, note = "docs/requirements/regression-checklist.md 已追加 ISS-048 回归记录" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-06"
+note         = "T2/T3 全部通过。side=regular 分支已正确接管普通拖拽，TypeScript 编译无报错，side=left/right 分栏路径无回归，handleMultiColumnDrop 整体结构完整。ISS-048 可放行 N3。"

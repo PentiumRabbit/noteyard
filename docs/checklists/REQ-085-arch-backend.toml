@@ -1,0 +1,16 @@
+[checklist]
+role       = "arch-backend"
+req        = "REQ-085"
+dispatch   = 240
+created_at = "2026-05-06"
+
+[items]
+req_read         = { done = false, note = "" }
+codebase_read    = { done = false, note = "" }
+review_written   = { done = false, note = "" }
+task_split_done  = { done = false, note = "" }
+
+[summary]
+status       = "pending"
+delivered_at = ""
+note         = ""

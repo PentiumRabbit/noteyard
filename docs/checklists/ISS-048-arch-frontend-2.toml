@@ -1,0 +1,21 @@
+[meta]
+dispatch_id = 231
+assignee    = "前端架构师-ISS048-RCA2"
+role_key    = "arch-frontend"
+created_at  = "2026-05-06"
+
+[delivery]
+status       = "delivered"
+delivered_at = "2026-05-06"
+
+[items]
+read_issue_doc           = true   # 读取 docs/issues/ISS-048.md 确认 bug 现象
+read_dnd_code            = true   # 读取 dropOverlayPlugin.ts 及相关 BlockNote/ProseMirror 代码
+root_cause_identified    = true   # 确认根因：handleMultiColumnDrop side=regular 返回 false，ProseMirror 默认路径使用 BlockNote onDragStart 重建的封闭 Slice（openStart=0）触发 fillBefore 空白
+affected_files_listed    = true   # dropOverlayPlugin.ts 为唯一需修改的业务文件
+fix_approach_defined     = true   # 在 side=regular 分支用 BlockNote removeBlocks+insertBlocks API 接管，返回 true 跳过 ProseMirror 默认路径
+review_doc_created       = true   # docs/architecture/ISS-048-review.md 已创建
+task_split_defined       = true   # T1（核心修复）、T2（回归验证）、T3（分栏不回归）
+
+[summary]
+text = "根因：dropOverlayPlugin handleDrop 对普通拖拽返回 false，ProseMirror 默认 drop 路径使用 BlockNote onDragStart 重建的封闭 Slice（openStart=0），replaceRange 触发 fillBefore 在 blockContent 前插入空白文本。修复：在 side=regular 分支改用 BlockNote removeBlocks+insertBlocks API，返回 true 跳过 ProseMirror 默认路径。"

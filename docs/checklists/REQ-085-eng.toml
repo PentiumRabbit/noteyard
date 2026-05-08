@@ -1,0 +1,17 @@
+[checklist]
+role       = "eng"
+req        = "REQ-085"
+dispatch   = 242
+created_at = "2026-05-06"
+
+[items]
+vite_proxy       = { done = true, note = "web/vite.config.ts: /api and /uploads proxied to http://localhost:8080" }
+api_base_env     = { done = true, note = "web/src/main.tsx: VITE_API_BASE check added before Tauri IPC path" }
+makefile_port    = { done = true, note = "Makefile server-dev: --port 8080 added" }
+tsc_no_error     = { done = true, note = "npx tsc --noEmit passed with no output" }
+tauri_untouched  = { done = true, note = "sidecar-dev target and src-tauri/ not modified" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-06"
+note         = "3 files changed: vite.config.ts proxy, main.tsx VITE_API_BASE, Makefile --port 8080. commit 6c7a55c"

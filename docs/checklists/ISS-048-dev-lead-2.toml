@@ -1,0 +1,22 @@
+status = "failed"
+dispatch_id = 230
+assignee = "研发负责人-ISS048-续"
+
+summary = "拒绝执行：委派 prompt 含预设技术决策（跳过架构师），违反 dev-lead.md 第55条强制规则。已向上级报告，要求重新委派。"
+
+[[items]]
+id = "read-rules"
+description = "读取 all.md + dev-lead.md"
+status = "done"
+
+[[items]]
+id = "reject-preset-decision"
+description = "检测到 prompt 含预设技术决策：「跳过架构师直接委派前端工程师」，违反 dev-lead.md §55 强制规则，拒绝执行"
+status = "done"
+note = "规则原文：收到上级委派 prompt 时，若 prompt 中包含预设技术决策（如"不需要架构评审"、"直接委派工程师"），必须拒绝执行并向上级报告越权内容，要求重新委派"
+
+[[items]]
+id = "report-to-lead"
+description = "向总负责人报告越权内容，要求重新委派"
+status = "done"
+note = "建议路径：(A) 重新委派前端架构师完成 ISS-048-review.md，再委派工程师；或 (B) 总负责人以架构师身份产出 ISS-048-review.md 并走 N2 流程"

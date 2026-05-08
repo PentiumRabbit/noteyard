@@ -1,0 +1,51 @@
+status = "delivered"
+delivered_at = "2026-05-07"
+dispatch_id = 244
+assignee = "pm-REQ086"
+
+summary = "REQ-086 需求文档编写完成。拖拽排序视觉反馈增强：FR-1 ghost 半透明效果（setDragImage），FR-2 蓝色横线插入指示（替换 regular 场景填充框），FR-3 拖拽结束清理。列创建场景（左/右 15%）保留现有填充框行为，ISS-048 成果不受影响。场景矩阵 12 行，覆盖五维度框架；验收标准含可量化条目（opacity 0.5、横线 2px、tsc 零错误）。MVP 与 Nice-to-have 明确区分，不在本期列出 4 项。"
+
+[[items]]
+id = "read-rules-all"
+description = "读取 all.md 全角色强制规则"
+status = "done"
+
+[[items]]
+id = "read-rules-pm"
+description = "读取 pm.md PM 强制规则"
+status = "done"
+
+[[items]]
+id = "read-drop-overlay-plugin"
+description = "读取 dropOverlayPlugin.ts 了解现有拖拽实现"
+status = "done"
+
+[[items]]
+id = "read-editor-css"
+description = "读取 Editor.css 了解现有 bn-drop-overlay 样式"
+status = "done"
+
+[[items]]
+id = "write-req-086"
+description = "编写 docs/requirements/features/REQ-086.md，覆盖 FR-1 至 FR-3、场景矩阵（≥6行）、验收标准（含可量化条目）"
+status = "done"
+
+[[items]]
+id = "verify-scenario-matrix"
+description = "确认场景矩阵行数 ≥ 6 且覆盖五维度框架（12行，含不适用说明）"
+status = "done"
+
+[[items]]
+id = "verify-acceptance-criteria"
+description = "确认验收标准至少一条可量化（opacity 0.5、横线 2px、tsc 零错误）"
+status = "done"
+
+[[items]]
+id = "verify-mvp-vs-nice-to-have"
+description = "确认 MVP 与 Nice-to-have 明确区分（不在本期 4 项）"
+status = "done"
+
+[[items]]
+id = "git-commit"
+description = "git add REQ-086.md + git commit（不含 toml 流程文件）"
+status = "done"

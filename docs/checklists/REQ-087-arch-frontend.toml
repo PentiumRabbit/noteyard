@@ -1,0 +1,29 @@
+[checklist]
+role       = "arch-frontend"
+req        = "REQ-087"
+dispatch   = 253
+created_at = "2026-05-07"
+
+[items]
+# 架构师自检项（CHECKLISTS.md §一点五），由 arch-frontend 执行时填写
+rules_all_read              = { done = true, note = "已读 all.md" }
+rules_arch_read             = { done = true, note = "已读 arch-frontend.md" }
+req_doc_read                = { done = true, note = "已读 REQ-087.md" }
+summary_prereq_checked      = { done = true, note = "已读 arch-frontend.md 摘要" }
+module_list_declared        = { done = true, note = "editor 模块" }
+module_impact_listed        = { done = true, note = "dropOverlayPlugin.ts + Editor.css" }
+functional_layers_annotated = { done = true, note = "FR-1~FR-5 分层标注完成" }
+state_management_designed   = { done = true, note = "新增 ghostOffsetX/Y，其余不变" }
+data_flow_mapped            = { done = true, note = "含 Escape 取消 + ghost 偏移" }
+interface_contract_listed   = { done = true, note = "工厂函数签名不变，CSS 类不变" }
+reusable_components_checked = { done = true, note = "无提取项" }
+options_compared            = { done = true, note = "ghost 偏移策略 + Escape 实现" }
+task_split_table_filled     = { done = true, note = "T1~T5 共 5 个任务" }
+regression_analysis_filled  = { done = true, note = "10 个回归点" }
+summary_updated             = { done = true, note = "arch-frontend.md 已更新" }
+git_committed               = { done = true, note = "commit a33b1f9" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-07"
+note         = "架构评审文档已产出：docs/architecture/REQ-087-review.md。识别 4 个待补齐项（Escape 取消、ghost 偏移、columnList 命中、源块重查找），拆分为 4 个并行工程师任务 + 1 个测试回归任务。"

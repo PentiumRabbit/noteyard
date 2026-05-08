@@ -1,0 +1,26 @@
+status = "pending"
+dispatch_id = 0
+assignee = "研发负责人-ISS048"
+
+summary = ""
+
+[[items]]
+id = "read-iss"
+description = "读取 ISS-048.md 确认 bug 描述"
+status = "done"
+
+[[items]]
+id = "root-cause-analysis"
+description = "委派模块架构师进行根因分析"
+status = "done"
+note = "已委派前端架构师-ISS048-RCA，dispatch #229"
+
+[[items]]
+id = "fix-impl"
+description = "委派工程师实施修复"
+status = "pending"
+
+[[items]]
+id = "regression-test"
+description = "委派测试执行者回归验证"
+status = "pending"

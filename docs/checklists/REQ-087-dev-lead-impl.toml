@@ -1,0 +1,67 @@
+assignee = "dev-lead-REQ087-impl"
+dispatch_id = 254
+status = "delivered"
+delivered_at = "2026-05-07T07:18:38Z"
+
+[[items]]
+description = "读 docs/engineering/rules/all.md"
+done = true
+
+[[items]]
+description = "读 docs/engineering/rules/dev-lead.md"
+done = true
+
+[[items]]
+description = "读 docs/architecture/REQ-087-review.md"
+done = true
+
+[[items]]
+description = "CHECKLISTS.md §一点五 研发负责人核查 全部10项通过"
+done = true
+
+[[items]]
+description = "MODULE-TREE.md 确认：frontend/editor 无模块组长，dev-lead 直接委派工程师"
+done = true
+
+[[items]]
+description = "委派 T1 (#256 eng-T1): Escape 键取消拖拽"
+done = true
+
+[[items]]
+description = "委派 T2 (#257 eng-T2): Ghost 偏移量优化"
+done = true
+
+[[items]]
+description = "委派 T3 (#258 eng-T3): ColumnList 目标命中修复"
+done = true
+
+[[items]]
+description = "委派 T4 (#259 eng-T4): 源块 column 内重查找修复"
+done = true
+
+[[items]]
+description = "委派 T5 (#260 te): 验收回归，prereqs=256,257,258,259"
+done = true
+
+[[items]]
+description = "T1-T4 零文件交叉（各自修改 dropOverlayPlugin.ts 不同函数/区域），可完全并行"
+done = true
+
+[[items]]
+description = "未调用 Agent 工具，全部通过 dispatch-write insert 写 dispatch 行"
+done = true
+
+summary = """
+REQ-087 实现阶段统筹完成。架构评审（docs/architecture/REQ-087-review.md）已通过 N2，
+识别出 4 个可并行工程师任务 + 1 个验收回归任务，总改动量约 50–80 行，均在 dropOverlayPlugin.ts 单文件内。
+
+委派清单：
+- #256 eng-T1: Escape 键取消拖拽（keydown 监听器 + cleanupDrag）
+- #257 eng-T2: Ghost 偏移量优化（ghostOffsetX/Y 消除首次 pointermove 跳变）
+- #258 eng-T3: ColumnList 目标命中修复（column 内目标提升到 columnList 级别）
+- #259 eng-T4: 源块 column 内重查找修复（扩展 data-id 重查找至 allBlockOuters）
+- #260 te:    验收回归（场景矩阵全覆盖 + ISS-048 回归），依赖 #256-#259
+
+T1-T4 零文件交叉，可完全并行。T5 等待 T1-T4 全部完成后自动触发。
+所有委派均通过 dispatch-write insert 写入 dispatch.db，未调用 Agent 工具。
+"""

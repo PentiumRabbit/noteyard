@@ -1,0 +1,26 @@
+status = "delivered"
+delivered_at = "2026-05-06"
+dispatch_id = 237
+assignee = "前端工程师-ISS048-T2"
+
+[[items]]
+description = "T1: side=regular 分支从 editor.document 按 ID 查找 draggedBlock（不使用 nodeToBlock）"
+done = true
+
+[[items]]
+description = "T2: handleMultiColumnDrop 中统一使用 SIDE_THRESHOLD 常量，删除局部 THRESHOLD=0.1"
+done = true
+
+[[items]]
+description = "npx tsc --noEmit 无报错"
+done = true
+
+[[items]]
+description = "git commit 格式：fix(editor)[eng-frontend#237]: ISS-048 修复拖拽前导空白和并排问题"
+done = true
+
+[[items]]
+description = "只修改 web/src/components/editor/dropOverlayPlugin.ts"
+done = true
+
+summary = "T1: 从 dataTransfer.getData('blocknote/html') 解析 data-id，通过递归函数在 editor.document 中查找原始 block，避免 nodeToBlock 返回新 ID 副本导致 removeBlocks 抛出异常。T2: 删除 handleMultiColumnDrop 局部 THRESHOLD=0.1，统一使用文件顶部 SIDE_THRESHOLD=0.15 常量。TypeScript 编译无报错。commit: 033f1b6。"

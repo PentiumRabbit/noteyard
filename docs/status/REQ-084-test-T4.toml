@@ -1,0 +1,7 @@
+[status]
+role       = "test-lead"
+req        = "REQ-084"
+dispatch   = 226
+phase      = "T4"
+created_at = "2026-05-05"
+state      = "pending"

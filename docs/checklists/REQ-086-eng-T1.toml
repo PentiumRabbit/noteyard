@@ -1,0 +1,80 @@
+assignee = "eng-frontend-REQ086-T1"
+dispatch_id = 247
+status = "delivered"
+delivered_at = "2026-05-07T00:00:00Z"
+
+[[items]]
+description = "读 docs/engineering/rules/all.md"
+done = true
+
+[[items]]
+description = "读 docs/engineering/rules/eng.md"
+done = true
+
+[[items]]
+description = "读 docs/architecture/REQ-086-review.md"
+done = true
+
+[[items]]
+description = "读 web/src/components/editor/dropOverlayPlugin.ts"
+done = true
+
+[[items]]
+description = "新增 pointer events 状态字段（isDragging/sourceBlockEl/sourceBlockPos/ghostEl/pointerId/rafId）"
+done = true
+
+[[items]]
+description = "pointerdown：drag handle 检测（data-test=dragHandle），找 blockOuter + PM 位置，创建 ghost，opacity 0.3，setPointerCapture try/catch，userSelect=none"
+done = true
+
+[[items]]
+description = "pointermove：rAF 节流框架，ghost 坐标跟随指针"
+done = true
+
+[[items]]
+description = "pointerup：isDragging 保护，console.log 占位（T3 事务），cleanupDrag"
+done = true
+
+[[items]]
+description = "pointercancel：isDragging 保护，cleanupDrag（不提交事务）"
+done = true
+
+[[items]]
+description = "cleanupDrag()：取消 rAF，移除 ghost，恢复 opacity，恢复 userSelect，重置状态"
+done = true
+
+[[items]]
+description = "destroy()：移除所有新增 pointer 监听器，清理进行中的拖拽"
+done = true
+
+[[items]]
+description = "handleMultiColumnDrop 零修改，lastDragoverSide 保留"
+done = true
+
+[[items]]
+description = "dragover/dragleave/drop/dragend 监听器全量保留"
+done = true
+
+[[items]]
+description = "tsc --noEmit 零错误"
+done = true
+
+[[items]]
+description = "git commit：feat(editor)[eng#247]，仅含 dropOverlayPlugin.ts"
+done = true
+
+[[items]]
+description = "更新 docs/summaries/eng-editor.md"
+done = true
+
+summary = """
+REQ-086 T1 实现完成。在 DropOverlayView 中新增完整 pointer events 拖拽引擎基础：
+pointerdown 检测 BlockNote drag handle（data-test=dragHandle），定位 blockOuter DOM
+和 ProseMirror 位置，克隆创建 ghost（fixed 定位，opacity 0.6，z-index 100），
+设置 sourceBlock opacity 0.3，document.body.style.userSelect=none，
+setPointerCapture try/catch 降级；pointermove 通过 rAF 节流更新 ghost 坐标（T2 扩展点预留）；
+pointerup/pointercancel 均有 isDragging 保护，cleanupDrag 统一清理所有资源；
+destroy() 移除新增监听器并清理进行中的拖拽。
+HTML5 drag 路径（ISS-048 handleMultiColumnDrop/lastDragoverSide/dragover 等）全量保留。
+tsc --noEmit 零错误。
+"""

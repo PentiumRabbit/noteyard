@@ -1,0 +1,30 @@
+[checklist]
+role       = "arch-frontend"
+req        = "REQ-086"
+dispatch   = 246
+created_at = "2026-05-07"
+
+[items]
+rules_all_read              = { done = true,  note = "已读 docs/engineering/rules/all.md" }
+rules_arch_read             = { done = true,  note = "已读 docs/engineering/rules/arch.md" }
+req_doc_read                = { done = true,  note = "已读 REQ-086.md v2.0：完全放弃 HTML5 drag-and-drop，改用 pointer events 手动实现拖拽系统" }
+existing_plugin_read        = { done = true,  note = "已读 dropOverlayPlugin.ts（489 行），理解 handleMultiColumnDrop / DropOverlayView / lastDragoverSide 现有结构" }
+summary_prereq_checked      = { done = true,  note = "已读 docs/summaries/arch-frontend.md（前置摘要）" }
+module_list_declared        = { done = true,  note = "review.md 包含模块列表段：editor 模块（web/src/components/editor/）" }
+module_impact_listed        = { done = true,  note = "dropOverlayPlugin.ts（重写）+ Editor.css（新增样式）均已列出" }
+functional_layers_annotated = { done = true,  note = "每个功能点标注 UI 层 / 业务逻辑层" }
+state_management_designed   = { done = true,  note = "9 个 DropOverlayView 私有状态全部列出，共享范围标注" }
+data_flow_mapped            = { done = true,  note = "pointerdown→pointermove→pointerup/pointercancel 完整路径梳理" }
+interface_contract_listed   = { done = true,  note = "工厂函数签名不变，新增 CSS 类，保留函数明确说明" }
+reusable_components_checked = { done = true,  note = "3 个候选识别，决策均为留原位（单次使用不抽象）" }
+options_compared            = { done = true,  note = "3 个方案对比：注册位置、rAF 节流、ISS-048 保留策略；均已拍板" }
+task_split_table_filled     = { done = true,  note = "T1/T2/T3/T4 完整，含依赖关系，T4 为测试执行者" }
+iss048_preserved            = { done = true,  note = "handleMultiColumnDrop 零修改保留方案已在 §八.3 和末尾专项说明中明确" }
+regression_analysis_filled  = { done = true,  note = "8 个回归点，P0/P1 优先级，含 ISS-048 回归" }
+summary_updated             = { done = true,  note = "docs/summaries/arch-frontend.md 已追加 REQ-086 评审摘要" }
+git_committed               = { done = true,  note = "commit eda8de5：docs/architecture/REQ-086-review.md + docs/summaries/arch-frontend.md" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-07"
+note         = "REQ-086 前端架构评审完成。核心方案：pointer events 拖拽引擎（ghost + translateY 让位 + rAF 节流 + 蓝色指示线）；ISS-048 handleMultiColumnDrop 零修改保留；pointer events 路径与 HTML5 drag 路径共存。任务拆分 T1→T2→T3→T4 串行。输出 docs/architecture/REQ-086-review.md，已 commit。"

@@ -1,0 +1,33 @@
+role      = "研发负责人"
+role_key  = "dev-lead"
+task      = "REQ-066 建立前端/后端专项架构师角色体系"
+req_doc   = "docs/requirements/tech/REQ-066.md"
+constraints = [
+  "改动范围限 ai-pro/docs/engineering/ 和 noteyard/docs/summaries/",
+  "不涉及用户可感知功能",
+  "规范文档修改须遵守 STARTUP.md §零点五 的单一来源原则",
+]
+rules_ref = "docs/engineering/rules/dev-lead.md"
+
+status       = "delivered"
+delivered_at = "2026-05-05T00:00:00"
+
+[[items]]
+path = "ai-pro/docs/engineering/rules/arch-frontend.md"
+
+[[items]]
+path = "ai-pro/docs/engineering/rules/arch-backend.md"
+
+[[items]]
+path = "ai-pro/docs/engineering/TEAM.md"
+
+[[items]]
+path = "ai-pro/docs/engineering/HIERARCHY.md"
+
+[[items]]
+path = "noteyard/docs/summaries/arch-frontend.md"
+
+[[items]]
+path = "noteyard/docs/summaries/arch-backend.md"
+
+summary = "REQ-066 完成：rules/arch-frontend.md 和 arch-backend.md 升级为独立角色规则（role_key arch-frontend/arch-backend）；TEAM.md 新增 §3.7a/§3.7b 独立角色定义；HIERARCHY.md §五更新对照表；DELEGATION.md 端属性判断逻辑和 delegation-templates.md 前后端模板均已就位（前序版本已完成）；noteyard 两个摘要文件已存在且 git commit。"

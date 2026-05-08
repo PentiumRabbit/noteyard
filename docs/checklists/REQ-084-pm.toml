@@ -1,0 +1,46 @@
+status = "delivered"
+delivered_at = "2026-05-05"
+dispatch_id = 209
+assignee = "pm-REQ084"
+
+summary = "REQ-084 需求文档编写完成。新增动作类型 run_rules，支持用户配置最多 10 条自动化规则（create_page / append_content / set_page_prop / notify），点击按钮时顺序执行，任意规则失败时中止并提示，支持变量占位符替换。场景矩阵 16 行，覆盖五维度框架；验收标准含可量化条目（10 条上限）。"
+
+[[items]]
+id = "read-rules-all"
+description = "读取 all.md 全角色强制规则"
+status = "done"
+
+[[items]]
+id = "read-rules-pm"
+description = "读取 pm.md PM 强制规则"
+status = "done"
+
+[[items]]
+id = "read-req-083"
+description = "读取 REQ-083.md 了解按钮块已有功能和动作类型"
+status = "done"
+
+[[items]]
+id = "read-editor-tsx"
+description = "读取 Editor.tsx ButtonBlock 相关实现（propSchema / handleClick / 设置面板）"
+status = "done"
+
+[[items]]
+id = "write-req-084"
+description = "编写 docs/requirements/features/REQ-084.md，覆盖 FR-1 至 FR-5、场景矩阵（≥6行）、验收标准（含可量化条目）"
+status = "done"
+
+[[items]]
+id = "verify-scenario-matrix"
+description = "确认场景矩阵行数 ≥ 6 且覆盖五维度框架"
+status = "done"
+
+[[items]]
+id = "verify-acceptance-criteria"
+description = "确认验收标准至少一条可量化（规则上限 10 条）"
+status = "done"
+
+[[items]]
+id = "git-commit"
+description = "git add REQ-084.md + git commit（不含 toml 流程文件）"
+status = "done"

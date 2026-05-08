@@ -1,0 +1,21 @@
+[meta]
+dispatch_id = 229
+assignee    = "前端架构师-ISS048-RCA"
+role_key    = "arch-frontend"
+created_at  = "2026-05-06"
+
+[delivery]
+status       = "pending"
+delivered_at = ""
+
+[items]
+read_issue_doc           = false  # 读取 docs/issues/ISS-048.md 确认 bug 现象
+read_dnd_code            = false  # 读取拖拽排序相关前端代码（web/src/components/editor）
+root_cause_identified    = false  # 确认 tab 字符来源（序列化/反序列化/事件处理/状态更新）
+affected_files_listed    = false  # 列出受影响文件清单
+fix_approach_defined     = false  # 提出修复方案（不实现，只定义方案）
+review_doc_created       = false  # docs/architecture/ISS-048-review.md 已创建
+task_split_defined       = false  # 工程师任务拆分表已定义
+
+[summary]
+text = ""

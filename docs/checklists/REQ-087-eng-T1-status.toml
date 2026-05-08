@@ -1,0 +1,12 @@
+role = "eng-REQ087-T1"
+req = "REQ-087"
+overall = "delivered"
+
+[checklist]
+log_created = true
+subtasks_done = true
+delivered = true
+awaiting_review = false
+
+[subordinates]
+paths = []

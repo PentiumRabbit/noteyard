@@ -1,0 +1,88 @@
+[delivery]
+status = "delivered"
+delivered_at = "2026-05-07T00:00:00Z"
+dispatch_id = 250
+assignee = "test-runner-REQ086"
+
+[[items]]
+check = "tsc --noEmit 零错误"
+result = "pass"
+
+[[items]]
+check = "pointerdown：正确找到拖拽手柄（data-test=dragHandle）和 sourceBlock（blockOuter）"
+result = "pass"
+
+[[items]]
+check = "pointermove：rAF 节流（rafId !== null 则跳过，每帧最多执行一次）"
+result = "pass"
+
+[[items]]
+check = "pointermove：ghost 跟随指针坐标（ghostEl.style.left/top 更新）"
+result = "pass"
+
+[[items]]
+check = "pointermove：translateY 让位计算（yieldStart/yieldEnd/yieldDelta，批量读后批量写）"
+result = "pass"
+
+[[items]]
+check = "pointermove：dropLine 更新（before=targetRect.top，after=targetRect.bottom）"
+result = "pass"
+
+[[items]]
+check = "pointerup：isDragging 保护（第二次调用直接 return，幂等）"
+result = "pass"
+
+[[items]]
+check = "pointerup：事务提交（removeBlocks + insertBlocks）"
+result = "pass"
+
+[[items]]
+check = "pointerup：try/catch 包裹事务，失败时视觉已清理"
+result = "pass"
+
+[[items]]
+check = "pointercancel：只调用 cleanupDrag()，不提交事务"
+result = "pass"
+
+[[items]]
+check = "cleanupDrag()：ghost/dropLineEl/transform/opacity/userSelect 全部清理"
+result = "pass"
+
+[[items]]
+check = "destroy()：全部 4 个 pointer 监听器移除（bound 引用）"
+result = "pass"
+
+[[items]]
+check = "destroy()：HTML5 drag 监听器（dragover/dragleave/drop/dragend）移除"
+result = "pass"
+
+[[items]]
+check = "destroy()：isDragging 时调用 cleanupDrag()"
+result = "pass"
+
+[[items]]
+check = "handleMultiColumnDrop：零修改（ISS-048 约束）"
+result = "pass"
+
+[[items]]
+check = "lastDragoverSide：保留（ISS-048 约束）"
+result = "pass"
+
+[[items]]
+check = "dragover/dragleave/drop/dragend 监听器：保留（ISS-048 约束）"
+result = "pass"
+
+[[items]]
+check = "场景矩阵全 12 条覆盖"
+result = "pass"
+
+[[items]]
+check = "pointer events 与 HTML5 drag 路径无冲突（isDragging flag 隔离）"
+result = "pass"
+
+[[items]]
+check = "pointerup 幂等性（isDragging 置 false 后第二次直接 return）"
+result = "pass"
+
+[summary]
+text = "REQ-086 静态验收通过。tsc --noEmit 零错误；dropOverlayPlugin.ts 全量代码审查通过；场景矩阵 12 条全覆盖；ISS-048 handleMultiColumnDrop 零修改确认；cleanupDrag/destroy 无遗漏；pointer events 与 HTML5 drag 双路径共存无冲突；幂等性保护完整。无 P0/P1 问题，N3 放行。"

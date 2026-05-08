@@ -1,0 +1,22 @@
+[checklist]
+role       = "eng-frontend"
+req        = "REQ-084"
+dispatch   = 224
+created_at = "2026-05-05"
+
+[items]
+review_read          = { done = true, note = "读了 REQ-084-review.md 和 Editor.tsx 现有面板结构" }
+rules_draft_state    = { done = true, note = "lazy initializer 从 block.props.rules 解析" }
+panel_open_effect    = { done = true, note = "panelOpen=true 时同步 rulesDraft + reset showRuleTypeMenu" }
+add_delete_reorder   = { done = true, note = "↑↓ 排序、× 删除均实现" }
+rule_type_menu       = { done = true, note = "showRuleTypeMenu 控制菜单展开，4 种类型选项" }
+param_inputs         = { done = true, note = "create_page/append_content/set_page_prop/notify 参数输入均实现" }
+ten_rule_limit       = { done = true, note = "disabled={rulesDraft.length >= 10}, title=\"最多 10 条\"" }
+commit_panel_ext     = { done = true, note = "rules: JSON.stringify(rulesDraft) 写入 block.props" }
+css_styles           = { done = true, note = "Editor.css 新增规则编辑区所有样式类" }
+tsc_clean            = { done = true, note = "npx tsc --noEmit 零错误" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-05"
+note         = "REQ-084 T2 规则列表编辑 UI + 持久化全部实现，tsc 零错误"

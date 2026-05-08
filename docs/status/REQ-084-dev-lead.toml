@@ -1,0 +1,12 @@
+[status]
+role         = "dev-lead"
+req          = "REQ-084"
+dispatch     = 221
+status       = "delivered"
+delivered_at = "2026-05-05"
+
+[downstream]
+arch_frontend = { dispatch = 222, assignee = "arch-frontend-REQ084", status = "pending" }
+
+[note]
+summary = "已委派架构师 arch-frontend-REQ084（#222）执行前端架构评审，评审完成后触发 N2"

@@ -1,0 +1,119 @@
+# REQ-087 测试执行者交付清单
+# DISPATCH #260
+
+[meta]
+role_key = "te"
+assignee = "te"
+dispatch_id = "260"
+status = "delivered"
+delivered_at = "2026-05-07T00:00:00Z"
+
+[summary]
+task = "REQ-087 验收回归验证"
+method = "代码静态审查（逐行对照场景矩阵 + 架构评审文档）"
+total_scenarios = 12
+passed = 12
+failed = 0
+n3_conclusion = "✅ 通过，建议放行"
+
+[[items]]
+id = "S1"
+description = "拖拽普通段落块到另一个段落块下方"
+result = "pass"
+evidence = "L486-498 (ghost), L673-689 (dropLine), L638-670 (yield), L813-814 (commit)"
+
+[[items]]
+id = "S2"
+description = "拖拽块到编辑器外部释放"
+result = "pass"
+evidence = "L821-825 (pointercancel → cleanupDrag), L716-751 (full cleanup)"
+
+[[items]]
+id = "S3"
+description = "拖拽块到自身位置释放"
+result = "pass"
+evidence = "L560-567 (clear yield+dropLine), L809 (no-op guard)"
+
+[[items]]
+id = "S4"
+description = "拖拽单个顶层块（无嵌套子块）"
+result = "pass"
+evidence = "L545-546 (ghost follow), L638-670 (yield), L813-814 (commit)"
+
+[[items]]
+id = "S5"
+description = "拖拽带有子块的嵌套块"
+result = "pass"
+evidence = "L486 (cloneNode true), L813-814 (BlockNote API preserves structure)"
+
+[[items]]
+id = "S6"
+description = "连续快速拖拽同一个块 3 次"
+result = "pass"
+evidence = "L716-751 (cleanupDrag completeness), L725 (isConnected check)"
+
+[[items]]
+id = "S7"
+description = "编辑器处于编辑模式，块存在且拖拽手柄可见"
+result = "pass"
+evidence = "L441-459 (drag handle detection), L472 (getBlockPosFromPoint)"
+
+[[items]]
+id = "S8"
+description = "目标块位于 columnList 内部"
+result = "pass"
+evidence = "L576-578 (topLevelBlockOuters filter)"
+
+[[items]]
+id = "S9"
+description = "拖拽过程中 React 重新渲染导致源块 DOM 被替换"
+result = "pass"
+evidence = "L581-604 (data-id re-lookup), L593-601 (T4 column re-resolve)"
+
+[[items]]
+id = "S10"
+description = "同一块拖拽到目标位置 A，再拖拽回原位"
+result = "pass"
+evidence = "L813-814 (idempotent removeBlocks+insertBlocks)"
+
+[[items]]
+id = "S11"
+description = "拖拽到左边缘 15% 区域触发分栏"
+result = "pass"
+evidence = "L9 (SIDE_THRESHOLD), L903-904 (left detection), L92-310 (handleMultiColumnDrop)"
+
+[[items]]
+id = "S12"
+description = "拖拽到右边缘 15% 区域触发分栏"
+result = "pass"
+evidence = "L905-906 (right detection), symmetric with S11"
+
+[[items]]
+id = "ISS-048"
+description = "ISS-048 修复回归：拖拽排序后文本无前导空白"
+result = "pass"
+evidence = "L144-186 (HTML5 regular branch), L813-814 (pointer events path), both use BlockNote API"
+
+[[items]]
+id = "T1"
+description = "Escape 键取消拖拽"
+result = "pass"
+evidence = "L429-436 (keydown listener), L933 (destroy cleanup)"
+
+[[items]]
+id = "T2"
+description = "Ghost 偏移量优化"
+result = "pass"
+evidence = "L467-468 (offset record), L545-546 (offset apply)"
+
+[[items]]
+id = "T3"
+description = "ColumnList 目标命中修复"
+result = "pass"
+evidence = "L767-776 (column lift logic)"
+
+[[items]]
+id = "T4"
+description = "源块 column 内重查找修复"
+result = "pass"
+evidence = "L581-604 (extended re-lookup), L593-601 (ProseMirror re-resolve)"

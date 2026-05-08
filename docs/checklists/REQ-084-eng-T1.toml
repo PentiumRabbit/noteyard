@@ -1,0 +1,18 @@
+[checklist]
+role       = "eng-frontend"
+req        = "REQ-084"
+dispatch   = 223
+created_at = "2026-05-05"
+
+[items]
+review_read          = { done = true, note = "read REQ-084-review.md and Editor.tsx" }
+types_defined        = { done = true, note = "ButtonAction includes run_rules; ButtonRule union type defined; propSchema has rules field; buttonBlockCtxRef has pageTitle" }
+parse_rules_impl     = { done = true, note = "parseRules(raw) -> ButtonRule[] | null; module-level in Editor.tsx" }
+resolve_variables    = { done = true, note = "resolveVariables(template, ctxRef) -> string; replaces {{date}}/{{time}}/{{page_title}}" }
+execute_rules_impl   = { done = true, note = "executeSingleRule and executeRules implemented as module-level async functions" }
+tsc_clean            = { done = true, note = "npx tsc --noEmit exit code 0" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-05"
+note         = "All data structures and pure functions implemented. ButtonAction includes run_rules, ButtonRule union type complete (4 variants), propSchema has rules field with default '[]', buttonBlockCtxRef extended with pageTitle, parseRules/resolveVariables/executeSingleRule/executeRules added as module-level functions, toast imported. tsc --noEmit zero errors."

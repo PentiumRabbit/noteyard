@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-05-07 · REQ-087
+
+| 回归点 | 受影响模块 | 结果 | 来源 |
+|--------|----------|------|------|
+| 普通块拖拽排序（向上/向下，上/下半区命中） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| ghost 跟随视觉（偏移量自然，无跳变） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| Escape 取消拖拽（所有视觉元素清除，块回原位） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| 拖拽后文本无前导空白（ISS-048 回归） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| 分栏创建：left/right drop → columnList | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| 拖拽到 columnList 目标（块插入到 columnList 同级） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| 拖拽 column 内部块（源块重查找正确） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| pointercancel 后块回原位，无残留 DOM | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| 连续 10 次拖拽无 DOM 泄漏 | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+| tsc --noEmit 零错误 | `web/src/components/editor/` | ✅ 通过 | REQ-087 / docs/architecture/REQ-087-review.md |
+
+---
 ## 2026-05-07 · REQ-086
 
 | 回归点 | 受影响模块 | 结果 | 来源 |

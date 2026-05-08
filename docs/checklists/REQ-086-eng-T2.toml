@@ -1,0 +1,41 @@
+[meta]
+assignee   = "eng-frontend-REQ086-T2"
+dispatch   = 248
+role_key   = "eng-frontend"
+task       = "REQ-086 T2: 让位动画与蓝色插入指示线"
+status     = "delivered"
+delivered_at = "2026-05-07"
+
+[items]
+target_block_hit_test          = true   # getBlockPosFromPoint 复用，命中目标块
+upper_lower_half_detection     = true   # clientY vs rect.top + rect.height/2
+source_same_as_target_skip     = true   # targetPos === sourceBlockPos 时清除并跳过
+translate_y_upward             = true   # 向上拖：目标到 source-1 块 translateY(+h)
+translate_y_downward           = true   # 向下拖：source+1 到目标块 translateY(-h)
+batch_read_before_write        = true   # 先全部 getBoundingClientRect，再统一写 transform
+transition_150ms_ease          = true   # transform 150ms ease
+drop_line_created              = true   # 单个 .bn-drop-line 元素复用
+drop_line_before_edge          = true   # placement=before → targetRect.top
+drop_line_after_edge           = true   # placement=after → targetRect.bottom
+drop_line_align_outer          = true   # left/width 与 targetBlockOuter 对齐
+cleanup_clears_transforms      = true   # cleanupDrag() 清除所有 blockOuter transform/transition
+cleanup_removes_drop_line      = true   # cleanupDrag() 移除 dropLineEl
+css_bn_drag_ghost              = true   # Editor.css 新增 .bn-drag-ghost
+css_bn_drop_line               = true   # Editor.css 新增 .bn-drop-line
+handle_multi_column_unchanged  = true   # handleMultiColumnDrop 零修改
+tsc_no_emit_zero_errors        = true   # tsc --noEmit 零错误
+
+[summary]
+commits = ["0fe221e feat(editor)[eng-frontend#248]: REQ-086 T2 — 让位动画与蓝色插入指示线"]
+files_changed = [
+  "web/src/components/editor/dropOverlayPlugin.ts",
+  "web/src/components/editor/Editor.css",
+]
+notes = """
+实现要点：
+1. rAF 回调中先 getBlockPosFromPoint 找目标块，再判断上下半区得 placement
+2. 批量读（所有 blockOuter.getBoundingClientRect）→ 批量写（统一 transform），避免强制重排
+3. dropLineEl 单例复用（不存在则创建，存在则直接更新 cssText）
+4. _clearYieldTransforms / _hideDropLine 两个辅助方法，cleanupDrag 调用
+5. source 块 opacity 0.3 保留，不参与 translateY 计算（跳过）
+"""

@@ -1,0 +1,51 @@
+status = "delivered"
+delivered_at = "2026-05-05"
+dispatch_id = 220
+assignee = "dev-lead-ISS045-ISS046"
+
+summary = "ISS-045/046 修复完成。ISS-045 根因：设置面板「确认」按钮用 onMouseDown，但 panelRef 原生 mousedown handler 调用 stopPropagation() 阻断事件到达 React root，合成 onMouseDown 未触发，commitPanel 不执行。修复：确认按钮改用 onClick（click 事件不受 mousedown stopPropagation 影响，对齐 ISS-044 修复模式）。ISS-046 根因：ISS-045 导致 action=new_subpage 草稿从未提交到 block.props.action，handler 读到 'none' 无动作。ISS-045 修复后 new_subpage 分支正常（pageId 守卫 → api.pages.create → insertOrUpdateBlock → onSelectPage）。tsc --noEmit 零错误，向后兼容。已更新 eng-editor.md 摘要。"
+
+[[items]]
+id = "read-rules"
+description = "读取 all.md、dev-lead.md 规则文件"
+status = "done"
+
+[[items]]
+id = "read-iss-docs"
+description = "读取 ISS-045.md、ISS-046.md、ISS-040.md、ISS-041.md、ISS-043.md、ISS-044.md 及 REQ-083-review.md"
+status = "done"
+
+[[items]]
+id = "read-source"
+description = "读取 Editor.tsx ButtonBlock 相关代码（panelRef effect、mainBtnRef effect、commitPanel、confirm button JSX）"
+status = "done"
+
+[[items]]
+id = "root-cause-iss045"
+description = "确认 ISS-045 根因：确认按钮 onMouseDown 被 panel native mousedown stopPropagation() 阻断，commitPanel 不执行"
+status = "done"
+
+[[items]]
+id = "root-cause-iss046"
+description = "确认 ISS-046 根因：ISS-045 导致 action 草稿从未保存到 block.props，new_subpage 分支读到 'none' 无响应"
+status = "done"
+
+[[items]]
+id = "fix-impl"
+description = "修改 Editor.tsx 确认按钮 onMouseDown → onClick，对齐 ISS-044 修复模式"
+status = "done"
+
+[[items]]
+id = "tsc-check"
+description = "tsc --noEmit 零错误"
+status = "done"
+
+[[items]]
+id = "commit"
+description = "git commit fix(editor)[dev-lead#220] ca9a7c7，仅含 Editor.tsx + eng-editor.md"
+status = "done"
+
+[[items]]
+id = "summary-update"
+description = "更新 docs/summaries/eng-editor.md：新增 ISS-045/046 变更记录"
+status = "done"

@@ -1,0 +1,46 @@
+assignee = "eng-REQ087-T4"
+dispatch_id = 259
+status = "delivered"
+delivered_at = "2026-05-07T12:30:00Z"
+
+[[items]]
+description = "读 docs/engineering/rules/all.md"
+done = true
+
+[[items]]
+description = "读 docs/engineering/rules/eng.md"
+done = true
+
+[[items]]
+description = "读 docs/architecture/REQ-087-review.md（重点关注 §三 FR-1 React 重渲染后源块引用恢复、§十一 源块 column 内重查找风险、§十二 T4 任务说明）"
+done = true
+
+[[items]]
+description = "读 web/src/components/editor/dropOverlayPlugin.ts（了解 onPointerMove L559-570 data-id 重查找逻辑、getBlockPosFromPoint 函数）"
+done = true
+
+[[items]]
+description = "扩展 onPointerMove 中源块 data-id 重查找：topLevelBlockOuters 找不到时，在 allBlockOuters 中查找"
+done = true
+
+[[items]]
+description = "在 allBlockOuters 中找到后，通过 getBlockPosFromPoint 重新解析 sourceBlockPos（ProseMirror 位置）"
+done = true
+
+[[items]]
+description = "修改提前 return 条件：sourceIdx === -1 改为 !this.sourceBlockEl，允许 column 内部源块继续拖拽"
+done = true
+
+[[items]]
+description = "tsc --noEmit 零错误"
+done = true
+
+[[items]]
+description = "git commit：fix(editor)[eng#259]: 源块 column 内重查找修复，仅含 dropOverlayPlugin.ts"
+done = false
+
+[[items]]
+description = "更新 docs/summaries/eng-editor.md"
+done = true
+
+summary = "扩展 onPointerMove 中源块 data-id 重查找范围至 allBlockOuters（原仅 topLevelBlockOuters）。当源块在 column 内部时，在 allBlockOuters 中找到后通过 getBlockPosFromPoint 重新解析 sourceBlockPos；同时将提前 return 条件从 sourceIdx === -1 改为 !this.sourceBlockEl，确保 column 内部源块能继续参与拖拽逻辑。tsc --noEmit 零错误。"

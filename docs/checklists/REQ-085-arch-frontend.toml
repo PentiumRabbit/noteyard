@@ -1,0 +1,16 @@
+[checklist]
+role       = "arch-frontend"
+req        = "REQ-085"
+dispatch   = 239
+created_at = "2026-05-06"
+
+[items]
+req_read         = { done = true, note = "已读 dispatch #239 任务描述及研发负责人评审结论" }
+codebase_read    = { done = true, note = "已读 main.tsx / client.ts / vite.config.ts" }
+review_written   = { done = true, note = "docs/architecture/REQ-085-frontend-review.md 已创建" }
+task_split_done  = { done = true, note = "工程师任务 T1-T4 已拆分，dispatch #243 已写入（prereqs=239,240）" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-06"
+note         = "前端架构评审完成。方案：vite proxy /api→8080 + VITE_API_BASE 环境变量初始化 API_BASE + .env.development 空值。Tauri 路径不变。改动 4 个文件，共 ~8 行。工程师实现行 #243（prereqs=239,240）已写入。"

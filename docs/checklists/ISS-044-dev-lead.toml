@@ -1,0 +1,36 @@
+status = "delivered"
+delivered_at = "2026-05-05"
+dispatch_id = 219
+assignee = "dev-lead-ISS044"
+
+summary = "ISS-044 修复完成。根因：ButtonBlock 设置面板的原生 mousedown handler 调用 stopPropagation()，阻断 React 合成 onMouseDown 到达 React root，导致 CustomSelect 选项点击无响应。修复：将 CustomSelect 选项的选值逻辑从 onMouseDown 移至 onClick；onMouseDown 仅保留 preventDefault() 防止焦点抢占。tsc --noEmit 零错误，向后兼容。已更新 eng-editor.md 摘要记录新约束。"
+
+[[items]]
+id = "read-iss"
+description = "读取 ISS-044.md、ISS-040.md、ISS-041.md 确认根因假设"
+status = "done"
+
+[[items]]
+id = "root-cause-analysis"
+description = "确认根因：面板 native mousedown stopPropagation() 阻断 React 合成 onMouseDown，CustomSelect 选项 onClick 是正确修复点"
+status = "done"
+
+[[items]]
+id = "fix-impl"
+description = "修改 web/src/components/common/CustomSelect.tsx：选项 onMouseDown 仅 preventDefault，选值逻辑移至 onClick"
+status = "done"
+
+[[items]]
+id = "tsc-check"
+description = "tsc --noEmit 零错误"
+status = "done"
+
+[[items]]
+id = "commit"
+description = "git commit fix(editor)[dev-lead#219] c75c3ec，仅含 CustomSelect.tsx"
+status = "done"
+
+[[items]]
+id = "summary-update"
+description = "更新 docs/summaries/eng-editor.md：新增 ISS-044 变更记录 + 关键约束补充"
+status = "done"

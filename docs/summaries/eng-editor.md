@@ -116,7 +116,17 @@
 - `dropOverlayPlugin.ts`：提取 `findBlockById` 为模块级共享函数（原位于 `handleMultiColumnDrop` 内部）；`DropOverlayView` 构造函数新增 `editor` 参数；`onPointerUp` 替换 console.log 占位为实际事务提交——在 `cleanupDrag()` 之前捕获 `currentTargetPos`/`currentPlacement`/`sourceBlockPos`，清理视觉状态后通过 `getNearestBlockPos`+`getBlockInfo`+`nodeToBlock` 解析 targetBlock，通过文档位置解析 sourceBlock，调用 `editor.removeBlocks([sourceBlock])` + `editor.insertBlocks([sourceBlock], targetBlock, placement)`，try/catch 包裹（失败时视觉已清理，不崩溃）；`isDragging` 保护确保幂等；`onPointerCancel` 只执行 `cleanupDrag()`，不提交事务（T1 已实现，T3 验证无变化）；`destroy()` 全量清理验证完整（4个 pointer 监听器均在 destroy 中移除，`cleanupDrag` 覆盖 ghost/dropLine/transform/opacity/userSelect）
 - `tsc --noEmit` 零错误；handleMultiColumnDrop 零修改
 
+## 变更记录（REQ-087 T1，2026-05-07，dispatch #256）
+
+- `dropOverlayPlugin.ts`：`DropOverlayView` 新增 `onKeyDownBound` 属性；构造函数中注册 `document.addEventListener("keydown", ...)` 监听 Escape 键，按下且 `isDragging` 时调用 `cleanupDrag()` 取消拖拽（ghost/遮罩/挤压变换/落点线/userSelect 全部清除，块回原位，不提交事务）；`destroy()` 中通过 `document.removeEventListener("keydown", ...)` 正确移除监听器，无泄漏
+- `tsc --noEmit` 零错误
+
 ## 变更记录（REQ-087 T3，2026-05-07，dispatch #258）
 
 - `dropOverlayPlugin.ts`：`onPointerUp` 中新增 columnList 目标提升逻辑——在 `cleanupDrag()` 之后、目标块解析之前，通过 `state.doc.resolve(targetPos)` 检测目标是否在 column 内部（`parent.type.name === "column"`），若是则将 `targetPos` 提升到 columnList 位置（`resolved.before(depth - 1)`），确保 `insertBlocks` 将拖拽块插入到 columnList 同级而非 column 内部
+- `tsc --noEmit` 零错误；非 column 场景拖拽排序行为不变
+
+## 变更记录（REQ-087 T4，2026-05-07，dispatch #259）
+
+- `dropOverlayPlugin.ts`：扩展 `onPointerMove` 中源块 `data-id` 重查找范围至 `allBlockOuters`（原仅 `topLevelBlockOuters`）。当源块在 column 内部时，在 `allBlockOuters` 中找到后通过 `getBlockPosFromPoint` 重新解析 `sourceBlockPos`；同时将提前 return 条件从 `sourceIdx === -1` 改为 `!this.sourceBlockEl`，确保 column 内部源块能继续参与拖拽逻辑
 - `tsc --noEmit` 零错误；非 column 场景拖拽排序行为不变

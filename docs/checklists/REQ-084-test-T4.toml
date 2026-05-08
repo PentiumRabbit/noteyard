@@ -1,0 +1,17 @@
+[checklist]
+role       = "test-lead"
+req        = "REQ-084"
+dispatch   = 226
+created_at = "2026-05-05"
+
+[items]
+req_doc_read         = { done = true, note = "REQ-084.md fully read; all FR-1~FR-5 and acceptance criteria reviewed" }
+scenario_matrix      = { done = true, note = "All 16 scenario matrix rows verified against code paths in Editor.tsx" }
+acceptance_criteria  = { done = true, note = "All 10 acceptance criteria verified; full PASS" }
+regression_existing  = { done = true, note = "open_url/new_subpage/edit_page_props/none branches untouched; commitPanel other fields unchanged" }
+tsc_clean            = { done = true, note = "cd web && npx tsc --noEmit: zero errors (actually executed)" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-05T00:00:00"
+note         = "验收通过。所有 FR-1~FR-5 功能均已实现，tsc 零错误，4 种旧 action 分支回归无影响。唯一偏差：pageTitle 固定为空字符串（架构评审 §3.4 已说明可接受）。无需创建 ISS。"

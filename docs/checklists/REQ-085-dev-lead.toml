@@ -1,0 +1,17 @@
+[checklist]
+role       = "dev-lead"
+req        = "REQ-085"
+dispatch   = 238
+created_at = "2026-05-06"
+
+[items]
+req_doc_read            = { done = true,  note = "已理解 REQ-085：网页端+桌面端双模式支持，前端读 VITE_API_BASE、Vite proxy、后端固定端口 8080" }
+module_tree_checked     = { done = true,  note = "MODULE-TREE.md 确认，变更范围：frontend（vite.config.ts, main.tsx）+ backend（Makefile）" }
+arch_dispatch_inserted  = { done = true,  note = "dispatch #239（前端架构师）和 #240（后端架构师）已写入，并行执行" }
+arch_role_correct       = { done = true,  note = "跨前端+后端两模块，并行委派 arch-frontend + arch-backend" }
+no_agent_called         = { done = true,  note = "未直接调用 Agent，仅写 dispatch 行" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-06"
+note         = "已并行委派 arch-frontend（#239）和 arch-backend（#240）完成架构评审。变更范围：frontend（vite.config.ts proxy + main.tsx VITE_API_BASE）+ backend（Makefile server-dev --port 8080）。tauri 模块不变。N2 后由总负责人委派工程师实现。"

@@ -1,0 +1,9 @@
+[meta]
+dispatch_id = 222
+assignee    = "arch-frontend-REQ084"
+role_key    = "arch-frontend"
+
+[status]
+status       = "delivered"
+delivered_at = "2026-05-05"
+output       = "docs/architecture/REQ-084-review.md"

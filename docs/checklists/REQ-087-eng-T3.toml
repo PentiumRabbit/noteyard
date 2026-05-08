@@ -1,0 +1,61 @@
+assignee = "eng-REQ087-T3"
+dispatch_id = 258
+status = "delivered"
+delivered_at = "2026-05-07T15:30:00+08:00"
+
+[[items]]
+description = "读 docs/engineering/rules/all.md"
+done = true
+
+[[items]]
+description = "读 docs/engineering/rules/eng.md"
+done = true
+
+[[items]]
+description = "读 docs/architecture/REQ-087-review.md（重点关注 §四.4 ColumnList 目标命中、§十一 columnList 目标风险）"
+done = true
+
+[[items]]
+description = "读 web/src/components/editor/dropOverlayPlugin.ts（了解 onPointerUp 事务提交逻辑、handleMultiColumnDrop L110-117 column 提升逻辑）"
+done = true
+
+[[items]]
+description = "onPointerUp 中检测目标块是否在 column 内部（resolved.parent.type.name === \"column\"）"
+done = true
+
+[[items]]
+description = "若在 column 内，将 placement 提升到 columnList 级别（参考 handleMultiColumnDrop L110-117）"
+done = true
+
+[[items]]
+description = "确保 insertBlocks 将块插入到 columnList 同级而非 column 内部"
+done = true
+
+[[items]]
+description = "tsc --noEmit 零错误"
+done = true
+
+[[items]]
+description = "git commit：fix(editor)[eng#258]: columnList 目标命中修复，块插入到正确层级，仅含 dropOverlayPlugin.ts"
+done = true
+
+[[items]]
+description = "更新 docs/summaries/eng-editor.md（如需要）"
+done = true
+
+summary = """
+T3 ColumnList 目标命中修复已完成。
+
+实现内容：
+- 在 onPointerUp 中 cleanupDrag() 之后、目标块解析之前，新增 columnList 目标提升逻辑
+- 通过 state.doc.resolve(targetPos) 检测目标是否在 column 内部（parent.type.name === "column"）
+- 若在 column 内，将 targetPos 提升到 columnList 位置（resolved.before(depth - 1)）
+- 确保 insertBlocks 将拖拽块插入到 columnList 同级而非 column 内部
+
+质量检查：
+- tsc --noEmit 零错误
+- 无 linter 错误
+- 非 column 场景拖拽排序行为不变
+
+代码已随 dispatch #257 提交（commit a884344），摘要已更新（commit 12bb729）。
+"""

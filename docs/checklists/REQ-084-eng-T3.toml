@@ -1,0 +1,17 @@
+[checklist]
+role       = "eng-frontend"
+req        = "REQ-084"
+dispatch   = 225
+created_at = "2026-05-05"
+
+[items]
+review_read           = { done = true, note = "REQ-084-review.md §3.3 §3.4 reviewed; T1/T2 verified in place" }
+run_rules_branch      = { done = true, note = "Added run_rules branch after edit_page_props in mainBtnRef handler" }
+page_title_sync       = { done = true, note = "pageTitle degraded to empty string; pageMeta not in Editor Props per arch spec §3.4" }
+execute_rules_wired   = { done = true, note = "void executeRules(rules, buttonBlockCtxRef, editor, e.currentTarget as HTMLButtonElement)" }
+tsc_clean             = { done = true, note = "npx tsc --noEmit: zero errors" }
+
+[summary]
+status       = "delivered"
+delivered_at = "2026-05-05"
+note         = "T3 complete: run_rules handler branch + pageTitle degraded sync. Two-line change only, no T1/T2 modifications."

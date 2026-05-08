@@ -1,0 +1,17 @@
+[checklist]
+role       = "dev-lead"
+req        = "ISS-048"
+dispatch   = 232
+created_at = "2026-05-06"
+
+[items]
+read_rules              = { done = true,  note = "读取 all.md + dev-lead.md 完成" }
+read_review             = { done = true,  note = "读取 docs/architecture/ISS-048-review.md 完成" }
+checklist_1p5_verified  = { done = true,  note = "review.md 存在；功能分层合理（仅 frontend/editor）；无全局状态；无可复用组件（单文件修复）；T1/T2/T3 可独立验收，无循环依赖" }
+eng_t1_dispatched       = { done = true,  note = "dispatch #233 前端工程师-ISS048-T1，prereqs=231" }
+blocked_on_233          = { done = true,  note = "dispatch #232 设为 blocked，等待 #233 完成后继续委派测试执行者" }
+
+[summary]
+status       = "blocked"
+delivered_at = ""
+note         = "T1 工程师已委派（#233）。待 #233 delivered 后，继续委派测试执行者执行 T2/T3 回归验证。"

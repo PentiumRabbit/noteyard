@@ -1,0 +1,6 @@
+[status]
+role       = "arch-frontend"
+req        = "REQ-085"
+dispatch   = 239
+status     = "pending"
+updated_at = "2026-05-06"

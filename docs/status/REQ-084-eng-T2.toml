@@ -1,0 +1,7 @@
+[status]
+role       = "eng-frontend"
+req        = "REQ-084"
+dispatch   = 224
+phase      = "T2"
+created_at = "2026-05-05"
+state      = "pending"
