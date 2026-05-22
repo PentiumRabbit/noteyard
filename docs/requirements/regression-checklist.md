@@ -33,6 +33,18 @@
 
 ---
 
+## 2026-05-22 · ISS-048-v2
+
+| 回归点 | 受影响模块 | 结果 | 来源 |
+|--------|----------|------|------|
+| side=regular 分支使用 findBlockById+removeBlocks+insertBlocks，跳过 ProseMirror replaceRange 路径，无前导空白 | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | ISS-048 / docs/requirements/test-report-ISS-048-v2.md |
+| 普通拖拽多次重复后均无前导空白（单块/多块场景） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | ISS-048 / docs/requirements/test-report-ISS-048-v2.md |
+| lastDragoverSide 机制：drop 坐标不影响 side 判定，拖拽柄不误触列创建（T3） | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | ISS-048 / docs/requirements/test-report-ISS-048-v2.md |
+| SIDE_THRESHOLD 全文唯一常量（0.15），dragover 与 drop 路径阈值一致 | `web/src/components/editor/dropOverlayPlugin.ts` | ✅ 通过 | ISS-048 / docs/requirements/test-report-ISS-048-v2.md |
+| TypeScript 编译无报错（npx tsc --noEmit） | `web/src/components/editor/` | ✅ 通过 | ISS-048 / docs/requirements/test-report-ISS-048-v2.md |
+
+---
+
 ## 2026-05-06 · ISS-048
 
 | 回归点 | 受影响模块 | 结果 | 来源 |
