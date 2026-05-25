@@ -1,19 +1,14 @@
-# STARTUP.md — AI 启动入口
+# STARTUP.md — noteyard 项目启动协议
 
-启动时需在上下文中提供以下文件（支持自动加载则自动生效，否则手动提供）：
+## 通用协议（强制完整执行，不得跳过）
 
-```
-必须加载（按顺序）：
-1. ai-pro/STARTUP.md                             ← 团队启动协议（角色、流程、委派规则）
-2. ai-pro/docs/engineering/rules/all.md          ← 跨角色强制规则
-3. ai-pro/docs/engineering/rules/{role}.md       ← 本角色专属规则（替换 {role}）
-4. 本项目 PROJECT.md                             ← 项目约束
+加载并执行 `$FRAMEWORK_ROOT/STARTUP.md` 的全部步骤，完成后再执行下方项目特定步骤。
 
-可选但推荐：
-5. ai-pro/docs/engineering/DELEGATION.md         ← 委派流程细则
-```
+> 通用协议未完成前禁止继续。
 
-角色标签对照：`[lead]` `[pm]` `[arch-module]` `[dev-lead]` `[mod-lead]` `[eng]` `[te]` `[td]` `[test-lead]`
-规则文件位于：`ai-pro/docs/engineering/rules/{role}.md`
+---
 
-模块角色分配：`noteyard/docs/engineering/MODULE-TREE.md`
+## 项目特定步骤（通用协议之后）
+
+1. 读 `docs/PROJECT.md`（项目约束）
+2. 读 `docs/engineering/MODULE-TREE.md`（模块角色分配）
