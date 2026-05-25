@@ -23,6 +23,13 @@ src-tauri/binaries/noteyard-server-*
 # OS
 .DS_Store
 
+# AI team runtime (not for git)
+/.ai-team/
+/archive/
+/logs/
+/node_modules/
+server/logs/
+
 # Dispatch process files (not for git)
 docs/tasks/dispatch/
 docs/tasks/**/*-checklist.md
